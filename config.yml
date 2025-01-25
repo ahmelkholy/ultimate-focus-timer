@@ -32,7 +32,7 @@ show_progress_bar: true # show visual progress bar
 
 # Sound Settings
 sound: ""
-sound_volume: 70 # volume percentage
+sound_volume: 100 # volume percentage
 sound_on_break: false
 fade_sound: true # fade in/out sound transitions
 
