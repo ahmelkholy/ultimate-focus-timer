@@ -1,0 +1,158 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ultimate-focus-timer"
+dynamic = ["version"]
+description = "A comprehensive cross-platform productivity timer application"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Ultimate Focus Timer Team", email = "contact@ultimatefocustimer.com"}
+]
+maintainers = [
+    {name = "Ultimate Focus Timer Team", email = "contact@ultimatefocustimer.com"}
+]
+keywords = ["productivity", "timer", "focus", "pomodoro", "cross-platform"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Scheduling",
+    "Topic :: Utilities",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "PyYAML>=6.0.1",
+    "configparser>=5.3.0",
+    "plyer>=2.1.0",
+    "psutil>=5.9.0",
+    "matplotlib>=3.6.0",
+    "pandas>=1.5.0",
+    "seaborn>=0.12.0",
+    "Pillow>=9.3.0",
+    "aiofiles>=22.1.0",
+    "rich>=13.0.0",
+    "colorama>=0.4.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.2.0",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.10.0",
+    "black>=22.10.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "isort>=5.12.0",
+    "safety>=2.3.0",
+    "bandit>=1.7.5",
+    "pre-commit>=3.0.0",
+    "types-PyYAML>=6.0.0",
+]
+docs = [
+    "sphinx>=5.3.0",
+    "sphinx-rtd-theme>=1.2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/ultimate-focus-timer"
+Documentation = "https://github.com/yourusername/ultimate-focus-timer/blob/main/docs/USER_GUIDE.md"
+Repository = "https://github.com/yourusername/ultimate-focus-timer"
+Issues = "https://github.com/yourusername/ultimate-focus-timer/issues"
+Changelog = "https://github.com/yourusername/ultimate-focus-timer/blob/main/docs/CHANGELOG.md"
+
+[project.scripts]
+focus = "main:main"
+focus-timer = "main:main"
+
+[project.gui-scripts]
+focus-gui = "focus_app:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "src.__version__.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yml", "*.yaml", "*.json", "*.png", "*.ico", "*.mp3", "*.wav"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+force_alphabetical_sort_within_sections = true
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*", "setup.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", "venv", ".venv"]
+skips = ["B101", "B601"]
