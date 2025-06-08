@@ -155,17 +155,81 @@ class UltimateFocusLauncher:
             print("   Visit: https://mpv.io/installation/")
 
     def launch_gui(self, show_splash: bool = True):
-        """Launch the GUI version"""
+        """Launch the GUI version as a separate process"""
         if show_splash:
             self._show_splash()
 
         print("🎯 Launching GUI Mode...")
         try:
-            app = FocusGUI()
-            app.run()
+            # Get the current Python executable and script paths
+            python_exe = sys.executable
+            gui_script = Path(__file__).parent / "src" / "focus_gui.py"
+            working_dir = Path(__file__).parent  # Set working directory to project root
+
+            # Prepare environment variables to ensure proper Python path and Unicode support
+            env = os.environ.copy()
+            current_pythonpath = env.get("PYTHONPATH", "")
+            src_path = str(Path(__file__).parent / "src")
+            root_path = str(Path(__file__).parent)
+
+            if current_pythonpath:
+                env["PYTHONPATH"] = (
+                    f"{root_path}{os.pathsep}{src_path}{os.pathsep}{current_pythonpath}"
+                )
+            else:
+                env["PYTHONPATH"] = f"{root_path}{os.pathsep}{src_path}"
+
+            # Set environment variables for proper Unicode handling
+            env["PYTHONIOENCODING"] = "utf-8"
+            if platform.system() == "Windows":
+                env["PYTHONLEGACYWINDOWSSTDIO"] = "0"
+
+            # Launch GUI as separate process with proper working directory and environment
+            if platform.system() == "Windows":
+                # On Windows, use CREATE_NEW_PROCESS_GROUP to detach from parent
+                process = subprocess.Popen(
+                    [python_exe, str(gui_script)],
+                    cwd=working_dir,
+                    env=env,
+                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            else:
+                # On Unix-like systems, use start_new_session
+                process = subprocess.Popen(
+                    [python_exe, str(gui_script)],
+                    cwd=working_dir,
+                    env=env,
+                    start_new_session=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+
+            # Give the process a moment to start
+            time.sleep(1.0)
+
+            # Check if process is still running
+            if process.poll() is None:
+                print("✅ GUI launched successfully as separate process")
+                print("💡 Terminal is now available for other commands")
+            else:
+                print("❌ GUI process may have encountered an issue")
+                print("🔧 Falling back to running GUI in current process...")
+                # Fallback to running in current process
+                app = FocusGUI()
+                app.run()
+
         except Exception as e:
             print(f"❌ Error launching GUI: {e}")
             print("💡 Try console mode: python main.py --console")
+            print("🔧 Fallback: Running GUI in current process...")
+            try:
+                # Fallback to running in current process if subprocess fails
+                app = FocusGUI()
+                app.run()
+            except Exception as fallback_e:
+                print(f"❌ Fallback also failed: {fallback_e}")
 
     def launch_console(self):
         """Launch the console version"""
