@@ -133,9 +133,10 @@ class MusicController:
             volume = self.config.get("classical_music_volume", 30)
 
         print(f"🎵 Starting classical music...")
-        print(
-            f"   Playlist: {Path(playlist_path).name if Path(playlist_path).exists() else playlist_path}"
-        )
+        if playlist_path:
+            print(
+                f"   Playlist: {Path(playlist_path).name if Path(playlist_path).exists() else playlist_path}"
+            )
         print(f"   Volume: {volume}%")
 
         # Build MPV arguments
@@ -154,7 +155,11 @@ class MusicController:
             mpv_args.extend(extra_args.split())
 
         # Add playlist
-        mpv_args.append(playlist_path)
+        if playlist_path:
+            mpv_args.append(playlist_path)
+        else:
+            print("❌ No valid playlist path to play")
+            return False
 
         try:
             # Start MPV process

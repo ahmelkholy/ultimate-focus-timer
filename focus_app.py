@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 try:
     from config_manager import ConfigManager
-    from focus_gui import FocusTimerGUI
+    from focus_gui import FocusGUI
     from focus_console import ConsoleInterface
     from dashboard import DashboardGUI, SessionAnalyzer
 except ImportError as e:
@@ -222,8 +222,7 @@ class LauncherGUI:
             self.root.withdraw()  # Hide launcher
 
             # Create and run GUI
-            config = ConfigManager()
-            gui = FocusTimerGUI(config)
+            gui = FocusGUI()
             gui.run()
 
             # Show launcher again when GUI closes
@@ -500,8 +499,7 @@ def main():
 
         # Handle direct mode launches
         elif args.gui:
-            config = ConfigManager(args.config)
-            gui = FocusTimerGUI(config)
+            gui = FocusGUI()
             gui.run()
 
         elif args.console:

@@ -7,29 +7,31 @@ Command-line interface for the focus timer with advanced session management
 import argparse
 import os
 import sys
-import time
 import threading
+import time
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 # Add current directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config_manager import ConfigManager
-from session_manager import SessionManager
 from music_controller import MusicController
 from notification_manager import NotificationManager
+from session_manager import SessionManager
 
 
 class ConsoleInterface:
     """Enhanced console interface for focus timer"""
 
     def __init__(self, config_path: Optional[str] = None):
-        self.config = ConfigManager(config_path)
-        self.session_manager = SessionManager(self.config)
+        self.config = ConfigManager(config_path or "config.yml")
         self.music_controller = MusicController(self.config)
         self.notification_manager = NotificationManager(self.config)
+        self.session_manager = SessionManager(
+            self.config, self.music_controller, self.notification_manager
+        )
 
         # Console state
         self.running = False
@@ -38,32 +40,34 @@ class ConsoleInterface:
 
         # Statistics tracking
         self.session_stats = {
-            'sessions_completed': 0,
-            'total_work_time': 0,
-            'total_break_time': 0,
-            'start_time': datetime.now()
+            "sessions_completed": 0,
+            "total_work_time": 0,
+            "total_break_time": 0,
+            "start_time": datetime.now(),
         }
 
         # Setup session callbacks
-        self.session_manager.add_callback('session_started', self._on_session_started)
-        self.session_manager.add_callback('session_completed', self._on_session_completed)
-        self.session_manager.add_callback('session_paused', self._on_session_paused)
-        self.session_manager.add_callback('session_resumed', self._on_session_resumed)
-        self.session_manager.add_callback('break_started', self._on_break_started)
-        self.session_manager.add_callback('break_completed', self._on_break_completed)
-        self.session_manager.add_callback('timer_tick', self._on_timer_tick)
+        self.session_manager.set_callbacks(
+            on_tick=self._on_timer_tick,
+            on_complete=self._on_session_completed,
+            on_state_change=self._on_state_change,
+        )
+
+    def run(self):
+        """Main entry point for console interface"""
+        self.run_interactive()
 
     def _clear_status_lines(self):
         """Clear the last status display"""
         if self.last_status_lines > 0:
             # Move cursor up and clear lines
             for _ in range(self.last_status_lines):
-                print('\033[A\033[K', end='')
+                print("\033[A\033[K", end="")
             self.last_status_lines = 0
 
     def _print_header(self):
         """Print the application header"""
-        os.system('cls' if os.name == 'nt' else 'clear')
+        os.system("cls" if os.name == "nt" else "clear")
         print("═" * 70)
         print("                     🎯 FOCUS TIMER")
         print("                   Console Manager")
@@ -72,21 +76,21 @@ class ConsoleInterface:
 
     def _print_session_info(self):
         """Print current session information"""
-        status = self.session_manager.get_status()
+        status = self.session_manager.get_session_info()
         config = self.config.get_timer_config()
 
         # Session type and duration
-        session_type = status.get('session_type', 'work')
-        if session_type == 'work':
-            total_duration = config['work_duration']
+        session_type = status.get("type", "work")
+        if session_type == "work":
+            total_duration = config["work_duration"]
             icon = "💼"
             type_name = "Work Session"
-        elif session_type == 'short_break':
-            total_duration = config['short_break_duration']
+        elif session_type == "short_break":
+            total_duration = config["short_break_duration"]
             icon = "☕"
             type_name = "Short Break"
-        elif session_type == 'long_break':
-            total_duration = config['long_break_duration']
+        elif session_type == "long_break":
+            total_duration = config["long_break_duration"]
             icon = "🌳"
             type_name = "Long Break"
         else:
@@ -94,7 +98,7 @@ class ConsoleInterface:
             icon = "⏰"
             type_name = "Session"
 
-        elapsed = status.get('elapsed_time', 0)
+        elapsed = status.get("elapsed_seconds", 0)
         remaining = max(0, total_duration * 60 - elapsed)
 
         # Format time
@@ -108,23 +112,27 @@ class ConsoleInterface:
         bar = "█" * filled_length + "░" * (bar_length - filled_length)
 
         # Status display
-        state = status.get('state', 'idle')
+        state = status.get("state", "idle")
         state_icon = {
-            'running': "▶️",
-            'paused': "⏸️",
-            'completed': "✅",
-            'idle': "⏹️"
+            "running": "▶️",
+            "paused": "⏸️",
+            "completed": "✅",
+            "idle": "⏹️",
         }.get(state, "❓")
 
         print(f"{icon} {type_name}")
         print(f"Status: {state_icon} {state.title()}")
         print(f"Progress: [{bar}] {progress:.1%}")
-        print(f"Elapsed: {elapsed_min:02d}:{elapsed_sec:02d} | Remaining: {remaining_min:02d}:{remaining_sec:02d}")
+        print(
+            f"Elapsed: {elapsed_min:02d}:{elapsed_sec:02d} | Remaining: {remaining_min:02d}:{remaining_sec:02d}"
+        )
         print()
 
     def _print_statistics(self):
         """Print session statistics"""
-        total_time = (datetime.now() - self.session_stats['start_time']).total_seconds() / 60
+        total_time = (
+            datetime.now() - self.session_stats["start_time"]
+        ).total_seconds() / 60
 
         print("📊 SESSION STATISTICS")
         print(f"├─ Sessions Completed: {self.session_stats['sessions_completed']}")
@@ -132,8 +140,11 @@ class ConsoleInterface:
         print(f"├─ Total Break Time: {self.session_stats['total_break_time']:.1f} min")
         print(f"├─ Total Runtime: {total_time:.1f} min")
 
-        if self.session_stats['sessions_completed'] > 0:
-            avg_session = self.session_stats['total_work_time'] / self.session_stats['sessions_completed']
+        if self.session_stats["sessions_completed"] > 0:
+            avg_session = (
+                self.session_stats["total_work_time"]
+                / self.session_stats["sessions_completed"]
+            )
             print(f"└─ Avg Session Length: {avg_session:.1f} min")
         else:
             print("└─ Avg Session Length: 0.0 min")
@@ -153,20 +164,20 @@ class ConsoleInterface:
 
     def _print_controls(self):
         """Print available controls"""
-        status = self.session_manager.get_status()
-        state = status.get('state', 'idle')
+        status = self.session_manager.get_session_info()
+        state = status.get("state", "idle")
 
         print("🎮 CONTROLS")
 
-        if state == 'idle':
+        if state == "idle":
             print("├─ [S] Start Session")
-        elif state == 'running':
+        elif state == "running":
             print("├─ [P] Pause Session")
             print("├─ [X] Stop Session")
-        elif state == 'paused':
+        elif state == "paused":
             print("├─ [R] Resume Session")
             print("├─ [X] Stop Session")
-        elif state == 'completed':
+        elif state == "completed":
             print("├─ [S] Start Next Session")
 
         print("├─ [M] Toggle Music")
@@ -197,7 +208,9 @@ class ConsoleInterface:
         print(f"├─ Work Duration: {timer_config['work_duration']} min")
         print(f"├─ Short Break: {timer_config['short_break_duration']} min")
         print(f"├─ Long Break: {timer_config['long_break_duration']} min")
-        print(f"├─ Sessions until Long Break: {timer_config['sessions_until_long_break']}")
+        print(
+            f"├─ Sessions until Long Break: {timer_config['sessions_until_long_break']}"
+        )
         print(f"├─ Auto-start Breaks: {timer_config['auto_start_breaks']}")
         print(f"└─ Auto-start Work: {timer_config['auto_start_work']}")
         print()
@@ -230,7 +243,7 @@ class ConsoleInterface:
             self._print_controls()
             lines_count += 8
 
-            print("Enter command: ", end='', flush=True)
+            print("Enter command: ", end="", flush=True)
             lines_count += 1
 
             self.last_status_lines = lines_count
@@ -240,26 +253,26 @@ class ConsoleInterface:
         """Handle session started callback"""
         self.notification_manager.show_notification(
             "Session Started",
-            f"{session_type.replace('_', ' ').title()} session started ({duration} min)"
+            f"{session_type.replace('_', ' ').title()} session started ({duration} min)",
         )
 
         # Start music if enabled and it's a work session
         music_config = self.config.get_music_config()
-        if music_config['enabled'] and session_type == 'work':
+        if music_config["enabled"] and session_type == "work":
             self.music_controller.start_music()
 
     def _on_session_completed(self, session_type: str, duration: int):
         """Handle session completed callback"""
-        self.session_stats['sessions_completed'] += 1
+        self.session_stats["sessions_completed"] += 1
 
-        if session_type == 'work':
-            self.session_stats['total_work_time'] += duration
+        if session_type == "work":
+            self.session_stats["total_work_time"] += duration
         else:
-            self.session_stats['total_break_time'] += duration
+            self.session_stats["total_break_time"] += duration
 
         self.notification_manager.show_notification(
             "Session Completed! 🎉",
-            f"{session_type.replace('_', ' ').title()} session completed!"
+            f"{session_type.replace('_', ' ').title()} session completed!",
         )
 
         # Stop music
@@ -269,8 +282,7 @@ class ConsoleInterface:
     def _on_session_paused(self, session_type: str, elapsed: int):
         """Handle session paused callback"""
         self.notification_manager.show_notification(
-            "Session Paused",
-            f"{session_type.replace('_', ' ').title()} session paused"
+            "Session Paused", f"{session_type.replace('_', ' ').title()} session paused"
         )
 
         # Pause music
@@ -281,26 +293,25 @@ class ConsoleInterface:
         """Handle session resumed callback"""
         self.notification_manager.show_notification(
             "Session Resumed",
-            f"{session_type.replace('_', ' ').title()} session resumed"
+            f"{session_type.replace('_', ' ').title()} session resumed",
         )
 
         # Resume music if it was playing
         music_config = self.config.get_music_config()
-        if music_config['enabled'] and session_type == 'work':
+        if music_config["enabled"] and session_type == "work":
             self.music_controller.resume_music()
 
     def _on_break_started(self, break_type: str, duration: int):
         """Handle break started callback"""
         self.notification_manager.show_notification(
             "Break Time! ☕",
-            f"Time for a {break_type.replace('_', ' ')} ({duration} min)"
+            f"Time for a {break_type.replace('_', ' ')} ({duration} min)",
         )
 
     def _on_break_completed(self, break_type: str, duration: int):
         """Handle break completed callback"""
         self.notification_manager.show_notification(
-            "Break Over! 💼",
-            "Ready to get back to work?"
+            "Break Over! 💼", "Ready to get back to work?"
         )
 
     def _on_timer_tick(self, elapsed: int, remaining: int):
@@ -308,37 +319,42 @@ class ConsoleInterface:
         # Optionally update display more frequently
         pass
 
+    def _on_state_change(self, old_state, new_state):
+        """Handle session state change callback"""
+        # You can add specific logic here for state transitions if needed
+        pass
+
     def _handle_command(self, command: str):
         """Handle user commands"""
         command = command.lower().strip()
 
-        if command == 'q':
+        if command == "q":
             return False
-        elif command == 's':
+        elif command == "s":
             self.session_manager.start_session()
-        elif command == 'p':
+        elif command == "p":
             self.session_manager.pause_session()
-        elif command == 'r':
+        elif command == "r":
             self.session_manager.resume_session()
-        elif command == 'x':
+        elif command == "x":
             self.session_manager.stop_session()
-        elif command == 'm':
+        elif command == "m":
             if self.music_controller.is_playing():
                 self.music_controller.stop_music()
             else:
                 self.music_controller.start_music()
-        elif command == 't':
+        elif command == "t":
             self._print_header()
             self._print_statistics()
             print("Press any key to continue...")
             input()
-        elif command == 'c':
+        elif command == "c":
             self._print_header()
             self._print_configuration()
-        elif command == 'h':
+        elif command == "h":
             self._print_header()
             self._print_help()
-        elif command == '':
+        elif command == "":
             pass  # Just refresh the display
         else:
             print(f"Unknown command: {command}")
@@ -378,18 +394,20 @@ class ConsoleInterface:
             self.music_controller.stop_music()
             print("\n👋 Goodbye! Keep up the great work!")
 
-    def run_command(self, action: str, duration: Optional[int] = None, session_type: str = 'work'):
+    def run_command(
+        self, action: str, duration: Optional[int] = None, session_type: str = "work"
+    ):
         """Run a single command non-interactively"""
-        if action == 'start':
+        if action == "start":
             if duration:
                 # Override default duration
                 timer_config = self.config.get_timer_config()
-                if session_type == 'work':
-                    timer_config['work_duration'] = duration
-                elif session_type == 'short_break':
-                    timer_config['short_break_duration'] = duration
-                elif session_type == 'long_break':
-                    timer_config['long_break_duration'] = duration
+                if session_type == "work":
+                    timer_config["work_duration"] = duration
+                elif session_type == "short_break":
+                    timer_config["short_break_duration"] = duration
+                elif session_type == "long_break":
+                    timer_config["long_break_duration"] = duration
 
                 self.config.update_timer_config(timer_config)
 
@@ -397,23 +415,27 @@ class ConsoleInterface:
             self.session_manager.start_session(session_type)
 
             # Wait for session to complete
-            while self.session_manager.get_status()['state'] in ['running', 'paused']:
+            while self.session_manager.get_session_info()["state"] in [
+                "running",
+                "paused",
+            ]:
                 time.sleep(1)
 
             print("✅ Session completed!")
 
-        elif action == 'status':
-            status = self.session_manager.get_status()
+        elif action == "status":
+            status = self.session_manager.get_session_info()
             print(f"Session Status: {status['state']}")
-            if status['state'] != 'idle':
+            if status["state"] != "idle":
                 print(f"Type: {status['session_type']}")
                 print(f"Elapsed: {status['elapsed_time']}s")
 
-        elif action == 'stats':
+        elif action == "stats":
             from dashboard import console_dashboard
-            console_dashboard('all')
 
-        elif action == 'stop':
+            console_dashboard("all")
+
+        elif action == "stop":
             self.session_manager.stop_session()
             print("⏹️ Session stopped")
 
@@ -426,26 +448,49 @@ def main():
     parser = argparse.ArgumentParser(description="Focus Timer Console Manager")
 
     # Mode selection
-    parser.add_argument('--interactive', '-i', action='store_true',
-                       help='Run in interactive mode (default)')
-    parser.add_argument('--config', '-c', type=str,
-                       help='Path to configuration file')
+    parser.add_argument(
+        "--interactive",
+        "-i",
+        action="store_true",
+        help="Run in interactive mode (default)",
+    )
+    parser.add_argument("--config", "-c", type=str, help="Path to configuration file")
 
     # Command mode options
-    parser.add_argument('--action', choices=['start', 'stop', 'status', 'stats'],
-                       help='Action to perform (non-interactive mode)')
-    parser.add_argument('--duration', '-d', type=int,
-                       help='Session duration in minutes')
-    parser.add_argument('--type', '-t', choices=['work', 'short_break', 'long_break'],
-                       default='work', help='Session type')
+    parser.add_argument(
+        "--action",
+        choices=["start", "stop", "status", "stats"],
+        help="Action to perform (non-interactive mode)",
+    )
+    parser.add_argument(
+        "--duration", "-d", type=int, help="Session duration in minutes"
+    )
+    parser.add_argument(
+        "--type",
+        "-t",
+        choices=["work", "short_break", "long_break"],
+        default="work",
+        help="Session type",
+    )
 
     # Quick start options
-    parser.add_argument('--work', type=int, metavar='MINUTES',
-                       help='Start a work session for specified minutes')
-    parser.add_argument('--break', type=int, metavar='MINUTES',
-                       help='Start a break session for specified minutes')
-    parser.add_argument('--pomodoro', action='store_true',
-                       help='Start a standard 25-minute Pomodoro session')
+    parser.add_argument(
+        "--work",
+        type=int,
+        metavar="MINUTES",
+        help="Start a work session for specified minutes",
+    )
+    parser.add_argument(
+        "--break",
+        type=int,
+        metavar="MINUTES",
+        help="Start a break session for specified minutes",
+    )
+    parser.add_argument(
+        "--pomodoro",
+        action="store_true",
+        help="Start a standard 25-minute Pomodoro session",
+    )
 
     args = parser.parse_args()
 
@@ -454,11 +499,11 @@ def main():
 
     # Handle quick start options
     if args.work:
-        console.run_command('start', args.work, 'work')
-    elif args.break:
-        console.run_command('start', args.break, 'short_break')
+        console.run_command("start", args.work, "work")
+    elif getattr(args, "break"):
+        console.run_command("start", getattr(args, "break"), "short_break")
     elif args.pomodoro:
-        console.run_command('start', 25, 'work')
+        console.run_command("start", 25, "work")
     elif args.action:
         console.run_command(args.action, args.duration, args.type)
     else:
