@@ -15,6 +15,11 @@ notify_sound: true # enable notification sounds
 # notify_sound_work: "bell.mp3" # custom sound for work completion
 # notify_sound_break: "chime.mp3" # custom sound for break completion
 notify_early_warning: 2 # minutes before session end to show warning
+desktop_notifications: true # show system desktop notifications
+notification_priority: "normal" # notification priority (low/normal/high)
+motivational_messages: true # show motivational messages
+custom_notifications: true # enable custom notification messages
+notification_persistence: 5 # seconds to show notifications
 
 # Session Behavior
 auto_start_work: false
@@ -23,6 +28,11 @@ resume_incomplete: true # resume incomplete sessions on startup
 save_incomplete: true # save progress when interrupted
 max_daily_sessions: 0 # 0 for unlimited
 min_work_time: 5 # minimum minutes to count as completed session
+smart_break_adjustment: true # adjust break time based on work session length
+deep_focus_mode: false # block distractions during work sessions
+productivity_scoring: true # track and score productivity
+session_goals: 8 # daily session target
+weekly_goals: 40 # weekly session target
 
 # Time Display
 24hr_clock: false
@@ -36,22 +46,57 @@ sound_volume: 100 # volume percentage
 sound_on_break: false
 fade_sound: true # fade in/out sound transitions
 
+# Classical Music Settings (MPV Integration)
+classical_music: true # enable classical music during focus sessions
+classical_music_volume: 30 # volume for background classical music
+classical_music_local_mode: true # use local playlists instead of online
+classical_music_default_playlist: "C:\\Users\\ahm_e\\mpv\\PlayList\\ClassicalMusic.m3u" # default local playlist
+classical_music_playlist_dir: "C:\\Users\\ahm_e\\mpv\\PlayList" # directory containing playlists
+classical_music_online_playlists: [
+    "https://www.youtube.com/playlist?list=PLRBp0Fe2GpgmgL97AviPkenNzgzHByGgs", # Classical Focus Music
+    "https://www.youtube.com/playlist?list=PLcNiN7SthNjHqrGWzTsJq1OAZ8TUQgOfO", # Baroque Masterpieces
+    "https://www.youtube.com/playlist?list=PLTKWrxUB7R8SYCcrfHONp9QbdA3-CKx6p"  # Piano Classics
+]
+mpv_executable: "mpv" # path to mpv executable
+mpv_extra_args: "--no-video --shuffle --loop-playlist" # additional mpv arguments
+fade_music_transitions: true # fade music in/out with session transitions
+pause_music_on_break: true # pause music during breaks
+classical_music_genres: ["baroque", "classical", "romantic", "modern"] # preferred genres
+
 # Theme Settings
 dark_theme: true
 accent_color: "#00ff00" # custom highlight color
 compact_mode: false # minimize UI elements
+animated_transitions: true # smooth UI transitions
+gradient_backgrounds: true # use gradient backgrounds
+transparency: 0.95 # window transparency (0.0-1.0)
+blur_background: true # blur background when in focus
+color_scheme: "forest" # predefined color schemes (forest/ocean/sunset/minimal)
+custom_css: "" # path to custom CSS file
 
 # Statistics
 track_idle_time: true # track system idle time
 auto_tags: true # automatically tag sessions based on active window
 stats_default_view: "week" # default statistics view (day/week/month)
 export_format: "csv" # default export format for statistics
+detailed_analytics: true # enable detailed productivity analytics
+productivity_trends: true # track productivity trends over time
+session_quality_rating: true # rate session quality after completion
+distraction_tracking: true # track and log distractions
+time_blocking: true # enable time blocking features
+goal_tracking: true # track progress towards goals
+weekly_reports: true # generate weekly productivity reports
+data_retention_days: 365 # how long to keep statistics data
 
 # Custom Commands
-session_cmd: ""
-pre_break_cmd: "" # execute before break starts
+session_cmd: "scripts\\classical_music.ps1 -Action start -Volume 30" # command to run when work session starts
+pre_break_cmd: "scripts\\classical_music.ps1 -Action stop" # execute before break starts
 post_break_cmd: "" # execute after break ends
 idle_cmd: "" # execute when system becomes idle
+work_start_cmd: "scripts\\classical_music.ps1 -Action start -Volume 30" # work session start
+work_end_cmd: "scripts\\classical_music.ps1 -Action stop" # work session end
+break_start_cmd: "" # break session start
+break_end_cmd: "scripts\\classical_music.ps1 -Action start -Volume 20" # break session end (resume music)
 
 # Task Management
 todo_integration: false # enable todo list integration
