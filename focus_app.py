@@ -14,8 +14,9 @@ from typing import Optional
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-# Add current directory to path for imports
+# Add current directory and src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 try:
     from config_manager import ConfigManager

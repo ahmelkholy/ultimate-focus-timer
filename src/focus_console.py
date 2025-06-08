@@ -152,12 +152,8 @@ class ConsoleInterface:
 
     def _print_music_status(self):
         """Print music player status"""
-        if self.music_controller.is_playing():
-            current_track = self.music_controller.get_current_track()
-            if current_track:
-                print(f"🎵 Now Playing: {current_track}")
-            else:
-                print("🎵 Classical music playing...")
+        if self.music_controller.is_playing:
+            print("🎵 Classical music playing...")
         else:
             print("🔇 Music: Off")
         print()
@@ -276,7 +272,7 @@ class ConsoleInterface:
         )
 
         # Stop music
-        if self.music_controller.is_playing():
+        if self.music_controller.is_playing:
             self.music_controller.stop_music()
 
     def _on_session_paused(self, session_type: str, elapsed: int):
@@ -286,7 +282,7 @@ class ConsoleInterface:
         )
 
         # Pause music
-        if self.music_controller.is_playing():
+        if self.music_controller.is_playing:
             self.music_controller.pause_music()
 
     def _on_session_resumed(self, session_type: str, remaining: int):
@@ -339,7 +335,7 @@ class ConsoleInterface:
         elif command == "x":
             self.session_manager.stop_session()
         elif command == "m":
-            if self.music_controller.is_playing():
+            if self.music_controller.is_playing:
                 self.music_controller.stop_music()
             else:
                 self.music_controller.start_music()

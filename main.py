@@ -13,8 +13,9 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
-# Add current directory to path for imports
+# Add current directory and src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 try:
     from config_manager import ConfigManager
@@ -186,10 +187,17 @@ class UltimateFocusLauncher:
         """Launch the analytics dashboard"""
         print("📊 Launching Analytics Dashboard...")
         try:
-            dashboard = DashboardGUI()
+            from dashboard import DashboardGUI, SessionAnalyzer
+
+            analyzer = SessionAnalyzer()
+            dashboard = DashboardGUI(analyzer)
             dashboard.run()
         except Exception as e:
+            import traceback
+
             print(f"❌ Error launching dashboard: {e}")
+            print("📝 Full traceback:")
+            traceback.print_exc()
             print("💡 Ensure you have session data to analyze")
 
     def run_quick_session(self, minutes: int = 25, session_type: str = "work"):
