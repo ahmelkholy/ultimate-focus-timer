@@ -152,6 +152,33 @@ class SessionAnalyzer:
 
         return stats
 
+    def get_quick_stats(self) -> Dict[str, Any]:
+        """Get quick statistics summary for command line display"""
+        # Get all sessions
+        all_sessions = self.sessions
+        total_stats = self.calculate_stats(all_sessions)
+
+        # Get today's sessions
+        today_sessions = self.filter_sessions("day")
+        today_stats = self.calculate_stats(today_sessions)
+
+        # Get week's sessions
+        week_sessions = self.filter_sessions("week")
+        week_stats = self.calculate_stats(week_sessions)
+
+        # Calculate total minutes (work + break time)
+        total_minutes = total_stats.get("total_work_time", 0) + total_stats.get(
+            "total_break_time", 0
+        )
+
+        return {
+            "today_sessions": today_stats.get("total_sessions", 0),
+            "week_sessions": week_stats.get("total_sessions", 0),
+            "total_sessions": total_stats.get("total_sessions", 0),
+            "total_minutes": int(total_minutes),
+            "streak": total_stats.get("streak_days", 0),
+        }
+
     def _calculate_streak(self, sessions: List[SessionData]) -> int:
         """Calculate current streak of consecutive days with focus sessions"""
         if not sessions:

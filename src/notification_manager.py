@@ -14,17 +14,10 @@ try:
     PLYER_AVAILABLE = True
 except ImportError:
     PLYER_AVAILABLE = False
+    notification = None
     print("⚠️  plyer not available - install with: pip install plyer")
 
 # Platform-specific imports
-if platform.system() == "Windows":
-    try:
-        import win10toast
-
-        WIN10TOAST_AVAILABLE = True
-    except ImportError:
-        WIN10TOAST_AVAILABLE = False
-
 if platform.system() == "Darwin":  # macOS
     try:
         import pync
@@ -57,9 +50,7 @@ class NotificationManager:
             return "disabled"
 
         if system == "Windows":
-            if WIN10TOAST_AVAILABLE:
-                return "win10toast"
-            elif PLYER_AVAILABLE:
+            if PLYER_AVAILABLE:
                 return "plyer"
             else:
                 return "console"
@@ -110,9 +101,6 @@ class NotificationManager:
             if self.notification_method == "disabled":
                 return False
 
-            elif self.notification_method == "win10toast":
-                return self._show_win10toast(title, message, duration)
-
             elif self.notification_method == "pync":
                 return self._show_pync(title, message, duration)
 
@@ -133,16 +121,6 @@ class NotificationManager:
             # Fallback to console
             return self._show_console(title, message, notification_type)
 
-    def _show_win10toast(self, title: str, message: str, duration: int) -> bool:
-        """Show notification using win10toast (Windows)"""
-        try:
-            toaster = win10toast.ToastNotifier()
-            toaster.show_toast(title, message, duration=duration, threaded=True)
-            return True
-        except Exception as e:
-            print(f"Win10Toast error: {e}")
-            return False
-
     def _show_pync(self, title: str, message: str, duration: int) -> bool:
         """Show notification using pync (macOS)"""
         try:
@@ -155,6 +133,9 @@ class NotificationManager:
     def _show_plyer(self, title: str, message: str, duration: int) -> bool:
         """Show notification using plyer (cross-platform)"""
         try:
+            if notification is None:
+                print("plyer not available")
+                return False
             notification.notify(title=title, message=message, timeout=duration)
             return True
         except Exception as e:

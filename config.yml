@@ -19,7 +19,7 @@ classical_music_local_mode: true
 classical_music_online_playlists:
 - https://www.youtube.com/watch?v=mdJU5ogrPMY
 classical_music_playlist_dir: C:\Users\ahm_e\mpv\PlayList
-classical_music_volume: 70
+classical_music_volume: 60
 color_scheme: forest
 compact_mode: false
 custom_css: ''

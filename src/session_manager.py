@@ -305,6 +305,31 @@ class SessionManager:
         except Exception as e:
             print(f"Logging error: {e}")
 
+    def log_session(self, session_type: str, duration: int, status: str):
+        """Log a session with the specified parameters"""
+        # Convert session_type string to SessionType enum if needed
+        if isinstance(session_type, str):
+            type_mapping = {
+                "work": SessionType.WORK,
+                "short_break": SessionType.SHORT_BREAK,
+                "long_break": SessionType.LONG_BREAK,
+                "break": SessionType.SHORT_BREAK,  # Handle generic "break" type
+                "custom": SessionType.CUSTOM,
+            }
+            if session_type in type_mapping:
+                self.session_type = type_mapping[session_type]
+            else:
+                self.session_type = SessionType.WORK  # Default fallback
+
+        # Log the session event
+        self._log_session_event(status.title(), duration)
+
+        # Update session counters if completed
+        if status.lower() == "completed":
+            self.session_count += 1
+            if self.session_type == SessionType.WORK:
+                self.completed_work_sessions += 1
+
     def get_session_info(self) -> Dict[str, Any]:
         """Get current session information"""
         remaining_seconds = max(0, self.session_duration - self.elapsed_seconds)
