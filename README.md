@@ -1,7 +1,7 @@
 # 🎯 Ultimate Focus Timer
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Cross Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/yourusername/ultimate-focus-timer)
+[![Cross Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/ahmelkholy/ultimate-focus-timer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A comprehensive, cross-platform productivity timer application implementing the Pomodoro Technique with classical music integration, multiple interfaces, and detailed analytics. Built with pure Python for maximum compatibility and ease of use.
@@ -19,7 +19,7 @@ A comprehensive, cross-platform productivity timer application implementing the 
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/ultimate-focus-timer.git
+git clone https://github.com/ahmelkholy/ultimate-focus-timer.git
 cd ultimate-focus-timer
 
 # Set up virtual environment

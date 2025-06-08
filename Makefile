@@ -131,8 +131,7 @@ python-m pre_commit install --hook-type commit-msg
 
 # Git status
 status:
-
-gitstatus --porcelain --branch
+gitstatus--porcelain --branch
 
 # Environment setup
 venv:

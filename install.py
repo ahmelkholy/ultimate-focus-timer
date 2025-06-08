@@ -60,12 +60,14 @@ def install_package():
     """Install the package"""
     try:
         # Upgrade pip first
-        subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip"],
-                      check=True, capture_output=True)
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--upgrade", "pip"],
+            check=True,
+            capture_output=True,
+        )
 
         # Install from current directory
-        subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."],
-                      check=True)
+        subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."], check=True)
         print_success("Package installed successfully ✓")
         return True
     except subprocess.CalledProcessError as e:
@@ -105,16 +107,29 @@ def install_dependencies():
     try:
         # Install requirements
         if Path("requirements.txt").exists():
-            subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
-                          check=True, capture_output=True)
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
+                check=True,
+                capture_output=True,
+            )
             print_success("Dependencies installed ✓")
 
         # Install development dependencies if requested
         if Path("requirements-dev.txt").exists():
             response = input("Install development dependencies? (y/N): ").lower()
-            if response in ['y', 'yes']:
-                subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements-dev.txt"],
-                              check=True, capture_output=True)
+            if response in ["y", "yes"]:
+                subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "pip",
+                        "install",
+                        "-r",
+                        "requirements-dev.txt",
+                    ],
+                    check=True,
+                    capture_output=True,
+                )
                 print_success("Development dependencies installed ✓")
 
         return True
@@ -127,13 +142,20 @@ def test_installation():
     """Test if installation was successful"""
     try:
         # Test basic import
-        subprocess.run([sys.executable, "-c",
-                       "import sys; sys.path.insert(0, 'src'); from config_manager import ConfigManager; print('Import test passed')"],
-                      check=True, capture_output=True)
+        subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import sys; sys.path.insert(0, 'src'); from config_manager import ConfigManager; print('Import test passed')",
+            ],
+            check=True,
+            capture_output=True,
+        )
 
         # Test main script
-        result = subprocess.run([sys.executable, "main.py", "--help"],
-                               capture_output=True, text=True)
+        result = subprocess.run(
+            [sys.executable, "main.py", "--help"], capture_output=True, text=True
+        )
         if result.returncode == 0:
             print_success("Installation test passed ✓")
             return True

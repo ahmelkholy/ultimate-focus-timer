@@ -1,7 +1,7 @@
 # 🎯 Ultimate Focus Timer
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Cross Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/yourusername/ultimate-focus-timer)
+[![Cross Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/ahmelkholy/ultimate-focus-timer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A comprehensive, cross-platform productivity timer application implementing the Pomodoro Technique with classical music integration, multiple interfaces, and detailed analytics. Built with pure Python for maximum compatibility and ease of use.
@@ -11,7 +11,7 @@ A comprehensive, cross-platform productivity timer application implementing the 
 ### 🎮 Multiple Interfaces
 
 - **GUI Mode**: Beautiful visual interface with progress bars and real-time statistics
-- **Console Mode**: Terminal-based interface perfect for developers and CLI enthusiasts  
+- **Console Mode**: Terminal-based interface perfect for developers and CLI enthusiasts
 - **Dashboard**: Comprehensive analytics with charts, insights, and export capabilities
 - **Interactive Launcher**: Smart menu system for easy mode selection
 
@@ -48,7 +48,7 @@ A comprehensive, cross-platform productivity timer application implementing the 
 1. **Clone or download the project**:
 
    ```bash
-   git clone https://github.com/yourusername/ultimate-focus-timer.git
+   git clone https://github.com/ahmelkholy/ultimate-focus-timer.git
    cd ultimate-focus-timer
    ```
 
@@ -56,10 +56,10 @@ A comprehensive, cross-platform productivity timer application implementing the 
 
    ```bash
    python -m venv .venv
-   
+
    # Windows
    .venv\Scripts\activate
-   
+
    # macOS/Linux
    source .venv/bin/activate
    ```
@@ -132,24 +132,24 @@ ultimate-focus-timer/
 ├── setup.py               # Cross-platform setup and configuration
 ├── requirements.txt       # Python dependencies
 ├── config.yml             # User configuration file
-├── 
+├──
 ├── core/                  # Core application modules
 │   ├── config_manager.py  # Configuration management
 │   ├── session_manager.py # Timer session logic
 │   ├── music_controller.py# Music playback control
 │   └── notification_manager.py # Cross-platform notifications
-├── 
+├──
 ├── interfaces/            # User interfaces
 │   ├── focus_gui.py       # GUI application
 │   ├── focus_console.py   # Console interface
 │   ├── dashboard.py       # Analytics dashboard
 │   └── cli.py            # CLI utilities
-├── 
+├──
 ├── data/                  # Application data
 │   ├── focus.db          # Session database
 │   ├── log/              # Application logs
 │   └── exports/          # Data exports
-├── 
+├──
 ├── music/                # Music files and playlists
 ├── static/               # Static assets (sounds, icons)
 └── docs/                # Documentation
@@ -162,37 +162,37 @@ The application uses a YAML configuration file (`config.yml`) for customization:
 ### Session Settings
 
 ```yaml
-work_mins: 25              # Work session duration
-short_break_mins: 5        # Short break duration  
-long_break_mins: 15        # Long break duration
-long_break_interval: 4     # Sessions before long break
+work_mins: 25 # Work session duration
+short_break_mins: 5 # Short break duration
+long_break_mins: 15 # Long break duration
+long_break_interval: 4 # Sessions before long break
 ```
 
 ### Music Settings
 
 ```yaml
-classical_music: true           # Enable background music
-classical_music_volume: 70      # Music volume (0-100)
-fade_music_transitions: true    # Smooth volume transitions
-pause_music_on_break: true      # Auto-pause during breaks
+classical_music: true # Enable background music
+classical_music_volume: 70 # Music volume (0-100)
+fade_music_transitions: true # Smooth volume transitions
+pause_music_on_break: true # Auto-pause during breaks
 ```
 
 ### Notification Settings
 
 ```yaml
-desktop_notifications: true     # Enable desktop notifications
-notify_early_warning: 2         # Minutes before session end
-motivational_messages: true     # Show encouraging messages
-notification_priority: normal   # Notification priority level
+desktop_notifications: true # Enable desktop notifications
+notify_early_warning: 2 # Minutes before session end
+motivational_messages: true # Show encouraging messages
+notification_priority: normal # Notification priority level
 ```
 
 ### Interface Settings
 
 ```yaml
-dark_theme: true               # Use dark theme
-accent_color: "#00ff00"        # UI accent color
-animated_transitions: true     # Enable animations
-show_progress_bar: true        # Show progress indicators
+dark_theme: true # Use dark theme
+accent_color: "#00ff00" # UI accent color
+animated_transitions: true # Enable animations
+show_progress_bar: true # Show progress indicators
 ```
 
 ## 🎵 Music Setup
@@ -213,7 +213,7 @@ python setup.py
 # Using Chocolatey
 choco install mpv
 
-# Using Winget  
+# Using Winget
 winget install mpv
 ```
 
@@ -413,15 +413,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/ultimate-focus-timer/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/ultimate-focus-timer/discussions)
-- **Documentation**: [Wiki](https://github.com/yourusername/ultimate-focus-timer/wiki)
+- **Issues**: [GitHub Issues](https://github.com/ahmelkholy/ultimate-focus-timer/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ahmelkholy/ultimate-focus-timer/discussions)
+- **Documentation**: [Wiki](https://github.com/ahmelkholy/ultimate-focus-timer/wiki)
 
 ---
 
 **Stay focused and productive! 🎯**
 
-*Built with ❤️ for productivity enthusiasts worldwide*
+_Built with ❤️ for productivity enthusiasts worldwide_
 
 ---
 

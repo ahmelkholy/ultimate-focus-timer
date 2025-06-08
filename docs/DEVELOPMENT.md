@@ -5,6 +5,7 @@ This guide covers the development setup, workflow, and best practices for contri
 ## Quick Start
 
 ### Windows (PowerShell)
+
 ```powershell
 # Clone and setup
 git clone <repository-url>
@@ -13,6 +14,7 @@ cd ultimate-focus-timer
 ```
 
 ### Unix/Linux/macOS
+
 ```bash
 # Clone and setup
 git clone <repository-url>
@@ -23,18 +25,20 @@ make setup
 ## Development Environment
 
 ### Prerequisites
+
 - Python 3.8+ (3.12 recommended)
 - Git
 - Virtual environment support
 
 ### Setup Commands
 
-| Platform | Command | Description |
-|----------|---------|-------------|
-| Windows | `.\dev.ps1 setup` | Complete development setup |
-| Unix/Mac | `make setup` | Complete development setup |
+| Platform | Command           | Description                |
+| -------- | ----------------- | -------------------------- |
+| Windows  | `.\dev.ps1 setup` | Complete development setup |
+| Unix/Mac | `make setup`      | Complete development setup |
 
 This will:
+
 1. Create a virtual environment
 2. Install all dependencies
 3. Set up pre-commit hooks
@@ -83,49 +87,55 @@ ultimate-focus-timer/
 ### 1. Environment Activation
 
 **Windows:**
+
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
 **Unix/Mac:**
+
 ```bash
 source .venv/bin/activate
 ```
 
 ### 2. Development Commands
 
-| Task | Windows | Unix/Mac | Description |
-|------|---------|----------|-------------|
-| Run application | `.\dev.ps1 run` | `make run` | Start the focus timer |
-| Run GUI | `.\dev.ps1 run-gui` | `make run-gui` | Launch GUI interface |
-| Run console | `.\dev.ps1 run-console` | `make run-console` | Launch console interface |
-| Run tests | `.\dev.ps1 test` | `make test` | Execute test suite |
-| Run tests with coverage | `.\dev.ps1 test-cov` | `make test` | Tests + coverage report |
-| Format code | `.\dev.ps1 format` | `make format` | Auto-format code |
-| Lint code | `.\dev.ps1 lint` | `make lint` | Run linting checks |
-| Type check | | `make type-check` | Run mypy type checking |
-| Security scan | `.\dev.ps1 security` | `make security` | Security vulnerability scan |
-| Quality check | `.\dev.ps1 quality` | `make quality` | All quality checks |
-| Build package | `.\dev.ps1 build` | `make build` | Build distribution |
-| Clean artifacts | `.\dev.ps1 clean` | `make clean` | Remove build files |
+| Task                    | Windows                 | Unix/Mac           | Description                 |
+| ----------------------- | ----------------------- | ------------------ | --------------------------- |
+| Run application         | `.\dev.ps1 run`         | `make run`         | Start the focus timer       |
+| Run GUI                 | `.\dev.ps1 run-gui`     | `make run-gui`     | Launch GUI interface        |
+| Run console             | `.\dev.ps1 run-console` | `make run-console` | Launch console interface    |
+| Run tests               | `.\dev.ps1 test`        | `make test`        | Execute test suite          |
+| Run tests with coverage | `.\dev.ps1 test-cov`    | `make test`        | Tests + coverage report     |
+| Format code             | `.\dev.ps1 format`      | `make format`      | Auto-format code            |
+| Lint code               | `.\dev.ps1 lint`        | `make lint`        | Run linting checks          |
+| Type check              |                         | `make type-check`  | Run mypy type checking      |
+| Security scan           | `.\dev.ps1 security`    | `make security`    | Security vulnerability scan |
+| Quality check           | `.\dev.ps1 quality`     | `make quality`     | All quality checks          |
+| Build package           | `.\dev.ps1 build`       | `make build`       | Build distribution          |
+| Clean artifacts         | `.\dev.ps1 clean`       | `make clean`       | Remove build files          |
 
 ### 3. Code Quality Standards
 
 #### Formatting
+
 - **Black** for code formatting (line length: 88)
 - **isort** for import sorting
 - Configuration in `pyproject.toml`
 
 #### Linting
+
 - **flake8** for style checking
 - **mypy** for type checking
 - **pydocstyle** for docstring conventions
 
 #### Security
+
 - **bandit** for security issue detection
 - **safety** for dependency vulnerability checking
 
 #### Testing
+
 - **pytest** for test framework
 - **pytest-cov** for coverage reporting
 - Target: >90% code coverage
@@ -143,6 +153,7 @@ pre-commit run --all-files
 ```
 
 Hooks include:
+
 - Code formatting (black, isort)
 - Linting (flake8)
 - Type checking (mypy)
@@ -152,6 +163,7 @@ Hooks include:
 ### 5. Testing Strategy
 
 #### Test Structure
+
 ```
 tests/
 ├── test_core.py      # Core functionality
@@ -162,6 +174,7 @@ tests/
 ```
 
 #### Running Tests
+
 ```bash
 # All tests
 pytest
@@ -180,6 +193,7 @@ pytest -x
 ```
 
 #### Writing Tests
+
 - Use descriptive test names
 - Follow AAA pattern (Arrange, Act, Assert)
 - Mock external dependencies
@@ -189,12 +203,14 @@ pytest -x
 ### 6. Documentation
 
 #### Code Documentation
+
 - Use Google-style docstrings
 - Document all public functions and classes
 - Include type hints where possible
 - Add inline comments for complex logic
 
 #### User Documentation
+
 - Keep `README.md` updated with major changes
 - Update `docs/USER_GUIDE.md` for user-facing features
 - Document configuration options
@@ -212,12 +228,14 @@ VERSION_INFO = (1, 0, 0)
 ### 8. Dependency Management
 
 #### Adding Dependencies
+
 1. Add to `requirements.txt` for production dependencies
 2. Add to `requirements-dev.txt` for development tools
 3. Update `pyproject.toml` dependencies list
 4. Test installation in clean environment
 
 #### Updating Dependencies
+
 ```bash
 # Check for updates
 pip list --outdated
@@ -232,6 +250,7 @@ pip freeze > requirements.txt
 ### 9. Git Workflow
 
 #### Branch Strategy
+
 - `main` - stable release branch
 - `develop` - development integration branch
 - `feature/*` - feature development branches
@@ -239,7 +258,9 @@ pip freeze > requirements.txt
 - `hotfix/*` - urgent production fixes
 
 #### Commit Messages
+
 Follow conventional commit format:
+
 ```
 type(scope): description
 
@@ -253,6 +274,7 @@ type(scope): description
 ```
 
 #### Pull Request Process
+
 1. Create feature branch from `develop`
 2. Make changes with tests
 3. Ensure all quality checks pass
@@ -264,6 +286,7 @@ type(scope): description
 ### 10. Release Process
 
 #### Preparation
+
 1. Update version in `src/__version__.py`
 2. Update `docs/CHANGELOG.md`
 3. Run full quality check: `make quality`
@@ -271,6 +294,7 @@ type(scope): description
 5. Update documentation
 
 #### Release Steps
+
 1. Merge to `main` branch
 2. Create git tag: `git tag v1.0.0`
 3. Build distribution: `make build`
@@ -283,6 +307,7 @@ type(scope): description
 #### Common Issues
 
 **Import Errors**
+
 ```bash
 # Ensure virtual environment is activated
 # Check Python path includes src/
@@ -290,6 +315,7 @@ python -c "import sys; print(sys.path)"
 ```
 
 **Test Failures**
+
 ```bash
 # Run specific failing test
 pytest tests/test_core.py::TestConfigManager::test_config_creation -v
@@ -299,6 +325,7 @@ pip install -r requirements-dev.txt
 ```
 
 **Pre-commit Hook Failures**
+
 ```bash
 # Run hooks manually to see detailed errors
 pre-commit run --all-files
@@ -308,6 +335,7 @@ pre-commit autoupdate
 ```
 
 **Virtual Environment Issues**
+
 ```bash
 # Recreate virtual environment
 rm -rf .venv
@@ -319,11 +347,13 @@ pip install -r requirements-dev.txt
 ### 12. Development Tools
 
 #### Recommended IDE Setup
+
 - **VS Code** with Python extension
 - **PyCharm** Professional or Community
 - Extensions: Python, GitLens, Better Comments
 
 #### Useful Commands
+
 ```bash
 # Check code complexity
 flake8 --max-complexity=10 src/
@@ -341,6 +371,7 @@ bandit -r src/ -f json -o security-report.json
 ### 13. Contributing Guidelines
 
 Please read `docs/CONTRIBUTING.md` for detailed contribution guidelines, including:
+
 - Code of conduct
 - Issue reporting
 - Feature requests
@@ -357,6 +388,7 @@ Please read `docs/CONTRIBUTING.md` for detailed contribution guidelines, includi
 ---
 
 For more information, see:
+
 - [User Guide](docs/USER_GUIDE.md)
 - [Contributing Guidelines](docs/CONTRIBUTING.md)
 - [Changelog](docs/CHANGELOG.md)

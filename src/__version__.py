@@ -3,10 +3,10 @@ Ultimate Focus Timer Version Information
 """
 
 __version__ = "1.0.0"
-__author__ = "Ultimate Focus Timer Team"
-__email__ = "contact@ultimatefocustimer.com"
+__author__ = "Ahmed Elkholy"
+__email__ = "ahm_elkholy@outlook.com"
 __description__ = "A comprehensive cross-platform productivity timer application"
-__url__ = "https://github.com/yourusername/ultimate-focus-timer"
+__url__ = "https://github.com/ahmelkholy/ultimate-focus-timer"
 
 # Version components
 VERSION_MAJOR = 1
@@ -18,9 +18,11 @@ VERSION_INFO = (VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)
 BUILD_DATE = "2025-06-08"
 RELEASE_CHANNEL = "stable"
 
+
 def get_version():
     """Return the version string."""
     return __version__
+
 
 def get_version_info():
     """Return the version as a tuple."""

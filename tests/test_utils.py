@@ -2,12 +2,13 @@
 Test utility functions and fixtures
 """
 
-import pytest
-import tempfile
+import os
 import sys
+import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
-import os
+
+import pytest
 
 # Add src to path for testing
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -24,14 +25,14 @@ def temp_config():
 @pytest.fixture
 def mock_notification():
     """Mock notification system"""
-    with patch('plyer.notification.notify') as mock_notify:
+    with patch("plyer.notification.notify") as mock_notify:
         yield mock_notify
 
 
 @pytest.fixture
 def mock_audio():
     """Mock audio system"""
-    with patch('pygame.mixer') as mock_mixer:
+    with patch("pygame.mixer") as mock_mixer:
         yield mock_mixer
 
 
@@ -79,4 +80,5 @@ class TestMockingSafety:
         mock_audio.quit()
 
         mock_audio.init.assert_called_once()
+        mock_audio.quit.assert_called_once()
         mock_audio.quit.assert_called_once()
