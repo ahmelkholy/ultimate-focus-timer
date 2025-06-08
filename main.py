@@ -187,11 +187,16 @@ class UltimateFocusLauncher:
         """Launch the analytics dashboard"""
         print("📊 Launching Analytics Dashboard...")
         try:
-            from dashboard import DashboardGUI, SessionAnalyzer
-
             analyzer = SessionAnalyzer()
             dashboard = DashboardGUI(analyzer)
+
+            # Run dashboard (this will block until closed)
             dashboard.run()
+
+            print("📊 Dashboard session completed.")
+
+        except KeyboardInterrupt:
+            print("\n📊 Dashboard interrupted by user.")
         except Exception as e:
             import traceback
 
@@ -199,6 +204,8 @@ class UltimateFocusLauncher:
             print("📝 Full traceback:")
             traceback.print_exc()
             print("💡 Ensure you have session data to analyze")
+        finally:
+            print("📊 Returning to launcher...")
 
     def run_quick_session(self, minutes: int = 25, session_type: str = "work"):
         """Run a quick focus session without GUI"""

@@ -194,3 +194,5 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 mpv_classical.pid
+.vscode
+exports/

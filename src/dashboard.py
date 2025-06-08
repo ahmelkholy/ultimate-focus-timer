@@ -9,6 +9,8 @@ import csv
 import json
 import os
 import re
+import signal
+import sys
 import tkinter as tk
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -23,8 +25,16 @@ import seaborn as sns
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # Set style for better visualizations
-plt.style.use("seaborn-v0_8")
-sns.set_palette("husl")
+try:
+    # Configure matplotlib for Windows compatibility
+    import matplotlib
+
+    matplotlib.use("TkAgg")  # Ensure TkAgg backend is used
+    plt.style.use("seaborn-v0_8")
+    sns.set_palette("husl")
+except Exception as e:
+    print(f"Warning: Could not set matplotlib style: {e}")
+    # Use default style if seaborn fails
 
 
 @dataclass
@@ -309,20 +319,43 @@ class DashboardGUI:
     """Advanced GUI dashboard with visualizations"""
 
     def __init__(self, analyzer: SessionAnalyzer):
-        self.analyzer = analyzer
-        self.root = tk.Tk()
-        self.root.title("🎯 Focus Productivity Dashboard")
-        self.root.geometry("1200x800")
-        self.root.configure(bg="#2c3e50")
+        try:
+            print("Initializing dashboard...")
+            self.analyzer = analyzer
+            self.is_running = True
 
-        # Configure style
-        self.style = ttk.Style()
-        self.style.theme_use("clam")
-        self.configure_styles()
+            print("Creating root window...")
+            self.root = tk.Tk()
+            self.root.title("🎯 Focus Productivity Dashboard")
+            self.root.geometry("1200x800")
+            self.root.configure(bg="#2c3e50")
 
-        self.current_period = "week"
-        self.create_widgets()
-        self.update_dashboard()
+            # Set up proper window closing protocol
+            self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+            # Set up signal handlers for clean shutdown
+            signal.signal(signal.SIGINT, self.signal_handler)
+            signal.signal(signal.SIGTERM, self.signal_handler)
+
+            # Configure style
+            print("Configuring styles...")
+            self.style = ttk.Style()
+            self.style.theme_use("clam")
+            self.configure_styles()
+
+            self.current_period = "week"
+            print("Creating widgets...")
+            self.create_widgets()
+            print("Updating dashboard...")
+            self.update_dashboard()
+            print("Dashboard initialization complete.")
+        except Exception as e:
+            print(f"Error during dashboard initialization: {e}")
+            import traceback
+
+            traceback.print_exc()
+            self.cleanup()
+            raise
 
     def configure_styles(self):
         """Configure custom styles for the GUI"""
@@ -337,6 +370,37 @@ class DashboardGUI:
         self.style.configure(
             "Card.TFrame", background="#34495e", relief="raised", borderwidth=2
         )
+
+    def signal_handler(self, signum, frame):
+        """Handle system signals for clean shutdown"""
+        print(f"\nReceived signal {signum}, shutting down dashboard...")
+        self.cleanup()
+        sys.exit(0)
+
+    def on_closing(self):
+        """Handle window close event"""
+        print("Dashboard window closing...")
+        self.cleanup()
+
+    def cleanup(self):
+        """Clean up resources and close the application"""
+        try:
+            self.is_running = False
+            if hasattr(self, "root") and self.root:
+                print("Destroying tkinter root window...")
+                self.root.quit()  # Exit the mainloop
+                self.root.destroy()  # Destroy the window
+
+            # Close any matplotlib figures
+            plt.close("all")
+
+            print("Dashboard cleanup complete.")
+        except Exception as e:
+            print(f"Error during cleanup: {e}")
+        finally:
+            # Force exit if still running
+            if hasattr(self, "is_running") and self.is_running:
+                os._exit(0)
 
     def create_widgets(self):
         """Create and layout GUI widgets"""
@@ -825,7 +889,31 @@ class DashboardGUI:
 
     def run(self):
         """Start the dashboard GUI"""
-        self.root.mainloop()
+        try:
+            print("Starting dashboard GUI mainloop...")
+            # Make the window interruptible by checking periodically
+            self.root.after(100, self.check_running)
+            self.root.mainloop()
+            print("Dashboard GUI mainloop ended.")
+        except KeyboardInterrupt:
+            print("Keyboard interrupt received...")
+            self.cleanup()
+        except Exception as e:
+            print(f"Error in dashboard mainloop: {e}")
+            import traceback
+
+            traceback.print_exc()
+            self.cleanup()
+        finally:
+            print("Dashboard run method completed.")
+            self.cleanup()
+
+    def check_running(self):
+        """Periodically check if the application should continue running"""
+        if self.is_running and self.root:
+            self.root.after(100, self.check_running)
+        else:
+            self.cleanup()
 
 
 def console_dashboard(period: str = "week", export: bool = False):
