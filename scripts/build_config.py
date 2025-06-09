@@ -196,7 +196,6 @@ def build_executable():
         sys.executable, "-m", "PyInstaller",
         "--clean",
         "--noconfirm",
-        "--onefile",
         "focus_timer.spec"
     ]
 
