@@ -323,6 +323,7 @@ class DashboardGUI:
             print("Initializing dashboard...")
             self.analyzer = analyzer
             self.is_running = True
+            self.check_running_id = None  # Track the scheduled callback
 
             print("Creating root window...")
             self.root = tk.Tk()
@@ -386,10 +387,25 @@ class DashboardGUI:
         """Clean up resources and close the application"""
         try:
             self.is_running = False
+            
+            # Cancel any scheduled callbacks
+            if hasattr(self, 'check_running_id') and self.check_running_id:
+                try:
+                    self.root.after_cancel(self.check_running_id)
+                    self.check_running_id = None
+                except:
+                    pass  # Ignore errors if already cancelled or invalid
+            
             if hasattr(self, "root") and self.root:
                 print("Destroying tkinter root window...")
-                self.root.quit()  # Exit the mainloop
-                self.root.destroy()  # Destroy the window
+                try:
+                    self.root.quit()  # Exit the mainloop
+                except:
+                    pass  # Ignore errors if already destroyed
+                try:
+                    self.root.destroy()  # Destroy the window
+                except:
+                    pass  # Ignore errors if already destroyed
 
             # Close any matplotlib figures
             plt.close("all")
@@ -892,7 +908,7 @@ class DashboardGUI:
         try:
             print("Starting dashboard GUI mainloop...")
             # Make the window interruptible by checking periodically
-            self.root.after(100, self.check_running)
+            self.check_running_id = self.root.after(100, self.check_running)
             self.root.mainloop()
             print("Dashboard GUI mainloop ended.")
         except KeyboardInterrupt:
@@ -910,8 +926,8 @@ class DashboardGUI:
 
     def check_running(self):
         """Periodically check if the application should continue running"""
-        if self.is_running and self.root:
-            self.root.after(100, self.check_running)
+        if self.is_running and self.root and self.root.winfo_exists():
+            self.check_running_id = self.root.after(100, self.check_running)
         else:
             self.cleanup()
 

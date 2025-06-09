@@ -154,8 +154,38 @@ class UltimateFocusLauncher:
         else:
             print("   Visit: https://mpv.io/installation/")
 
+    def _check_display_available(self) -> bool:
+        """Check if a GUI display is available"""
+        import os
+        
+        # Check for display environment variables
+        if os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY'):
+            return True
+            
+        # On Windows, GUI is usually available
+        if platform.system() == "Windows":
+            return True
+            
+        # On macOS, check if we're in a terminal app
+        if platform.system() == "Darwin":
+            # Basic check - if we're not in SSH, display is likely available
+            return not os.environ.get('SSH_CLIENT') and not os.environ.get('SSH_TTY')
+            
+        return False
+
     def launch_gui(self, show_splash: bool = True):
         """Launch the GUI version as a separate process"""
+        # Check if GUI display is available
+        if not self._check_display_available():
+            print("❌ No GUI display available")
+            print("💡 You appear to be running in a headless environment (like SSH, Docker, or Codespaces)")
+            print("🖥️  GUI mode requires a graphical display")
+            print("📋 Available alternatives:")
+            print("   • Console mode: python main.py --console")
+            print("   • Quick session: python main.py --quick 25")
+            print("   • Statistics: python main.py --stats")
+            return False
+        
         if show_splash:
             self._show_splash()
 
@@ -163,7 +193,7 @@ class UltimateFocusLauncher:
         try:
             # Get the current Python executable and script paths
             python_exe = sys.executable
-            gui_script = Path(__file__).parent / "src" / "focus_gui.py"
+            gui_script = Path(__file__).parent / "debug_gui.py"  # Use debug version temporarily
             working_dir = Path(__file__).parent  # Set working directory to project root
 
             # Prepare environment variables to ensure proper Python path and Unicode support
@@ -192,8 +222,6 @@ class UltimateFocusLauncher:
                     cwd=working_dir,
                     env=env,
                     creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
                 )
             else:
                 # On Unix-like systems, use start_new_session
@@ -202,23 +230,25 @@ class UltimateFocusLauncher:
                     cwd=working_dir,
                     env=env,
                     start_new_session=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
                 )
 
             # Give the process a moment to start
-            time.sleep(1.0)
+            time.sleep(2.0)
 
             # Check if process is still running
             if process.poll() is None:
                 print("✅ GUI launched successfully as separate process")
                 print("💡 Terminal is now available for other commands")
+                return True
             else:
-                print("❌ GUI process may have encountered an issue")
-                print("🔧 Falling back to running GUI in current process...")
-                # Fallback to running in current process
-                app = FocusGUI()
-                app.run()
+                returncode = process.returncode
+                print(f"❌ GUI process exited with code {returncode}")
+                if returncode != 0:
+                    print("🔧 Falling back to running GUI in current process...")
+                    # Fallback to running in current process
+                    app = FocusGUI()
+                    app.run()
+                    return True
 
         except Exception as e:
             print(f"❌ Error launching GUI: {e}")
@@ -228,8 +258,10 @@ class UltimateFocusLauncher:
                 # Fallback to running in current process if subprocess fails
                 app = FocusGUI()
                 app.run()
+                return True
             except Exception as fallback_e:
                 print(f"❌ Fallback also failed: {fallback_e}")
+                return False
 
     def launch_console(self):
         """Launch the console version"""
