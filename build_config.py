@@ -179,6 +179,13 @@ def build_executable():
 
     # Create spec file
     create_spec_file()
+    
+    # Ensure required directories exist
+    for directory in ["music", "log", "backups", "static"]:
+        dir_path = Path(directory)
+        if not dir_path.exists():
+            dir_path.mkdir(exist_ok=True)
+            print(f"  📁 Created directory: {directory}")
 
     # Build command
     cmd = [
@@ -341,6 +348,328 @@ echo "Run './UltimateFocusTimer' to start the application"
 
     print(f"✅ Created installer script for {platform_name}")
 
+def setup_github_workflows():
+    """Set up GitHub Actions workflows for building executables"""
+    print("🚀 Setting up GitHub Actions workflows...")
+    
+    # Create .github/workflows directory if it doesn't exist
+    workflows_dir = Path(".github/workflows")
+    workflows_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create workflow for Windows only
+    windows_workflow = workflows_dir / "build-windows-exe.yml"
+    with open(windows_workflow, "w") as f:
+        f.write("""name: Build Windows Executable
+
+on:
+  workflow_dispatch:  # Allows manual triggering from GitHub UI
+  push:
+    tags:
+      - 'v*'  # Run workflow when a new tag is pushed
+  release:
+    types: [created]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-build.txt
+        
+    - name: Create directories
+      run: |
+        mkdir -p music
+        mkdir -p log
+        mkdir -p backups
+        mkdir -p static
+        
+    - name: Build executable
+      run: |
+        python build_config.py build
+        
+    - name: Archive executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: UltimateFocusTimer-windows
+        path: dist/UltimateFocusTimer*
+        
+    - name: Upload to Release
+      if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/UltimateFocusTimer*.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+""")
+    
+    # Create workflow for all platforms
+    all_platforms_workflow = workflows_dir / "build-all-platforms.yml"
+    with open(all_platforms_workflow, "w") as f:
+        f.write("""name: Build Releases
+
+on:
+  workflow_dispatch:  # Allows manual triggering from GitHub UI
+  push:
+    tags:
+      - 'v*'  # Run workflow when a new tag is pushed
+  release:
+    types: [created]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-build.txt
+        
+    - name: Create directories
+      run: |
+        mkdir -p music
+        mkdir -p log
+        mkdir -p backups
+        mkdir -p static
+        
+    - name: Build executable
+      run: |
+        python build_config.py build
+        
+    - name: Archive executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: UltimateFocusTimer-windows
+        path: dist/UltimateFocusTimer*
+        
+    - name: Upload to Release
+      if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          dist/UltimateFocusTimer*.zip
+          dist/UltimateFocusTimer*.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-build.txt
+        brew install mpv
+        
+    - name: Create directories
+      run: |
+        mkdir -p music
+        mkdir -p log
+        mkdir -p backups
+        mkdir -p static
+        
+    - name: Build executable
+      run: |
+        python build_config.py build
+        
+    - name: Archive executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: UltimateFocusTimer-macos
+        path: dist/UltimateFocusTimer*
+        
+    - name: Upload to Release
+      if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/UltimateFocusTimer*.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+        
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-dev python3-tk mpv
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-build.txt
+        
+    - name: Create directories
+      run: |
+        mkdir -p music
+        mkdir -p log
+        mkdir -p backups
+        mkdir -p static
+        
+    - name: Build executable
+      run: |
+        python build_config.py build
+        
+    - name: Archive executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: UltimateFocusTimer-linux
+        path: dist/UltimateFocusTimer*
+        
+    - name: Upload to Release
+      if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/UltimateFocusTimer*.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+""")
+    
+    print(f"✅ Created GitHub workflow for Windows: {windows_workflow}")
+    print(f"✅ Created GitHub workflow for all platforms: {all_platforms_workflow}")
+    
+    # Create RELEASE.md file
+    release_md = Path("docs/RELEASE.md")
+    release_md.parent.mkdir(exist_ok=True)
+    with open(release_md, "w") as f:
+        f.write("""# Release Process
+
+This document explains how to create releases for Ultimate Focus Timer, including building executables for different platforms.
+
+## Creating a New Release
+
+### 1. Update Version
+
+Update the version number in `src/__version__.py`:
+
+```python
+__version__ = "1.0.0"  # Change this to the new version
+```
+
+### 2. Update Changelog
+
+Update the `docs/CHANGELOG.md` file with details of the changes in this new release.
+
+### 3. Create a Git Tag
+
+```bash
+git add src/__version__.py docs/CHANGELOG.md
+git commit -m "Bump version to X.Y.Z"
+git tag -a vX.Y.Z -m "Release X.Y.Z"
+git push origin main --tags
+```
+
+### 4. GitHub Release
+
+Once you push the tag, the GitHub Actions workflow will automatically:
+
+1. Build executables for Windows, macOS, and Linux
+2. Upload them as artifacts
+3. Attach them to the release if created through the GitHub interface
+
+Alternatively, you can create a new release through the GitHub interface:
+
+1. Go to the repository on GitHub
+2. Click on "Releases"
+3. Click "Draft a new release"
+4. Choose the tag you just created
+5. Add release notes (you can copy from the changelog)
+6. Click "Publish release"
+
+The workflow will automatically attach the built executables to this release.
+
+## Manual Building
+
+If you need to build executables manually:
+
+### Windows
+
+```powershell
+# Ensure you're in a virtual environment with dependencies installed
+python -m pip install -r requirements.txt -r requirements-build.txt
+
+# Build the executable
+python build_config.py build
+```
+
+### macOS
+
+```bash
+# Install dependencies
+brew install mpv
+python -m pip install -r requirements.txt -r requirements-build.txt
+
+# Build the executable
+python build_config.py build
+```
+
+### Linux
+
+```bash
+# Install system dependencies
+# Ubuntu/Debian:
+sudo apt install python3-dev python3-tk mpv
+# Fedora:
+sudo dnf install python3-devel python3-tkinter mpv
+# Arch:
+sudo pacman -S python-pip tk mpv
+
+# Install Python dependencies
+python -m pip install -r requirements.txt -r requirements-build.txt
+
+# Build the executable
+python build_config.py build
+```
+
+The built executables will be available in the `dist/` directory.
+""")
+    
+    print(f"✅ Created release guide: {release_md}")
+    
+    return True
+
 def main():
     """Main build function"""
     print("🎯 Ultimate Focus Timer - Build System")
@@ -362,14 +691,17 @@ def main():
             if install_build_dependencies():
                 create_installer_script()
                 build_executable()
+        elif command == "github":
+            setup_github_workflows()
         else:
-            print("Usage: python build_config.py [deps|spec|build|installer|all]")
+            print("Usage: python build_config.py [deps|spec|build|installer|all|github]")
     else:
         print("Available commands:")
         print("  deps      - Install build dependencies")
         print("  spec      - Create PyInstaller spec file")
         print("  build     - Build executable")
         print("  installer - Create installer script")
+        print("  github    - Setup GitHub Actions workflows")
         print("  all       - Do everything")
         print("\nUsage: python build_config.py [command]")
 

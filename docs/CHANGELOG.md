@@ -14,6 +14,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## [1.0.0] - 2025-06-09
+
+### Added
+
+- Windows executable distribution via GitHub Releases
+- macOS and Linux package builds
+- Installation instructions for pre-built packages
+- GitHub Actions workflow for automated builds
+- Release documentation for contributors
+
+### Changed
+
+- Improved build process with cross-platform support
+- Enhanced installation documentation
+
 - Enhanced README with comprehensive documentation
 - Improved code organization and structure
 

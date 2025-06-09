@@ -85,7 +85,7 @@ class UltimateSetupManager:
         """Check if Python version is compatible"""
         print("🔍 Checking Python compatibility...")
 
-        if sys.version_info < (3.8):
+        if sys.version_info < (3, 8):
             self.errors.append("Python 3.8+ is required for optimal functionality")
             print("❌ Python 3.8+ is required")
             return False

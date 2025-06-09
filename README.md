@@ -15,6 +15,23 @@ A comprehensive, cross-platform productivity timer application implementing the 
 - **⚙️ Highly Configurable**: YAML-based configuration with theme support
 - **🌍 Cross-Platform**: Windows, macOS, and Linux support
 
+## 💻 Download & Installation
+
+### Windows Executable
+
+The easiest way to use Ultimate Focus Timer on Windows is to download the pre-built executable:
+
+1. Go to the [Releases](https://github.com/ahmelkholy/ultimate-focus-timer/releases) page
+2. Download the latest `UltimateFocusTimer-windows-x64.zip` file
+3. Extract the ZIP file
+4. Run `UltimateFocusTimer.exe`
+
+No installation or Python environment required!
+
+### Other Platforms
+
+For macOS and Linux users, please see the [Installation Guide](docs/USER_GUIDE.md#installation) for platform-specific instructions.
+
 ## 📸 Screenshots
 
 ### GUI Interface
