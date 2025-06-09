@@ -212,8 +212,17 @@ def build_executable():
         if dist_path.exists():
             shutil.rmtree(dist_path)
 
-        # Copy executable and required files
-        shutil.copytree(Path("dist") / BUILD_CONFIG["app_name"], dist_path)
+        # Copy executable: handle file or directory
+        src_exec = Path("dist") / BUILD_CONFIG["app_name"]
+        # For Windows, add .exe suffix if missing
+        if platform.system().lower() == "windows" and not src_exec.suffix:
+            src_exec = src_exec.with_suffix(".exe")
+        if src_exec.is_dir():
+            shutil.copytree(src_exec, dist_path)
+        else:
+            # Ensure distribution directory exists
+            dist_path.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src_exec, dist_path / src_exec.name)
 
         # Copy additional files
         additional_files = [
