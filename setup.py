@@ -524,6 +524,72 @@ Categories=Productivity;Office;
             self.errors.append("Import verification failed")
             return False
 
+    def setup_packaging_environment(self) -> bool:
+        """Set up packaging environment and dependencies"""
+        print("📦 Setting up packaging environment...")
+
+        try:
+            # Install build dependencies
+            build_deps = [
+                "pyinstaller>=5.13.0",
+                "setuptools>=65.0.0",
+                "wheel>=0.38.0",
+            ]
+
+            if self.system == "Windows":
+                build_deps.extend([
+                    "pywin32>=305",
+                    "pywin32-ctypes>=0.2.0"
+                ])
+            elif self.system == "Darwin":
+                build_deps.append("py2app>=0.28.5")
+
+            for dep in build_deps:
+                if not self._install_python_package(dep):
+                    self.warnings.append(f"Failed to install build dependency: {dep}")
+
+            self.successes.append("Packaging environment configured")
+            return True
+
+        except Exception as e:
+            self.errors.append(f"Failed to setup packaging environment: {e}")
+            return False
+
+    def create_executable(self) -> bool:
+        """Create executable using PyInstaller"""
+        print("🔨 Creating executable...")
+
+        try:
+            # Run the build configuration script
+            result = subprocess.run(
+                [self.python_exe, "build_config.py", "all"],
+                cwd=self.app_dir,
+                capture_output=True,
+                text=True,
+                timeout=300  # 5 minute timeout
+            )
+
+            if result.returncode == 0:
+                self.successes.append("Executable created successfully")
+
+                # Check if executable exists
+                dist_dir = self.app_dir / "dist"
+                if dist_dir.exists():
+                    executables = list(dist_dir.glob("UltimateFocusTimer*"))
+                    if executables:
+                        print(f"✅ Executable created: {executables[0]}")
+                        return True
+
+            self.errors.append(f"Executable creation failed: {result.stderr}")
+            return False
+
+        except subprocess.TimeoutExpired:
+            self.errors.append("Executable creation timed out")
+            return False
+        except Exception as e:
+            self.errors.append(f"Executable creation error: {e}")
+            return False
+
     def print_summary(self):
         """Print setup summary"""
         print("\n" + "🎯" * 35)
@@ -577,6 +643,8 @@ Categories=Productivity;Office;
             ("MPV Media Player", self.check_and_install_mpv),
             ("Desktop Integration", self.create_desktop_integration),
             ("Installation Verification", self.verify_installation),
+            ("Packaging Environment", self.setup_packaging_environment),
+            ("Executable Creation", self.create_executable),
         ]
 
         print("🚀 Starting setup process...\n")
@@ -607,7 +675,7 @@ def main():
         "command",
         nargs="?",
         default="install",
-        choices=["install", "check", "clean", "repair"],
+        choices=["install", "check", "clean", "repair", "package", "build"],
         help="Setup command to execute",
     )
 
@@ -628,6 +696,17 @@ def main():
     elif args.command == "repair":
         print("🔧 Repairing installation...")
         setup.run_full_setup()
+    elif args.command == "package":
+        print("📦 Setting up packaging environment...")
+        setup.print_header()
+        setup.setup_packaging_environment()
+        setup.print_summary()
+    elif args.command == "build":
+        print("🔨 Building executable...")
+        setup.print_header()
+        setup.setup_packaging_environment()
+        setup.create_executable()
+        setup.print_summary()
 
 
 if __name__ == "__main__":

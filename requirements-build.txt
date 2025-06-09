@@ -1,0 +1,27 @@
+# Ultimate Focus Timer - Build Dependencies
+# Additional packages for creating executables and packaging
+
+# Core packaging
+pyinstaller>=5.13.0
+auto-py-to-exe>=2.34.0
+
+# Windows-specific packaging
+pywin32>=305; sys_platform == "win32"
+pywin32-ctypes>=0.2.0; sys_platform == "win32"
+
+# macOS-specific packaging
+py2app>=0.28.5; sys_platform == "darwin"
+
+# Cross-platform utilities
+setuptools>=65.0.0
+wheel>=0.38.0
+twine>=4.0.0
+
+# Archive creation
+zipfile38>=0.0.3
+
+# Icon and asset handling
+pillow>=9.3.0
+
+# Metadata extraction
+packaging>=21.3
