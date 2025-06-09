@@ -16,23 +16,38 @@ Welcome to the comprehensive documentation for Ultimate Focus Timer, a cross-pla
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Windows Executable (Recommended)
+
+The fastest way to get started on Windows:
+
+1. Download the latest `UltimateFocusTimer-windows-x64.zip` from the [Releases page](https://github.com/ahmelkholy/ultimate-focus-timer/releases)
+2. Extract the ZIP file to any location
+3. Run `UltimateFocusTimer.exe`
+
+No Python installation or setup required!
+
+### Prerequisites (For source installation)
 
 - **Python 3.8+** (Python 3.10+ recommended for best performance)
 - **MPV Media Player** (automatically installed by setup script)
 - **Internet connection** (for initial setup and music streaming)
 
-### 5-Minute Setup
+### 5-Minute Setup (Source installation)
 
 ```bash
 # 1. Navigate to project directory
-cd "c:\Users\ahm_e\AppData\Local\focus"
+cd "ultimate-focus-timer"
 
 # 2. Create virtual environment
 python -m venv .venv
 
 # 3. Activate virtual environment
-.\.venv\Scripts\Activate.ps1  # Windows PowerShell
+# Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
+# Windows Command Prompt:  
+.\.venv\Scripts\activate.bat
+# Linux/macOS:
+source .venv/bin/activate
 
 # 4. Install dependencies
 pip install -r requirements.txt
@@ -46,7 +61,27 @@ python main.py
 
 ## 📦 Installation Guide
 
-### Automatic Installation (Recommended)
+### Pre-Built Executables (Recommended)
+
+#### Windows
+
+1. Download the latest `UltimateFocusTimer-windows-x64.zip` from the [Releases page](https://github.com/ahmelkholy/ultimate-focus-timer/releases)
+2. Extract the ZIP file to any location
+3. Run `UltimateFocusTimer.exe`
+
+#### macOS
+
+1. Download the latest `UltimateFocusTimer-macos.zip` from the [Releases page](https://github.com/ahmelkholy/ultimate-focus-timer/releases)
+2. Extract the ZIP file
+3. Run `UltimateFocusTimer` application
+
+#### Linux
+
+1. Download the latest `UltimateFocusTimer-linux.zip` from the [Releases page](https://github.com/ahmelkholy/ultimate-focus-timer/releases)
+2. Extract the ZIP file
+3. Run `./UltimateFocusTimer`
+
+### Source Installation
 
 The automated setup script handles all dependencies and configuration:
 
@@ -54,7 +89,7 @@ The automated setup script handles all dependencies and configuration:
 python setup.py
 ```
 
-**What it does:**
+**What the setup does:**
 
 - Checks Python compatibility
 - Installs MPV media player (cross-platform)
