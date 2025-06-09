@@ -30,6 +30,30 @@ BUILD_CONFIG = {
         "matplotlib.backends.backend_tkagg",
         "pandas._libs.tslibs.base",
         "pkg_resources.py2_warn",
+        # tkinter imports
+        "tkinter",
+        "tkinter.ttk",
+        "tkinter.filedialog",
+        "tkinter.messagebox",
+        "tkinter.simpledialog",
+        "tkinter.font",
+        "tkinter.colorchooser",
+        # PIL/Pillow imports
+        "PIL",
+        "PIL.Image",
+        "PIL.ImageTk",
+        # Additional matplotlib backends
+        "matplotlib.backends._backend_agg",
+        "matplotlib.figure",
+        "matplotlib.backends.backend_agg",
+        # Pandas and numpy
+        "pandas.plotting",
+        "pandas.plotting._matplotlib",
+        "numpy.random.common",
+        "numpy.random.bounded_integers",
+        "numpy.random.entropy",
+        # Seaborn for data visualization
+        "seaborn",
     ],
     "exclude_modules": [
         "pytest",
