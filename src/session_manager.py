@@ -262,26 +262,66 @@ class SessionManager:
         self._suggest_next_session()
 
     def _suggest_next_session(self):
-        """Suggest the next appropriate session"""
-        if not self.config.get("auto_start_break", True):
-            return
-
+        """Auto-start or suggest the next appropriate session"""
         if self.session_type == SessionType.WORK:
-            # Suggest break after work
-            if (
-                self.completed_work_sessions % self.config.get("long_break_interval", 4)
-                == 0
-            ):
-                next_type = SessionType.LONG_BREAK
-            else:
-                next_type = SessionType.SHORT_BREAK
-        else:
-            # Suggest work after break
-            next_type = SessionType.WORK
+            # Auto-start break after work session
+            if self.config.get("auto_start_break", True):
+                if (
+                    self.completed_work_sessions
+                    % self.config.get("long_break_interval", 4)
+                    == 0
+                ):
+                    next_type = SessionType.LONG_BREAK
+                    duration = self.config.get("long_break_mins", 15)
+                else:
+                    next_type = SessionType.SHORT_BREAK
+                    duration = self.config.get("short_break_mins", 5)
 
-        print(
-            f"💡 Consider starting a {next_type.value.replace('_', ' ')} session next"
-        )
+                print(
+                    f"🚀 Auto-starting {next_type.value.replace('_', ' ')} ({duration} minutes)..."
+                )
+
+                # Wait configured delay before starting next session
+                import time
+
+                delay = self.config.get("auto_start_delay", 2)
+                time.sleep(delay)
+
+                # Start the break session automatically
+                self.start_session(next_type, duration)
+            else:
+                # Just suggest if auto-start is disabled
+                if (
+                    self.completed_work_sessions
+                    % self.config.get("long_break_interval", 4)
+                    == 0
+                ):
+                    next_type = SessionType.LONG_BREAK
+                else:
+                    next_type = SessionType.SHORT_BREAK
+                print(
+                    f"💡 Consider starting a {next_type.value.replace('_', ' ')} session next"
+                )
+        else:
+            # Handle break completion - only suggest, don't auto-start work
+            if self.config.get("auto_start_work", False):
+                next_type = SessionType.WORK
+                duration = self.config.get("work_mins", 25)
+                print(
+                    f"🚀 Auto-starting {next_type.value} session ({duration} minutes)..."
+                )
+
+                # Wait configured delay before starting next session
+                import time
+
+                delay = self.config.get("auto_start_delay", 2)
+                time.sleep(delay)
+
+                # Start the work session automatically
+                self.start_session(next_type, duration)
+            else:
+                # Just suggest work session after break
+                print("💡 Consider starting a work session next")
 
     def _set_state(self, new_state: SessionState):
         """Update session state and notify callbacks"""

@@ -9,9 +9,9 @@ import os
 import sys
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
 
 # Add current directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -189,6 +189,8 @@ class ConsoleInterface:
         print("├─ Focus Timer uses the Pomodoro Technique")
         print("├─ Work sessions are followed by short breaks")
         print("├─ Every 4th session includes a long break")
+        print("├─ Auto-start breaks: Enabled (configurable)")
+        print("├─ Session controls: [P]ause, [R]esume, [S]top")
         print("├─ Classical music helps maintain focus")
         print("├─ All sessions are logged for analytics")
         print("└─ Press any key to continue...")
@@ -327,7 +329,10 @@ class ConsoleInterface:
         if command == "q":
             return False
         elif command == "s":
-            self.session_manager.start_session()
+            # Start a work session by default, or next appropriate session
+            from session_manager import SessionType
+
+            self.session_manager.start_session(SessionType.WORK)
         elif command == "p":
             self.session_manager.pause_session()
         elif command == "r":
@@ -395,6 +400,18 @@ class ConsoleInterface:
     ):
         """Run a single command non-interactively"""
         if action == "start":
+            # Convert session type string to SessionType enum
+            from session_manager import SessionType
+
+            session_type_map = {
+                "work": SessionType.WORK,
+                "short_break": SessionType.SHORT_BREAK,
+                "long_break": SessionType.LONG_BREAK,
+                "break": SessionType.SHORT_BREAK,  # Alias for short break
+            }
+
+            session_type_enum = session_type_map.get(session_type, SessionType.WORK)
+
             if duration:
                 # Override default duration
                 timer_config = self.config.get_timer_config()
@@ -408,7 +425,7 @@ class ConsoleInterface:
                 self.config.update_timer_config(timer_config)
 
             print(f"🚀 Starting {session_type.replace('_', ' ')} session...")
-            self.session_manager.start_session(session_type)
+            self.session_manager.start_session(session_type_enum, duration)
 
             # Wait for session to complete
             while self.session_manager.get_session_info()["state"] in [
@@ -422,9 +439,10 @@ class ConsoleInterface:
         elif action == "status":
             status = self.session_manager.get_session_info()
             print(f"Session Status: {status['state']}")
-            if status["state"] != "idle":
-                print(f"Type: {status['session_type']}")
-                print(f"Elapsed: {status['elapsed_time']}s")
+            if status["state"] != "ready":
+                print(f"Type: {status['type']}")
+                print(f"Elapsed: {status['elapsed_seconds']}s")
+                print(f"Remaining: {status['remaining_seconds']}s")
 
         elif action == "stats":
             from dashboard import console_dashboard

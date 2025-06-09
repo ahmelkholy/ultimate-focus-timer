@@ -4,10 +4,9 @@ Configuration Manager for Enhanced Focus Timer
 Handles YAML configuration loading and validation
 """
 
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import yaml
 
@@ -36,6 +35,7 @@ class ConfigManager:
         # Session Behavior
         "auto_start_work": False,
         "auto_start_break": True,
+        "auto_start_delay": 2,
         "resume_incomplete": True,
         "save_incomplete": True,
         "max_daily_sessions": 0,

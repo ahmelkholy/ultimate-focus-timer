@@ -241,7 +241,7 @@ class LauncherGUI:
 
             # Launch in new terminal/command prompt
             python_exe = sys.executable
-            script_path = Path(__file__).parent / "focus_console.py"
+            script_path = Path(__file__).parent / "src" / "focus_console.py"
 
             if os.name == 'nt':  # Windows
                 subprocess.Popen([
@@ -466,7 +466,7 @@ def main():
     # Quick start options
     parser.add_argument('--work', type=int, metavar='MINUTES',
                        help='Start a work session for specified minutes (console mode)')
-    parser.add_argument('--break', type=int, metavar='MINUTES',
+    parser.add_argument('--break-session', type=int, metavar='MINUTES', dest='break_session',
                        help='Start a break session for specified minutes (console mode)')
     parser.add_argument('--pomodoro', action='store_true',
                        help='Start a standard 25-minute Pomodoro session (console mode)')
@@ -489,12 +489,12 @@ def main():
 
     try:
         # Handle quick start options
-        if args.work or args.break or args.pomodoro:
+        if args.work or args.break_session or args.pomodoro:
             console = ConsoleInterface(args.config)
             if args.work:
                 console.run_command('start', args.work, 'work')
-            elif args.break:
-                console.run_command('start', args.break, 'short_break')
+            elif args.break_session:
+                console.run_command('start', args.break_session, 'short_break')
             elif args.pomodoro:
                 console.run_command('start', 25, 'work')
 
