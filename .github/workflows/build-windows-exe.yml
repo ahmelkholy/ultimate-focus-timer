@@ -1,54 +1,54 @@
 name: Build Windows Executable
 
 on:
-  workflow_dispatch:  # Allows manual triggering from GitHub UI
+  workflow_dispatch: # Allows manual triggering from GitHub UI
   push:
     tags:
-      - 'v*'  # Run workflow when a new tag is pushed
+      - "v*" # Run workflow when a new tag is pushed
   release:
     types: [created]
 
 jobs:
   build-windows:
     runs-on: windows-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-        cache: 'pip'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-build.txt
-        
-    - name: Create directories
-      run: |
-        mkdir -p music
-        mkdir -p log
-        mkdir -p backups
-        mkdir -p static
-        
-    - name: Build executable
-      run: |
-        python build_config.py build
-        
-    - name: Archive executable
-      uses: actions/upload-artifact@v4
-      with:
-        name: UltimateFocusTimer-windows
-        path: dist/UltimateFocusTimer*
-        
-    - name: Upload to Release
-      if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')
-      uses: softprops/action-gh-release@v1
-      with:
-        files: dist/UltimateFocusTimer*.zip
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-build.txt
+
+      - name: Create directories
+        run: |
+          mkdir -p music
+          mkdir -p log
+          mkdir -p backups
+          mkdir -p static
+
+      - name: Build executable
+        run: |
+          python build_config.py build
+
+      - name: Archive executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: UltimateFocusTimer-windows
+          path: dist/UltimateFocusTimer*
+
+      - name: Upload to Release
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/UltimateFocusTimer*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -117,6 +117,18 @@ sudo apt install mpv  # Ubuntu/Debian
 sudo dnf install mpv  # Fedora
 ```
 
+## 🏗️ Building the Executable
+
+```bash
+# Ensure dependencies are installed
+python -m pip install -r requirements.txt
+
+# Build a standalone one-file executable
+python build_config.py
+```
+
+The generated executable will be located in the `dist/UltimateFocusTimer` directory.
+
 ## 🎵 Music Features
 
 - **Classical Music Integration**: Automatic background music during work sessions
