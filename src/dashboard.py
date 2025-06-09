@@ -26,10 +26,14 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # Set style for better visualizations
 try:
-    # Configure matplotlib for Windows compatibility
+    # Configure matplotlib for better display
     import matplotlib
+    # Try TkAgg first, fallback to Agg for headless environments
+    try:
+        matplotlib.use("TkAgg")  # For GUI mode
+    except Exception:
+        matplotlib.use("Agg")   # For headless mode
 
-    matplotlib.use("TkAgg")  # Ensure TkAgg backend is used
     plt.style.use("seaborn-v0_8")
     sns.set_palette("husl")
 except Exception as e:
@@ -387,7 +391,7 @@ class DashboardGUI:
         """Clean up resources and close the application"""
         try:
             self.is_running = False
-            
+
             # Cancel any scheduled callbacks
             if hasattr(self, 'check_running_id') and self.check_running_id:
                 try:
@@ -395,7 +399,7 @@ class DashboardGUI:
                     self.check_running_id = None
                 except:
                     pass  # Ignore errors if already cancelled or invalid
-            
+
             if hasattr(self, "root") and self.root:
                 print("Destroying tkinter root window...")
                 try:
@@ -1028,5 +1032,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
     main()

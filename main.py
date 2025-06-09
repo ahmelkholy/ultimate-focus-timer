@@ -157,20 +157,20 @@ class UltimateFocusLauncher:
     def _check_display_available(self) -> bool:
         """Check if a GUI display is available"""
         import os
-        
+
         # Check for display environment variables
         if os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY'):
             return True
-            
+
         # On Windows, GUI is usually available
         if platform.system() == "Windows":
             return True
-            
+
         # On macOS, check if we're in a terminal app
         if platform.system() == "Darwin":
             # Basic check - if we're not in SSH, display is likely available
             return not os.environ.get('SSH_CLIENT') and not os.environ.get('SSH_TTY')
-            
+
         return False
 
     def launch_gui(self, show_splash: bool = True):
@@ -185,7 +185,7 @@ class UltimateFocusLauncher:
             print("   • Quick session: python main.py --quick 25")
             print("   • Statistics: python main.py --stats")
             return False
-        
+
         if show_splash:
             self._show_splash()
 
@@ -193,7 +193,7 @@ class UltimateFocusLauncher:
         try:
             # Get the current Python executable and script paths
             python_exe = sys.executable
-            gui_script = Path(__file__).parent / "debug_gui.py"  # Use debug version temporarily
+            gui_script = Path(__file__).parent / "src" / "focus_gui.py"
             working_dir = Path(__file__).parent  # Set working directory to project root
 
             # Prepare environment variables to ensure proper Python path and Unicode support
