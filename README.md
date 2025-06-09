@@ -15,6 +15,20 @@ A comprehensive, cross-platform productivity timer application implementing the 
 - **⚙️ Highly Configurable**: YAML-based configuration with theme support
 - **🌍 Cross-Platform**: Windows, macOS, and Linux support
 
+## 📸 Screenshots
+
+### GUI Interface
+
+![Console Interface](files/Screenshot%202025-06-09%20165707.png)
+
+### Console Interface
+
+![GUI Interface](files/Screenshot%202025-06-09%20165653.png)
+
+### Dashboard Analytics
+
+![Dashboard Analytics](files/Screenshot%202025-06-09%20165754.png)
+
 ## 🚀 Quick Start
 
 ```bash
