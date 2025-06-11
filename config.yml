@@ -1,293 +1,84 @@
-# ==============================================================================
-# FOCUS TIMER CONFIGURATION
-# ==============================================================================
-# This file contains all settings for the Focus Timer application.
-# Organize your preferences by editing the values below.
-
-# ==============================================================================
-# TIMER SETTINGS
-# ==============================================================================
-# Core timer configuration and session management
-
-# Work session duration (minutes)
-work_mins: 25
-
-# Short break duration (minutes)
-short_break_mins: 5
-
-# Long break duration (minutes)
-long_break_mins: 15
-
-# Number of work sessions before a long break
-long_break_interval: 4
-
-# Minimum work time required before allowing breaks (minutes)
-min_work_time: 5
-
-# Messages displayed during different phases
-work_msg: Focus on your task
-short_break_msg: Take a breather
-long_break_msg: Take a long break
-
-# ==============================================================================
-# AUTOMATION SETTINGS
-# ==============================================================================
-# Control automatic behavior and session management
-
-# Automatically start work sessions after breaks
-auto_start_work: false
-
-# Automatically start breaks after work sessions
-auto_start_break: true
-
-# Delay before auto-starting (seconds)
-auto_start_delay: 2
-
-# Automatically mark tasks as complete
-auto_task_complete: true
-
-# Automatically add tags to sessions
-auto_tags: true
-
-# Resume incomplete sessions on startup
-resume_incomplete: true
-
-# Save incomplete sessions when closing
-save_incomplete: true
-
-# Adjust break times based on work patterns
-smart_break_adjustment: true
-
-# ==============================================================================
-# APPEARANCE & INTERFACE
-# ==============================================================================
-# Visual settings and user interface preferences
-
-# Use dark theme
-dark_theme: true
-
-# Color scheme (forest, blue, red, etc.)
-color_scheme: forest
-
-# Enable animated transitions
-animated_transitions: true
-
-# Use gradient backgrounds
-gradient_backgrounds: true
-
-# Blur background during focus mode
-blur_background: true
-
-# Compact interface mode
-compact_mode: false
-
-# Window transparency (0.0 to 1.0)
-transparency: 0.95
-
-# Custom CSS for advanced styling
-custom_css: ''
-
-# ==============================================================================
-# TIME DISPLAY
-# ==============================================================================
-# How time is displayed in the interface
-
-# Use 24-hour clock format
 24hr_clock: false
-
-# Time format string (e.g., '15:04' for 24h, '3:04 PM' for 12h)
-time_format: '15:04'
-
-# Show seconds in timer display
-show_seconds: true
-
-# Show progress bar
-show_progress_bar: true
-
-# ==============================================================================
-# NOTIFICATIONS
-# ==============================================================================
-# Alert and notification preferences
-
-# Enable desktop notifications
-desktop_notifications: true
-
-# General notification toggle
-notify: true
-
-# Custom notification messages
-custom_notifications: true
-
-# Early warning before session ends (minutes)
-notify_early_warning: 2
-
-# How long notifications stay visible (seconds)
-notification_persistence: 5
-
-# Notification priority level
-notification_priority: normal
-
-# ==============================================================================
-# SOUNDS & MUSIC
-# ==============================================================================
-# Audio settings and music control
-
-# Enable sound notifications
-notify_sound: true
-
-# Play sounds during breaks
-sound_on_break: false
-
-# General sound file (leave empty to use default)
-sound: ''
-
-# Sound volume (0-100)
-sound_volume: 100
-
-# Fade sound transitions
-fade_sound: true
-
-# Classical music integration
+accent_color: '#00ff00'
+animated_transitions: true
+auto_start_break: true
+auto_start_delay: 2
+auto_start_work: false
+auto_tags: true
+auto_task_complete: true
+blur_background: true
+break_end_cmd: scripts\classical_music.ps1 -Action start -Volume 20
+break_start_cmd: ''
 classical_music: true
-
-# Use local music files instead of online
-classical_music_local_mode: true
-
-# Classical music volume (0-100)
-classical_music_volume: 50
-
-# Fade music during transitions
-fade_music_transitions: true
-
-# Pause music during breaks
-pause_music_on_break: true
-
-# ==============================================================================
-# MUSIC PLAYER SETTINGS
-# ==============================================================================
-# MPV player configuration for music playback
-
-# Path to MPV executable
-mpv_executable: C:\Users\ahm_e\mpv\portable_config\mpv.exe
-
-# Additional MPV arguments
-mpv_extra_args: --no-video --shuffle --loop-playlist
-
-# Classical music playlist directory
-classical_music_playlist_dir: C:\Users\ahm_e\mpv\PlayList
-
-# Default classical music playlist
 classical_music_default_playlist: C:\Users\ahm_e\mpv\PlayList\ClassicalMusic.m3u
-
-# Currently selected playlist
-classical_music_selected_playlist: C:\Users\ahm_e\mpv\PlayList\Lisan Arabi - Videos.m3u
-
-# Online playlist URLs (when not using local mode)
+classical_music_genres:
+- baroque
+- classical
+- romantic
+- modern
+classical_music_local_mode: true
 classical_music_online_playlists:
 - https://www.youtube.com/watch?v=mdJU5ogrPMY
-
-# ==============================================================================
-# PRODUCTIVITY & TRACKING
-# ==============================================================================
-# Goal setting and progress tracking
-
-# Enable goal tracking
-goal_tracking: true
-
-# Daily session goals
-session_goals: 8
-
-# Weekly hour goals
-weekly_goals: 40
-
-# Maximum daily sessions (0 = unlimited)
-max_daily_sessions: 0
-
-# Enable productivity scoring
-productivity_scoring: true
-
-# Track productivity trends
-productivity_trends: true
-
-# Rate session quality
-session_quality_rating: true
-
-# Track idle time
-track_idle_time: true
-
-# Track distractions
-distraction_tracking: true
-
-# Enable time blocking features
-time_blocking: true
-
-# ==============================================================================
-# TASK MANAGEMENT
-# ==============================================================================
-# Task and TODO integration settings
-
-# Task file location
-task_file: ~/tasks.md
-
-# Enable TODO integration
-todo_integration: false
-
-# ==============================================================================
-# ANALYTICS & REPORTING
-# ==============================================================================
-# Data analysis and export settings
-
-# Enable detailed analytics
-detailed_analytics: true
-
-# Generate weekly reports
-weekly_reports: true
-
-# Default statistics view (day, week, month, year)
-stats_default_view: week
-
-# Data export format (csv, json, xlsx)
-export_format: csv
-
-# Data retention period (days)
+classical_music_playlist_dir: C:\Users\ahm_e\mpv\PlayList
+classical_music_selected_playlist: C:\Users\ahm_e\mpv\PlayList\ClassicalMusic.m3u
+classical_music_volume: 50
+color_scheme: forest
+compact_mode: false
+custom_css: ''
+custom_notifications: true
+dark_theme: true
 data_retention_days: 365
-
-# ==============================================================================
-# ADVANCED FEATURES
-# ==============================================================================
-# Advanced functionality and experimental features
-
-# Deep focus mode (minimal distractions)
 deep_focus_mode: false
-
-# Show motivational messages
-motivational_messages: true
-
-# ==============================================================================
-# CUSTOM COMMANDS
-# ==============================================================================
-# Scripts and commands to run during different phases
-
-# Command to run when work session starts
-work_start_cmd: scripts\classical_music.ps1 -Action start -Volume 30
-
-# Command to run when work session ends
-work_end_cmd: scripts\classical_music.ps1 -Action stop
-
-# Command to run when starting a session (general)
-session_cmd: scripts\classical_music.ps1 -Action start -Volume 30
-
-# Command to run before break starts
-pre_break_cmd: scripts\classical_music.ps1 -Action stop
-
-# Command to run when break starts
-break_start_cmd: ''
-
-# Command to run when break ends
-break_end_cmd: scripts\classical_music.ps1 -Action start -Volume 20
-
-# Command to run after break ends
-post_break_cmd: ''
-
-# Command to run during idle time
+desktop_notifications: true
+detailed_analytics: true
+distraction_tracking: true
+export_format: csv
+fade_music_transitions: true
+fade_sound: true
+goal_tracking: true
+gradient_backgrounds: true
 idle_cmd: ''
+long_break_interval: 4
+long_break_mins: 15
+long_break_msg: Take a long break
+max_daily_sessions: 0
+min_work_time: 5
+motivational_messages: true
+mpv_executable: C:\Users\ahm_e\mpv\portable_config\mpv.exe
+mpv_extra_args: --no-video --shuffle --loop-playlist
+notification_persistence: 5
+notification_priority: normal
+notify: true
+notify_early_warning: 2
+notify_sound: true
+pause_music_on_break: true
+post_break_cmd: ''
+pre_break_cmd: scripts\classical_music.ps1 -Action stop
+productivity_scoring: true
+productivity_trends: true
+resume_incomplete: true
+save_incomplete: true
+session_cmd: scripts\classical_music.ps1 -Action start -Volume 30
+session_goals: 8
+session_quality_rating: true
+short_break_mins: 5
+short_break_msg: Take a breather
+show_progress_bar: true
+show_seconds: true
+smart_break_adjustment: true
+sound: ''
+sound_on_break: false
+sound_volume: 100
+stats_default_view: week
+task_file: ~/tasks.md
+time_blocking: true
+time_format: '15:04'
+todo_integration: false
+track_idle_time: true
+transparency: 0.95
+weekly_goals: 40
+weekly_reports: true
+work_end_cmd: scripts\classical_music.ps1 -Action stop
+work_mins: 25
+work_msg: Focus on your task
+work_start_cmd: scripts\classical_music.ps1 -Action start -Volume 30

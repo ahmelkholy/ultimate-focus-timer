@@ -46,14 +46,18 @@ class FocusGUI:
     def setup_window(self):
         """Configure the main window"""
         self.root.title("🎯 Enhanced Focus Timer")
-        self.root.geometry("450x600")
+        self.root.geometry("380x520")
         self.root.resizable(False, False)
+
+        # Configure grid weights for proper expansion
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
 
         # Center window on screen
         self.root.update_idletasks()
-        x = (self.root.winfo_screenwidth() // 2) - (450 // 2)
-        y = (self.root.winfo_screenheight() // 2) - (600 // 2)
-        self.root.geometry(f"450x600+{x}+{y}")
+        x = (self.root.winfo_screenwidth() // 2) - (380 // 2)
+        y = (self.root.winfo_screenheight() // 2) - (520 // 2)
+        self.root.geometry(f"380x520+{x}+{y}")
 
         # Handle window close
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -61,76 +65,81 @@ class FocusGUI:
     def create_widgets(self):
         """Create and layout GUI widgets"""
         # Main frame
-        self.main_frame = ttk.Frame(self.root, padding="20")
+        self.main_frame = ttk.Frame(self.root, padding="8")
         self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+        # Configure main frame grid weights for equal distribution
+        self.main_frame.grid_columnconfigure(0, weight=1)
+        self.main_frame.grid_columnconfigure(1, weight=1)
+        self.main_frame.grid_columnconfigure(2, weight=1)
 
         # Title
         self.title_label = ttk.Label(
-            self.main_frame, text="🎯 FOCUS TIMER", font=("Arial", 20, "bold")
+            self.main_frame, text="🎯 FOCUS TIMER", font=("Arial", 18, "bold")
         )
-        self.title_label.grid(row=0, column=0, columnspan=3, pady=(0, 20))
+        self.title_label.grid(row=0, column=0, columnspan=3, pady=(0, 12))
 
         # Session type label
         self.session_type_label = ttk.Label(
-            self.main_frame, text="READY TO START", font=("Arial", 12, "bold")
+            self.main_frame, text="READY TO START", font=("Arial", 11, "bold")
         )
-        self.session_type_label.grid(row=1, column=0, columnspan=3, pady=(0, 10))
+        self.session_type_label.grid(row=1, column=0, columnspan=3, pady=(0, 8))
 
         # Time display
         self.time_label = ttk.Label(
-            self.main_frame, text="00:00", font=("Courier New", 48, "bold")
+            self.main_frame, text="00:00", font=("Courier New", 42, "bold")
         )
-        self.time_label.grid(row=2, column=0, columnspan=3, pady=(0, 20))
+        self.time_label.grid(row=2, column=0, columnspan=3, pady=(0, 15))
 
         # Progress bar
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(
-            self.main_frame, variable=self.progress_var, maximum=100, length=350
+            self.main_frame, variable=self.progress_var, maximum=100, length=300
         )
         self.progress_bar.grid(
-            row=3, column=0, columnspan=3, pady=(0, 30), sticky=(tk.W, tk.E)
+            row=3, column=0, columnspan=3, pady=(0, 20), sticky=(tk.W, tk.E), padx=8
         )
 
         # Session buttons frame
         self.session_frame = ttk.Frame(self.main_frame)
-        self.session_frame.grid(row=4, column=0, columnspan=3, pady=(0, 20))
+        self.session_frame.grid(row=4, column=0, columnspan=3, pady=(0, 15))
 
         # Session buttons
         self.work_button = ttk.Button(
             self.session_frame,
             text=f"Work Session ({self.config.get('work_mins')} min)",
             command=lambda: self.start_session(SessionType.WORK),
-            width=20,
+            width=18,
         )
-        self.work_button.grid(row=0, column=0, padx=5, pady=5)
+        self.work_button.grid(row=0, column=0, padx=3, pady=3)
 
         self.short_break_button = ttk.Button(
             self.session_frame,
             text=f"Short Break ({self.config.get('short_break_mins')} min)",
             command=lambda: self.start_session(SessionType.SHORT_BREAK),
-            width=20,
+            width=18,
         )
-        self.short_break_button.grid(row=0, column=1, padx=5, pady=5)
+        self.short_break_button.grid(row=0, column=1, padx=3, pady=3)
 
         self.long_break_button = ttk.Button(
             self.session_frame,
             text=f"Long Break ({self.config.get('long_break_mins')} min)",
             command=lambda: self.start_session(SessionType.LONG_BREAK),
-            width=20,
+            width=18,
         )
-        self.long_break_button.grid(row=1, column=0, padx=5, pady=5)
+        self.long_break_button.grid(row=1, column=0, padx=3, pady=3)
 
         self.custom_button = ttk.Button(
             self.session_frame,
             text="Custom Session",
             command=self.start_custom_session,
-            width=20,
+            width=18,
         )
-        self.custom_button.grid(row=1, column=1, padx=5, pady=5)
+        self.custom_button.grid(row=1, column=1, padx=3, pady=3)
 
         # Control buttons frame
         self.control_frame = ttk.Frame(self.main_frame)
-        self.control_frame.grid(row=5, column=0, columnspan=3, pady=(0, 20))
+        self.control_frame.grid(row=5, column=0, columnspan=3, pady=(0, 15))
 
         # Control buttons
         self.pause_button = ttk.Button(
@@ -138,38 +147,38 @@ class FocusGUI:
             text="⏸ Pause",
             command=self.toggle_pause,
             state="disabled",
-            width=12,
+            width=11,
         )
-        self.pause_button.grid(row=0, column=0, padx=5)
+        self.pause_button.grid(row=0, column=0, padx=3)
 
         self.stop_button = ttk.Button(
             self.control_frame,
             text="⏹ Stop",
             command=self.stop_session,
             state="disabled",
-            width=12,
+            width=11,
         )
-        self.stop_button.grid(row=0, column=1, padx=5)
+        self.stop_button.grid(row=0, column=1, padx=3)
 
         self.music_button = ttk.Button(
-            self.control_frame, text="🎵 Music", command=self.toggle_music, width=12
+            self.control_frame, text="🎵 Music", command=self.toggle_music, width=11
         )
-        self.music_button.grid(row=0, column=2, padx=5)
+        self.music_button.grid(row=0, column=2, padx=3)
 
         # Status frame
         self.status_frame = ttk.Frame(self.main_frame)
-        self.status_frame.grid(row=6, column=0, columnspan=3, pady=(0, 10))
+        self.status_frame.grid(row=6, column=0, columnspan=3, pady=(0, 8))
 
         # Status labels
         self.music_status_label = ttk.Label(
-            self.status_frame, text="♪ Music Ready", font=("Arial", 9)
+            self.status_frame, text="♪ Music Ready", font=("Arial", 8)
         )
-        self.music_status_label.grid(row=0, column=0, padx=10)
+        self.music_status_label.grid(row=0, column=0, padx=8)
 
         self.session_count_label = ttk.Label(
-            self.status_frame, text="Sessions: 0", font=("Arial", 9)
+            self.status_frame, text="Sessions: 0", font=("Arial", 8)
         )
-        self.session_count_label.grid(row=0, column=1, padx=10)
+        self.session_count_label.grid(row=0, column=1, padx=8)
 
         # Additional buttons frame
         self.additional_frame = ttk.Frame(self.main_frame)
@@ -180,25 +189,25 @@ class FocusGUI:
             self.additional_frame,
             text="📊 Statistics",
             command=self.show_statistics,
-            width=15,
+            width=13,
         )
-        self.stats_button.grid(row=0, column=0, padx=5, pady=5)
+        self.stats_button.grid(row=0, column=0, padx=3, pady=3)
 
         self.settings_button = ttk.Button(
             self.additional_frame,
             text="⚙️ Settings",
             command=self.show_settings,
-            width=15,
+            width=13,
         )
-        self.settings_button.grid(row=0, column=1, padx=5, pady=5)
+        self.settings_button.grid(row=0, column=1, padx=3, pady=3)
 
         self.test_button = ttk.Button(
             self.additional_frame,
             text="🧪 Test Music",
             command=self.test_music,
-            width=15,
+            width=13,
         )
-        self.test_button.grid(row=0, column=2, padx=5, pady=5)
+        self.test_button.grid(row=0, column=2, padx=3, pady=3)
 
     def apply_theme(self):
         """Apply dark theme if enabled"""
