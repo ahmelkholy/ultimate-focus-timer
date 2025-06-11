@@ -5,6 +5,7 @@ This guide helps you set up a proper Python virtual environment for the Ultimate
 ## 🐍 Why Use Virtual Environments?
 
 Virtual environments provide:
+
 - **Isolation**: Separate dependencies from your system Python
 - **Reproducibility**: Consistent environment across different machines
 - **Safety**: Prevent conflicts with other Python projects
@@ -62,12 +63,12 @@ python main.py --check-deps
 
 ### Activation Commands by Shell
 
-| Shell | Command |
-|-------|---------|
-| PowerShell | `.\.venv\Scripts\Activate.ps1` |
-| Command Prompt | `.\.venv\Scripts\activate.bat` |
-| Git Bash | `source .venv/Scripts/activate` |
-| VS Code Terminal | Automatic (if configured) |
+| Shell            | Command                         |
+| ---------------- | ------------------------------- |
+| PowerShell       | `.\.venv\Scripts\Activate.ps1`  |
+| Command Prompt   | `.\.venv\Scripts\activate.bat`  |
+| Git Bash         | `source .venv/Scripts/activate` |
+| VS Code Terminal | Automatic (if configured)       |
 
 ### Deactivation
 
@@ -162,11 +163,11 @@ Create `.vscode/settings.json`:
 
 ```json
 {
-    "python.defaultInterpreterPath": "./.venv/Scripts/python.exe",
-    "python.terminal.activateEnvironment": true,
-    "python.formatting.provider": "black",
-    "python.linting.enabled": true,
-    "python.linting.flake8Enabled": true
+  "python.defaultInterpreterPath": "./.venv/Scripts/python.exe",
+  "python.terminal.activateEnvironment": true,
+  "python.formatting.provider": "black",
+  "python.linting.enabled": true,
+  "python.linting.flake8Enabled": true
 }
 ```
 

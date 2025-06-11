@@ -8,7 +8,6 @@ import os
 import platform
 import signal
 import subprocess
-import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -99,6 +98,20 @@ class MusicController:
         if not playlists:
             print("⚠️  No playlists available")
             return None
+
+        # Check if user has selected a specific playlist
+        selected_playlist = self.config.get("classical_music_selected_playlist")
+        if selected_playlist:
+            # Verify the selected playlist still exists
+            for playlist in playlists:
+                if (
+                    playlist["path"] == selected_playlist
+                    or playlist["name"] == selected_playlist
+                ):
+                    return playlist["path"]
+            print(
+                f"⚠️  Selected playlist '{selected_playlist}' not found, using default"
+            )
 
         # Prefer local playlists if in local mode
         if self.config.get("classical_music_local_mode"):

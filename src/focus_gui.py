@@ -4,11 +4,7 @@ GUI Focus Timer for Enhanced Focus Timer
 Cross-platform GUI using tkinter with modern styling
 """
 
-import threading
-import time
 import tkinter as tk
-from datetime import datetime
-from pathlib import Path
 from tkinter import messagebox, ttk
 
 from config_manager import ConfigManager
@@ -652,6 +648,45 @@ class SettingsDialog:
             variable=self.pause_on_break_var,
         ).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=5)
 
+        # Playlist selection
+        ttk.Label(music_frame, text="Select Playlist:").grid(
+            row=3, column=0, sticky=tk.W, pady=5
+        )
+
+        # Get available playlists
+        from music_controller import MusicController
+
+        music_controller = MusicController(self.config)
+        self.available_playlists = music_controller.get_available_playlists()
+
+        # Create playlist options list
+        self.playlist_options = ["Auto (First Available)"]
+        self.playlist_paths = [None]  # None means auto-select
+
+        for playlist in self.available_playlists:
+            self.playlist_options.append(playlist["name"])
+            self.playlist_paths.append(playlist["path"])
+
+        # Get currently selected playlist
+        current_selected = self.config.get("classical_music_selected_playlist")
+        current_index = 0  # Default to "Auto"
+
+        if current_selected:
+            for i, path in enumerate(self.playlist_paths[1:], 1):  # Skip index 0 (Auto)
+                if path == current_selected:
+                    current_index = i
+                    break
+
+        self.playlist_var = tk.StringVar(value=self.playlist_options[current_index])
+        playlist_combo = ttk.Combobox(
+            music_frame,
+            textvariable=self.playlist_var,
+            values=self.playlist_options,
+            state="readonly",
+            width=25,
+        )
+        playlist_combo.grid(row=3, column=1, padx=10, pady=5, sticky=tk.W)
+
         # Notification settings tab
         notify_frame = ttk.Frame(notebook, padding="10")
         notebook.add(notify_frame, text="Notifications")
@@ -700,6 +735,19 @@ class SettingsDialog:
             self.config.set("classical_music", self.music_enabled_var.get())
             self.config.set("classical_music_volume", int(self.volume_var.get()))
             self.config.set("pause_music_on_break", self.pause_on_break_var.get())
+
+            # Save selected playlist
+            selected_playlist_name = self.playlist_var.get()
+            selected_index = self.playlist_options.index(selected_playlist_name)
+            selected_playlist_path = self.playlist_paths[selected_index]
+
+            if selected_playlist_path is None:
+                # "Auto" selected - remove any specific selection
+                self.config.set("classical_music_selected_playlist", "")
+            else:
+                self.config.set(
+                    "classical_music_selected_playlist", selected_playlist_path
+                )
 
             # Notification settings
             self.config.set("desktop_notifications", self.notify_enabled_var.get())
