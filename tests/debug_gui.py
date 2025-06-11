@@ -11,33 +11,24 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-print("=== GUI Debug Startup ===")
-print(f"Python executable: {sys.executable}")
-print(f"Python version: {sys.version}")
-print(f"Working directory: {Path.cwd()}")
-print(f"Script location: {Path(__file__).parent}")
-print(f"Python path: {sys.path[:3]}...")  # Show first 3 paths
+# Startup info - minimal
+print(f"Exec: {sys.executable}, Ver: {sys.version.split()[0]}")
 
 try:
-    print("Importing dependencies...")
+    # Launch GUI
     from src.focus_gui import FocusGUI
-    print("✅ Dependencies imported successfully")
 
-    print("Creating GUI instance...")
     app = FocusGUI()
-    print("✅ GUI instance created successfully")
-
-    print("Starting GUI mainloop...")
     app.run()
-    print("✅ GUI completed normally")
+
+    # GUI session ended
+    print("GUI closed")
 
 except ImportError as e:
-    print(f"❌ Import error: {e}")
-    print("📝 Full traceback:")
+    print(f"Import error: {e}")
     traceback.print_exc()
     sys.exit(1)
 except Exception as e:
-    print(f"❌ Runtime error: {e}")
-    print("📝 Full traceback:")
+    print(f"Error: {e}")
     traceback.print_exc()
     sys.exit(1)

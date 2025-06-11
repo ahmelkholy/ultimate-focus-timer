@@ -1,10 +1,9 @@
 24hr_clock: false
 accent_color: '#00ff00'
 animated_transitions: true
-# Session Management
-auto_start_break: true      # Automatically start breaks after work sessions finish
-auto_start_work: false      # Automatically start work sessions after breaks finish
-auto_start_delay: 2         # Seconds to wait before auto-starting next session
+auto_start_break: true
+auto_start_delay: 2
+auto_start_work: false
 auto_tags: true
 auto_task_complete: true
 blur_background: true
@@ -21,7 +20,7 @@ classical_music_local_mode: true
 classical_music_online_playlists:
 - https://www.youtube.com/watch?v=mdJU5ogrPMY
 classical_music_playlist_dir: C:\Users\ahm_e\mpv\PlayList
-classical_music_volume: 60
+classical_music_volume: 50
 color_scheme: forest
 compact_mode: false
 custom_css: ''
