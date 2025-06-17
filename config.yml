@@ -20,7 +20,8 @@ classical_music_local_mode: true
 classical_music_online_playlists:
 - https://www.youtube.com/watch?v=mdJU5ogrPMY
 classical_music_playlist_dir: C:\Users\ahm_e\mpv\PlayList
-classical_music_selected_playlist: C:\Users\ahm_e\mpv\PlayList\ClassicalMusic.m3u
+classical_music_selected_playlist: "C:\\Users\\ahm_e\\mpv\\PlayList\\\u0646\u0648\u062A\
+  \u0629 \u062C\u0645\u064A\u0644\u0629.m3u"
 classical_music_volume: 50
 color_scheme: forest
 compact_mode: false
@@ -61,7 +62,7 @@ save_incomplete: true
 session_cmd: scripts\classical_music.ps1 -Action start -Volume 30
 session_goals: 8
 session_quality_rating: true
-short_break_mins: 5
+short_break_mins: 7
 short_break_msg: Take a breather
 show_progress_bar: true
 show_seconds: true
