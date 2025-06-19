@@ -393,21 +393,37 @@ class InlineTaskWidget:
         )
         pomodoro_label.grid(row=0, column=2, padx=(1, 1))  # Minimal padding
 
-        # Add pomodoro button (only for incomplete tasks)
+        # Pomodoro buttons (only for incomplete tasks)
         if not task.completed:
+            button_column = 3
+            # Decrease pomodoro button (only if task has completed pomodoros)
+            if task.pomodoros_completed > 0:
+                decrease_pomodoro_button = ttk.Button(
+                    task_frame,
+                    text="🍅-",
+                    command=lambda: self.remove_pomodoro_from_task(task),
+                    width=3,
+                )
+                decrease_pomodoro_button.grid(row=0, column=button_column, padx=(1, 1))
+                button_column += 1
+
+            # Add pomodoro button
             add_pomodoro_button = ttk.Button(
                 task_frame,
                 text="🍅+",
                 command=lambda: self.add_pomodoro_to_task(task),
-                width=3,  # Smaller width
+                width=3,
             )
-            add_pomodoro_button.grid(row=0, column=3, padx=(1, 1))  # Minimal padding
+            add_pomodoro_button.grid(row=0, column=button_column, padx=(1, 1))
+            delete_column = button_column + 1
+        else:
+            delete_column = 3
 
         # Delete button
         delete_button = ttk.Button(
             task_frame, text="🗑️", command=lambda: self.delete_task(task), width=3
         )
-        delete_button.grid(row=0, column=4, padx=(1, 0))  # Minimal padding
+        delete_button.grid(row=0, column=delete_column, padx=(1, 0))
 
     def toggle_task(self, task: Task, var: tk.BooleanVar):
         """Toggle task completion"""
@@ -431,6 +447,11 @@ class InlineTaskWidget:
         # Show positive feedback
         if task.pomodoros_completed + 1 >= task.pomodoros_planned:
             self.show_task_ready_message(task)
+
+    def remove_pomodoro_from_task(self, task: Task):
+        """Remove a pomodoro from a task"""
+        self.task_manager.remove_pomodoro_from_task(task.id)
+        self.update_display()
 
     def delete_task(self, task: Task):
         """Delete a task directly without confirmation"""

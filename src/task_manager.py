@@ -37,6 +37,11 @@ class Task:
         """Add a completed pomodoro to this task"""
         self.pomodoros_completed += 1
 
+    def remove_pomodoro(self):
+        """Remove a completed pomodoro from this task"""
+        if self.pomodoros_completed > 0:
+            self.pomodoros_completed -= 1
+
     def to_dict(self) -> Dict:
         """Convert task to dictionary"""
         return asdict(self)
@@ -134,6 +139,15 @@ class TaskManager:
         task = self.get_task_by_id(task_id)
         if task:
             task.add_pomodoro()
+            self.save_tasks()
+            return True
+        return False
+
+    def remove_pomodoro_from_task(self, task_id: str) -> bool:
+        """Remove a completed pomodoro from a task"""
+        task = self.get_task_by_id(task_id)
+        if task and task.pomodoros_completed > 0:
+            task.remove_pomodoro()
             self.save_tasks()
             return True
         return False

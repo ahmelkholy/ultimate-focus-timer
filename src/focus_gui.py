@@ -518,15 +518,39 @@ class FocusGUI:
         )
         pomodoro_label.grid(row=0, column=2, padx=(3, 3))
 
-        # Compact add pomodoro button (for incomplete tasks)
+        # Compact pomodoro buttons (for incomplete tasks)
         if not task.completed:
-            add_pomodoro_btn = ttk.Button(
-                task_row,
-                text="+",
-                command=lambda: self.add_pomodoro_to_task(task),
-                width=2,
-            )
-            add_pomodoro_btn.grid(row=0, column=3, padx=(3, 3))
+            # Decrease pomodoro button (only if task has completed pomodoros)
+            if task.pomodoros_completed > 0:
+                decrease_pomodoro_btn = ttk.Button(
+                    task_row,
+                    text="-",
+                    command=lambda: self.remove_pomodoro_from_task(task),
+                    width=2,
+                )
+                decrease_pomodoro_btn.grid(row=0, column=3, padx=(3, 1))
+
+                # Add pomodoro button
+                add_pomodoro_btn = ttk.Button(
+                    task_row,
+                    text="+",
+                    command=lambda: self.add_pomodoro_to_task(task),
+                    width=2,
+                )
+                add_pomodoro_btn.grid(row=0, column=4, padx=(1, 3))
+                delete_column = 5
+            else:
+                # Only add button when no completed pomodoros
+                add_pomodoro_btn = ttk.Button(
+                    task_row,
+                    text="+",
+                    command=lambda: self.add_pomodoro_to_task(task),
+                    width=2,
+                )
+                add_pomodoro_btn.grid(row=0, column=3, padx=(3, 3))
+                delete_column = 4
+        else:
+            delete_column = 3
 
         # Compact delete button
         delete_btn = ttk.Button(
@@ -535,7 +559,7 @@ class FocusGUI:
             command=lambda: self.delete_task(task.id),
             width=2,
         )
-        delete_btn.grid(row=0, column=4, padx=(3, 0))
+        delete_btn.grid(row=0, column=delete_column, padx=(3, 0))
 
     def toggle_task(self, task, var):
         """Toggle task completion"""
@@ -551,6 +575,11 @@ class FocusGUI:
     def add_pomodoro_to_task(self, task):
         """Add a pomodoro to a task"""
         self.task_manager.add_pomodoro_to_task(task.id)
+        self.update_task_display()
+
+    def remove_pomodoro_from_task(self, task):
+        """Remove a pomodoro from a task"""
+        self.task_manager.remove_pomodoro_from_task(task.id)
         self.update_task_display()
 
     def delete_task(self, task_id):
@@ -1019,6 +1048,32 @@ class FocusGUI:
         )
         pomodoro_label.grid(row=0, column=2, padx=(0, 5))
 
+        # Pomodoro buttons (for incomplete tasks)
+        if not task.completed:
+            button_column = 3
+            # Decrease button (only if task has completed pomodoros)
+            if task.pomodoros_completed > 0:
+                decrease_btn = ttk.Button(
+                    task_row,
+                    text="-",
+                    width=2,
+                    command=lambda: self.remove_pomodoro_from_separate_task(task.id),
+                )
+                decrease_btn.grid(row=0, column=button_column, padx=(0, 2))
+                button_column += 1
+
+            # Increase button
+            increase_btn = ttk.Button(
+                task_row,
+                text="+",
+                width=2,
+                command=lambda: self.add_pomodoro_to_separate_task(task.id),
+            )
+            increase_btn.grid(row=0, column=button_column, padx=(0, 5))
+            delete_column = button_column + 1
+        else:
+            delete_column = 3
+
         # Delete button
         del_button = ttk.Button(
             task_row,
@@ -1026,7 +1081,7 @@ class FocusGUI:
             width=3,
             command=lambda: self.delete_separate_task(task.id),
         )
-        del_button.grid(row=0, column=3)
+        del_button.grid(row=0, column=delete_column)
 
     def toggle_separate_task(self, task, var):
         """Toggle task completion in separate window"""
@@ -1037,6 +1092,18 @@ class FocusGUI:
     def delete_separate_task(self, task_id):
         """Delete task from separate window"""
         self.task_manager.delete_task(task_id)
+        self.update_separate_task_display()
+        self.update_task_display()  # Update main window too
+
+    def add_pomodoro_to_separate_task(self, task_id):
+        """Add pomodoro to task in separate window"""
+        self.task_manager.add_pomodoro_to_task(task_id)
+        self.update_separate_task_display()
+        self.update_task_display()  # Update main window too
+
+    def remove_pomodoro_from_separate_task(self, task_id):
+        """Remove pomodoro from task in separate window"""
+        self.task_manager.remove_pomodoro_from_task(task_id)
         self.update_separate_task_display()
         self.update_task_display()  # Update main window too
 
