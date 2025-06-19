@@ -9,6 +9,7 @@ A comprehensive, cross-platform productivity timer application implementing the 
 ## ✨ Key Features
 
 - **🎮 Multiple Interfaces**: GUI, Console, Dashboard, and Interactive Launcher
+- **📋 Task Management**: Add, complete, and track tasks during focus sessions
 - **🎵 Music Integration**: Classical music playback with cross-platform audio support
 - **📊 Analytics & Tracking**: Comprehensive session logging and productivity insights
 - **🔔 Smart Notifications**: Cross-platform desktop notifications with early warnings
@@ -45,6 +46,28 @@ For macOS and Linux users, please see the [Installation Guide](docs/USER_GUIDE.m
 ### Dashboard Analytics
 
 ![Dashboard Analytics](files/Screenshot%202025-06-09%20165754.png)
+
+## 📋 Task Management
+
+The application includes comprehensive task management capabilities to help you stay organized and productive:
+
+### Features
+
+- **Always-Visible Task Entry**: Input field is permanently visible for quick task entry
+- **Smart Placeholder**: Green "+add (T)" placeholder text that disappears when typing
+- **Keyboard Shortcuts**: Press 'T' to focus on the task entry field instantly
+- **Real-Time Tracking**: Add and complete tasks during your focus sessions
+- **Visual Feedback**: Completed tasks are clearly marked with timestamps
+
+### How to Use
+
+1. Type your task directly in the always-visible task entry field
+2. Press Enter to add the task to your current session
+3. Use keyboard shortcut 'T' for quick task entry focus
+4. Mark tasks as complete during or after your work session
+5. View task history and completion tracking in your session analytics
+
+The streamlined interface eliminates unnecessary buttons and maximizes your productivity by keeping task management simple and accessible.
 
 ## 🚀 Quick Start
 
@@ -154,6 +177,10 @@ Edit `config.yml` to customize:
 work_mins: 25
 short_break_mins: 5
 long_break_mins: 15
+
+# Task Management
+enable_task_tracking: true
+auto_focus_task_entry: true
 
 # Music Settings
 classical_music: true

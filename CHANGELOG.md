@@ -11,11 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Cross-platform virtual environment setup documentation
 - Professional project organization for public sharing
+- **Enhanced Task Management System** with always-visible task entry
+- **Smart Placeholder Text** with green "+add (T)" guidance in task input
+- **Improved Task Interface** with streamlined, button-free design
+- **Better Visual Feedback** with proper text colors and contrast
 
 ### Changed
 
 - Enhanced README with comprehensive documentation
 - Improved code organization and structure
+- **Streamlined GUI Layout** with minimized spacing between sections
+- **Always-Visible Task Entry** replacing button-based task addition
+- **Increased Application Height** by 3cm for better space utilization
+- **Improved Text Visibility** with black text on white background in task entry
+- **Enhanced Keyboard Integration** with 'T' key focusing task entry directly
 
 ## [3.0.0] - 2024-01-XX - "Pure Python Edition"
 
