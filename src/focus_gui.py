@@ -56,48 +56,186 @@ class FocusGUI:
     def setup_window(self):
         """Configure the main window"""
         self.root.title("🎯 Enhanced Focus Timer")
-        self.root.resizable(False, False)
+        self.root.resizable(True, True)  # Enable resizing
+
+        # Set minimum window size to prevent it from becoming too small
+        # Further reduced minimum width for very compact windows
+        self.root.minsize(250, 450)
 
         # Configure grid weights for proper expansion
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
 
-        # Center window on screen
-        self.root.update_idletasks()
-        x = (self.root.winfo_screenwidth() // 2) - (480 // 2)
-        y = (self.root.winfo_screenheight() // 2) - (735 // 2)
-        self.root.geometry(f"480x680+{x}+{y}")
+        # Load saved window dimensions or use defaults
+        self.load_window_dimensions()
+
+        # Bind resize event to adjust fonts
+        self.root.bind("<Configure>", self.on_window_resize)
 
         # Handle window close
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
+    def load_window_dimensions(self):
+        """Load saved window dimensions or use defaults"""
+        try:
+            # Try to load saved dimensions from config
+            saved_geometry = self.config.get("window_geometry", None)
+
+            if saved_geometry:
+                # Parse saved geometry (format: "widthxheight+x+y")
+                self.root.geometry(saved_geometry)
+            else:
+                # Use default centered position
+                self.center_window_default()
+
+        except Exception as e:
+            # Fall back to default if loading fails
+            self.center_window_default()
+
+    def center_window_default(self):
+        """Center window with default dimensions"""
+        # Default size optimized for compact usage
+        default_width = 420
+        default_height = 600
+
+        self.root.update_idletasks()
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+
+        x = (screen_width - default_width) // 2
+        y = (screen_height - default_height) // 2
+
+        self.root.geometry(f"{default_width}x{default_height}+{x}+{y}")
+
+    def save_window_dimensions(self):
+        """Save current window dimensions"""
+        try:
+            # Get current window geometry
+            geometry = self.root.geometry()
+            # Save to config
+            self.config.set("window_geometry", geometry)
+            self.config.save_config()
+        except Exception as e:
+            # Silently ignore save errors
+            pass
+
+    def calculate_font_sizes(self, window_width):
+        """Calculate font sizes based on window width"""
+        # Base sizes for 420px width (new more compact default)
+        base_width = 420
+        ratio = window_width / base_width
+
+        # Scale fonts with more aggressive scaling for very small windows
+        # Title font: scale from 18 down to 10 for very small windows
+        title_size = max(10, min(22, int(18 * ratio)))
+
+        # Time font: scale from 36 down to 18 for very small windows
+        time_size = max(18, min(42, int(36 * ratio)))
+
+        # Normal text: scale from 9 down to 7
+        normal_size = max(7, min(11, int(9 * ratio)))
+
+        # Small text: scale from 7 down to 6
+        small_size = max(6, min(9, int(7 * ratio)))
+
+        # Button text: scale from 8 down to 6
+        button_size = max(6, min(10, int(8 * ratio)))
+
+        return {
+            "title": title_size,
+            "time": time_size,
+            "normal": normal_size,
+            "small": small_size,
+            "button": button_size,
+        }
+
+    def on_window_resize(self, event):
+        """Handle window resize events to adjust font sizes"""
+        # Only respond to main window resize events
+        if event.widget == self.root:
+            window_width = self.root.winfo_width()
+            if window_width > 0:  # Ensure valid width
+                self.update_font_sizes(window_width)
+
+    def update_font_sizes(self, window_width):
+        """Update all font sizes based on window width"""
+        sizes = self.calculate_font_sizes(window_width)
+
+        try:
+            # Update title font
+            self.title_label.configure(font=("Arial", sizes["title"], "bold"))
+
+            # Update time display font
+            self.time_label.configure(font=("Courier New", sizes["time"], "bold"))
+
+            # Update status label fonts
+            if hasattr(self, "music_status_label"):
+                self.music_status_label.configure(font=("Arial", sizes["small"]))
+            if hasattr(self, "session_count_label"):
+                self.session_count_label.configure(font=("Arial", sizes["small"]))
+
+            # Update task-related fonts if they exist
+            if hasattr(self, "task_stats_label"):
+                self.task_stats_label.configure(font=("Arial", sizes["small"]))
+            if hasattr(self, "task_entry"):
+                self.task_entry.configure(font=("Arial", sizes["normal"]))
+
+            # Update main frame padding for very small windows
+            if window_width < 300:
+                self.main_frame.configure(padding="4")
+            elif window_width < 350:
+                self.main_frame.configure(padding="6")
+            else:
+                self.main_frame.configure(padding="8")
+
+        except Exception as e:
+            # Silently handle any font update errors to prevent crashes
+            pass
+
     def create_widgets(self):
         """Create and layout GUI widgets"""
+        # Calculate initial font sizes based on new compact default
+        initial_sizes = self.calculate_font_sizes(420)  # New compact default width
+
         # Main frame
         self.main_frame = ttk.Frame(self.root, padding="8")
         self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        # Configure main frame grid weights for equal distribution
+        # Configure main frame grid weights for proper scaling
         self.main_frame.grid_columnconfigure(0, weight=1)
         self.main_frame.grid_columnconfigure(1, weight=1)
         self.main_frame.grid_columnconfigure(2, weight=1)
 
+        # Configure row weights - give more weight to the task section
+        self.main_frame.grid_rowconfigure(0, weight=0)  # Title (fixed)
+        self.main_frame.grid_rowconfigure(1, weight=0)  # Time display (fixed)
+        self.main_frame.grid_rowconfigure(2, weight=0)  # Progress bar (fixed)
+        self.main_frame.grid_rowconfigure(3, weight=0)  # Session buttons (fixed)
+        self.main_frame.grid_rowconfigure(4, weight=0)  # Control buttons (fixed)
+        self.main_frame.grid_rowconfigure(5, weight=0)  # Status (fixed)
+        self.main_frame.grid_rowconfigure(6, weight=1)  # Task section (expandable)
+        self.main_frame.grid_rowconfigure(7, weight=0)  # Additional buttons (fixed)
+
         # Title
         self.title_label = ttk.Label(
-            self.main_frame, text="🎯 FOCUS TIMER", font=("Arial", 18, "bold")
+            self.main_frame,
+            text="🎯 FOCUS TIMER",
+            font=("Arial", initial_sizes["title"], "bold"),
         )
         self.title_label.grid(row=0, column=0, columnspan=3, pady=(0, 12))
 
         # Time display
         self.time_label = ttk.Label(
-            self.main_frame, text="00:00", font=("Courier New", 42, "bold")
+            self.main_frame,
+            text="00:00",
+            font=("Courier New", initial_sizes["time"], "bold"),
         )
         self.time_label.grid(row=1, column=0, columnspan=3, pady=(0, 15))
 
         # Progress bar
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(
-            self.main_frame, variable=self.progress_var, maximum=100, length=300
+            self.main_frame, variable=self.progress_var, maximum=100
         )
         self.progress_bar.grid(
             row=2, column=0, columnspan=3, pady=(0, 20), sticky=(tk.W, tk.E), padx=8
@@ -107,42 +245,51 @@ class FocusGUI:
         self.session_frame = ttk.Frame(self.main_frame)
         self.session_frame.grid(row=3, column=0, columnspan=3, pady=(0, 15))
 
+        # Configure session frame for scaling
+        self.session_frame.grid_columnconfigure(0, weight=1)
+        self.session_frame.grid_columnconfigure(1, weight=1)
+
         # Session buttons
         self.work_button = ttk.Button(
             self.session_frame,
             text=f"Work Session ({self.config.get('work_mins')} min)",
             command=lambda: self.start_session(SessionType.WORK),
-            width=18,
         )
-        self.work_button.grid(row=0, column=0, padx=3, pady=3)
+        self.work_button.grid(row=0, column=0, padx=3, pady=3, sticky=(tk.W, tk.E))
 
         self.short_break_button = ttk.Button(
             self.session_frame,
             text=f"Short Break ({self.config.get('short_break_mins')} min)",
             command=lambda: self.start_session(SessionType.SHORT_BREAK),
-            width=18,
         )
-        self.short_break_button.grid(row=0, column=1, padx=3, pady=3)
+        self.short_break_button.grid(
+            row=0, column=1, padx=3, pady=3, sticky=(tk.W, tk.E)
+        )
 
         self.long_break_button = ttk.Button(
             self.session_frame,
             text=f"Long Break ({self.config.get('long_break_mins')} min)",
             command=lambda: self.start_session(SessionType.LONG_BREAK),
-            width=18,
         )
-        self.long_break_button.grid(row=1, column=0, padx=3, pady=3)
+        self.long_break_button.grid(
+            row=1, column=0, padx=3, pady=3, sticky=(tk.W, tk.E)
+        )
 
         self.custom_button = ttk.Button(
             self.session_frame,
             text="Custom Session",
             command=self.start_custom_session,
-            width=18,
         )
-        self.custom_button.grid(row=1, column=1, padx=3, pady=3)
+        self.custom_button.grid(row=1, column=1, padx=3, pady=3, sticky=(tk.W, tk.E))
 
         # Control buttons frame
         self.control_frame = ttk.Frame(self.main_frame)
         self.control_frame.grid(row=4, column=0, columnspan=3, pady=(0, 15))
+
+        # Configure control frame for scaling
+        self.control_frame.grid_columnconfigure(0, weight=1)
+        self.control_frame.grid_columnconfigure(1, weight=1)
+        self.control_frame.grid_columnconfigure(2, weight=1)
 
         # Control buttons
         self.pause_button = ttk.Button(
@@ -150,23 +297,21 @@ class FocusGUI:
             text="⏸ Pause",
             command=self.toggle_pause,
             state="disabled",
-            width=11,
         )
-        self.pause_button.grid(row=0, column=0, padx=3)
+        self.pause_button.grid(row=0, column=0, padx=3, sticky=(tk.W, tk.E))
 
         self.stop_button = ttk.Button(
             self.control_frame,
             text="⏹ Stop",
             command=self.stop_session,
             state="disabled",
-            width=11,
         )
-        self.stop_button.grid(row=0, column=1, padx=3)
+        self.stop_button.grid(row=0, column=1, padx=3, sticky=(tk.W, tk.E))
 
         self.music_button = ttk.Button(
-            self.control_frame, text="🎵 Music (M)", command=self.toggle_music, width=13
+            self.control_frame, text="🎵 Music", command=self.toggle_music
         )
-        self.music_button.grid(row=0, column=2, padx=3)
+        self.music_button.grid(row=0, column=2, padx=3, sticky=(tk.W, tk.E))
 
         # Status frame
         self.status_frame = ttk.Frame(self.main_frame)
@@ -174,12 +319,16 @@ class FocusGUI:
 
         # Status labels
         self.music_status_label = ttk.Label(
-            self.status_frame, text="♪ Music Ready", font=("Arial", 8)
+            self.status_frame,
+            text="♪ Music Ready",
+            font=("Arial", initial_sizes["small"]),
         )
         self.music_status_label.grid(row=0, column=0, padx=8)
 
         self.session_count_label = ttk.Label(
-            self.status_frame, text="Sessions: 0", font=("Arial", 8)
+            self.status_frame,
+            text="Sessions: 0",
+            font=("Arial", initial_sizes["small"]),
         )
         self.session_count_label.grid(row=0, column=1, padx=8)
 
@@ -187,30 +336,32 @@ class FocusGUI:
         self.additional_frame = ttk.Frame(self.main_frame)
         self.additional_frame.grid(row=7, column=0, columnspan=3)
 
+        # Configure additional frame for scaling
+        self.additional_frame.grid_columnconfigure(0, weight=1)
+        self.additional_frame.grid_columnconfigure(1, weight=1)
+        self.additional_frame.grid_columnconfigure(2, weight=1)
+
         # Additional buttons
         self.stats_button = ttk.Button(
             self.additional_frame,
             text="📊 Statistics",
             command=self.show_statistics,
-            width=13,
         )
-        self.stats_button.grid(row=0, column=0, padx=3, pady=3)
+        self.stats_button.grid(row=0, column=0, padx=3, pady=3, sticky=(tk.W, tk.E))
 
         self.settings_button = ttk.Button(
             self.additional_frame,
             text="⚙️ Settings",
             command=self.show_settings,
-            width=13,
         )
-        self.settings_button.grid(row=0, column=1, padx=3, pady=3)
+        self.settings_button.grid(row=0, column=1, padx=3, pady=3, sticky=(tk.W, tk.E))
 
         self.test_button = ttk.Button(
             self.additional_frame,
             text="🧪 Test Music",
             command=self.test_music,
-            width=13,
         )
-        self.test_button.grid(row=0, column=2, padx=3, pady=3)
+        self.test_button.grid(row=0, column=2, padx=3, pady=3, sticky=(tk.W, tk.E))
 
         # Task Management Section (Native Integration)
         self.create_task_section()
@@ -223,10 +374,8 @@ class FocusGUI:
             row=6, column=0, columnspan=3, pady=(2, 2), sticky=(tk.W, tk.E, tk.N, tk.S)
         )
         self.task_frame.grid_columnconfigure(0, weight=1)
-        # Set fixed height to prevent pushing elements down
-        self.task_frame.grid_rowconfigure(
-            2, weight=1, minsize=200
-        )  # Increased height for tasks
+        # Set expandable height to grow with window
+        self.task_frame.grid_rowconfigure(2, weight=1)  # Tasks display area expands
 
         # Task state tracking
         self.adding_task = False
@@ -259,7 +408,6 @@ class FocusGUI:
             self.add_task_frame,
             textvariable=self.task_entry_var,
             font=("Arial", 10),
-            width=40,  # Ensure adequate width
             bg="#ffffff",  # White background
             fg="#000000",  # Black text by default
             insertbackground="#000000",  # Black cursor
@@ -267,7 +415,7 @@ class FocusGUI:
         self.task_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
 
         # Placeholder functionality
-        self.placeholder_text = "+add (T)"
+        self.placeholder_text = "+add"
         self.placeholder_color = "#00cc00"  # Bright green for placeholder
         self.normal_color = "#000000"  # Black text for normal typing
         self.typing_color = "#006600"  # Dark green for active typing
@@ -328,7 +476,6 @@ class FocusGUI:
             self.tasks_container,
             bg="#2b2b2b",
             highlightthickness=0,
-            height=180,  # Increased height for more tasks
         )
         self.tasks_scrollbar = ttk.Scrollbar(
             self.tasks_container, orient="vertical", command=self.tasks_canvas.yview
@@ -806,6 +953,7 @@ class FocusGUI:
         self.task_window.title("📝 Task Manager")
         self.task_window.geometry("500x400")
         self.task_window.resizable(True, True)
+        self.task_window.minsize(400, 300)  # Set minimum size
 
         # Apply dark theme to the window
         self.task_window.configure(bg="#2b2b2b")
@@ -1364,10 +1512,12 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
             )
 
             if result:
+                self.save_window_dimensions()
                 self.session_manager.cleanup()
                 self.music.cleanup()
                 self.root.destroy()
         else:
+            self.save_window_dimensions()
             self.session_manager.cleanup()
             self.music.cleanup()
             self.root.destroy()

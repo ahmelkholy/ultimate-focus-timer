@@ -55,9 +55,20 @@ class Task:
 class TaskManager:
     """Manages daily tasks for the focus timer"""
 
-    def __init__(self, data_dir: str = "data"):
+    def __init__(self, data_dir: str = None):
         """Initialize task manager"""
-        self.data_dir = Path(data_dir)
+        if data_dir is None:
+            # Use a consistent absolute path for all sessions
+            # This ensures tasks persist across different working directories
+            import os
+
+            script_dir = Path(
+                __file__
+            ).parent.parent  # Go up from src/ to the project root
+            self.data_dir = script_dir / "data"
+        else:
+            self.data_dir = Path(data_dir)
+
         self.data_dir.mkdir(exist_ok=True)
         self.tasks_file = self.data_dir / "daily_tasks.json"
         self.tasks: Dict[str, List[Task]] = {}
