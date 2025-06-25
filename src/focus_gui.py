@@ -149,13 +149,45 @@ class FocusGUI:
             "button": button_size,
         }
 
+    def calculate_ui_scaling(self, window_width):
+        """Calculate scaling factors for all UI elements based on window width"""
+        # Base dimensions for 420px width (compact default)
+        base_width = 420
+        ratio = window_width / base_width
+
+        # More aggressive scaling for very small windows
+        ratio = max(0.6, min(1.5, ratio))  # Limit scaling between 60% and 150%
+
+        return {
+            # Padding and spacing
+            "main_padding": max(4, int(8 * ratio)),
+            "task_padding": max(2, int(4 * ratio)),
+            "button_padx": max(1, int(3 * ratio)),
+            "button_pady": max(1, int(3 * ratio)),
+            "frame_pady": max(2, int(8 * ratio)),
+            "small_pady": max(1, int(2 * ratio)),
+            # Widget sizes
+            "button_width": max(8, int(15 * ratio)),
+            "small_button_width": max(2, int(3 * ratio)),
+            "spinbox_width": max(2, int(3 * ratio)),
+            "entry_height": max(1, int(1 * ratio)),
+            "progress_height": max(15, int(25 * ratio)),
+            # Canvas and container heights
+            "canvas_height": max(60, int(120 * ratio)),
+            "task_row_height": max(20, int(30 * ratio)),
+            # Border and spacing
+            "border_width": max(1, int(1 * ratio)),
+            "separator_height": max(1, int(2 * ratio)),
+        }
+
     def on_window_resize(self, event):
-        """Handle window resize events to adjust font sizes"""
+        """Handle window resize events to adjust font sizes and UI scaling"""
         # Only respond to main window resize events
         if event.widget == self.root:
             window_width = self.root.winfo_width()
             if window_width > 0:  # Ensure valid width
                 self.update_font_sizes(window_width)
+                self.update_ui_scaling(window_width)
 
     def update_font_sizes(self, window_width):
         """Update all font sizes based on window width"""
@@ -180,7 +212,7 @@ class FocusGUI:
             if hasattr(self, "task_entry"):
                 self.task_entry.configure(font=("Arial", sizes["normal"]))
 
-            # Update main frame padding for very small windows
+            # Update main frame padding for very small windows (legacy - will be handled by update_ui_scaling)
             if window_width < 300:
                 self.main_frame.configure(padding="4")
             elif window_width < 350:
@@ -192,13 +224,135 @@ class FocusGUI:
             # Silently handle any font update errors to prevent crashes
             pass
 
+    def update_ui_scaling(self, window_width):
+        """Update all UI element sizes and spacing based on window width"""
+        scaling = self.calculate_ui_scaling(window_width)
+
+        try:
+            # Update main frame padding
+            self.main_frame.configure(padding=str(scaling["main_padding"]))
+
+            # Update task frame padding if it exists
+            if hasattr(self, "task_frame"):
+                self.task_frame.configure(padding=str(scaling["task_padding"]))
+
+            # Update button spacing in session frame
+            if hasattr(self, "session_frame"):
+                for child in self.session_frame.winfo_children():
+                    if isinstance(child, ttk.Button):
+                        child.grid_configure(
+                            padx=scaling["button_padx"], pady=scaling["button_pady"]
+                        )
+
+            # Update control frame button spacing
+            if hasattr(self, "control_frame"):
+                for child in self.control_frame.winfo_children():
+                    if isinstance(child, ttk.Button):
+                        child.grid_configure(padx=scaling["button_padx"])
+
+            # Update additional frame button spacing
+            if hasattr(self, "additional_frame"):
+                for child in self.additional_frame.winfo_children():
+                    if isinstance(child, ttk.Button):
+                        child.grid_configure(
+                            padx=scaling["button_padx"], pady=scaling["button_pady"]
+                        )
+
+            # Update progress bar height and padding
+            if hasattr(self, "progress_bar"):
+                # For progressbar height, we need to use style configuration
+                style = ttk.Style()
+                style.configure(
+                    "Scaled.Horizontal.TProgressbar",
+                    thickness=scaling["progress_height"],
+                )
+                self.progress_bar.configure(style="Scaled.Horizontal.TProgressbar")
+
+                # Update progress bar grid padding
+                self.progress_bar.grid_configure(pady=(0, scaling["frame_pady"]))
+
+            # Update spinbox width in task entry
+            if hasattr(self, "pomodoro_spinbox"):
+                self.pomodoro_spinbox.configure(width=scaling["spinbox_width"])
+
+            # Update small button widths in task entry
+            if hasattr(self, "add_task_frame"):
+                for child in self.add_task_frame.winfo_children():
+                    if isinstance(child, ttk.Button):
+                        child.configure(width=scaling["small_button_width"])
+
+            # Update canvas height if it exists
+            if hasattr(self, "tasks_canvas"):
+                # Calculate dynamic height based on window size and available space
+                window_height = self.root.winfo_height()
+                # Reserve space for other elements (approximately 400px at default size)
+                reserved_space = int(400 * (window_width / 420))
+                available_height = max(
+                    scaling["canvas_height"], window_height - reserved_space
+                )
+                self.tasks_canvas.configure(height=available_height)
+
+            # Update title and time label padding
+            if hasattr(self, "title_label"):
+                self.title_label.grid_configure(pady=(0, scaling["frame_pady"]))
+            if hasattr(self, "time_label"):
+                self.time_label.grid_configure(pady=(0, scaling["frame_pady"]))
+
+            # Update progress bar padding
+            if hasattr(self, "progress_bar"):
+                self.progress_bar.grid_configure(
+                    pady=(0, scaling["frame_pady"]), padx=scaling["main_padding"]
+                )
+
+            # Update status frame spacing and labels
+            if hasattr(self, "status_frame"):
+                self.status_frame.grid_configure(pady=(0, scaling["frame_pady"]))
+                # Update status label spacing
+                if hasattr(self, "music_status_label"):
+                    self.music_status_label.grid_configure(padx=scaling["main_padding"])
+                if hasattr(self, "session_count_label"):
+                    self.session_count_label.grid_configure(
+                        padx=scaling["main_padding"]
+                    )
+
+            # Update task entry spacing if it exists
+            if hasattr(self, "task_entry"):
+                self.task_entry.grid_configure(padx=(0, scaling["button_padx"]))
+
+            # Update task frame spacing
+            if hasattr(self, "task_frame"):
+                self.task_frame.grid_configure(
+                    pady=(scaling["small_pady"], scaling["small_pady"])
+                )
+
+            # Update tasks container spacing
+            if hasattr(self, "tasks_container"):
+                self.tasks_container.grid_configure(pady=(scaling["frame_pady"], 0))
+
+            # Update frame spacing for session, control, and additional frames
+            if hasattr(self, "session_frame"):
+                self.session_frame.grid_configure(pady=(0, scaling["frame_pady"]))
+            if hasattr(self, "control_frame"):
+                self.control_frame.grid_configure(pady=(0, scaling["frame_pady"]))
+
+            # Refresh task display to apply scaling to task rows
+            if hasattr(self, "update_task_display"):
+                self.update_task_display()
+
+        except Exception as e:
+            # Silently handle any UI scaling errors to prevent crashes
+            pass
+
     def create_widgets(self):
         """Create and layout GUI widgets"""
-        # Calculate initial font sizes based on new compact default
+        # Calculate initial font sizes and UI scaling based on new compact default
         initial_sizes = self.calculate_font_sizes(420)  # New compact default width
+        initial_scaling = self.calculate_ui_scaling(420)  # Calculate initial UI scaling
 
-        # Main frame
-        self.main_frame = ttk.Frame(self.root, padding="8")
+        # Main frame with dynamic padding
+        self.main_frame = ttk.Frame(
+            self.root, padding=str(initial_scaling["main_padding"])
+        )
         self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         # Configure main frame grid weights for proper scaling
@@ -222,7 +376,9 @@ class FocusGUI:
             text="🎯 FOCUS TIMER",
             font=("Arial", initial_sizes["title"], "bold"),
         )
-        self.title_label.grid(row=0, column=0, columnspan=3, pady=(0, 12))
+        self.title_label.grid(
+            row=0, column=0, columnspan=3, pady=(0, initial_scaling["frame_pady"])
+        )
 
         # Time display
         self.time_label = ttk.Label(
@@ -230,32 +386,55 @@ class FocusGUI:
             text="00:00",
             font=("Courier New", initial_sizes["time"], "bold"),
         )
-        self.time_label.grid(row=1, column=0, columnspan=3, pady=(0, 15))
+        self.time_label.grid(
+            row=1, column=0, columnspan=3, pady=(0, initial_scaling["frame_pady"])
+        )
 
-        # Progress bar
+        # Progress bar with dynamic height
         self.progress_var = tk.DoubleVar()
+        style = ttk.Style()
+        style.configure(
+            "Scaled.Horizontal.TProgressbar",
+            thickness=initial_scaling["progress_height"],
+        )
         self.progress_bar = ttk.Progressbar(
-            self.main_frame, variable=self.progress_var, maximum=100
+            self.main_frame,
+            variable=self.progress_var,
+            maximum=100,
+            style="Scaled.Horizontal.TProgressbar",
         )
         self.progress_bar.grid(
-            row=2, column=0, columnspan=3, pady=(0, 20), sticky=(tk.W, tk.E), padx=8
+            row=2,
+            column=0,
+            columnspan=3,
+            pady=(0, initial_scaling["frame_pady"]),
+            sticky=(tk.W, tk.E),
+            padx=initial_scaling["main_padding"],
         )
 
         # Session buttons frame
         self.session_frame = ttk.Frame(self.main_frame)
-        self.session_frame.grid(row=3, column=0, columnspan=3, pady=(0, 15))
+        self.session_frame.grid(
+            row=3, column=0, columnspan=3, pady=(0, initial_scaling["frame_pady"])
+        )
 
         # Configure session frame for scaling
         self.session_frame.grid_columnconfigure(0, weight=1)
         self.session_frame.grid_columnconfigure(1, weight=1)
 
-        # Session buttons
+        # Session buttons with dynamic scaling
         self.work_button = ttk.Button(
             self.session_frame,
             text=f"Work Session ({self.config.get('work_mins')} min)",
             command=lambda: self.start_session(SessionType.WORK),
         )
-        self.work_button.grid(row=0, column=0, padx=3, pady=3, sticky=(tk.W, tk.E))
+        self.work_button.grid(
+            row=0,
+            column=0,
+            padx=initial_scaling["button_padx"],
+            pady=initial_scaling["button_pady"],
+            sticky=(tk.W, tk.E),
+        )
 
         self.short_break_button = ttk.Button(
             self.session_frame,
@@ -263,7 +442,11 @@ class FocusGUI:
             command=lambda: self.start_session(SessionType.SHORT_BREAK),
         )
         self.short_break_button.grid(
-            row=0, column=1, padx=3, pady=3, sticky=(tk.W, tk.E)
+            row=0,
+            column=1,
+            padx=initial_scaling["button_padx"],
+            pady=initial_scaling["button_pady"],
+            sticky=(tk.W, tk.E),
         )
 
         self.long_break_button = ttk.Button(
@@ -272,7 +455,11 @@ class FocusGUI:
             command=lambda: self.start_session(SessionType.LONG_BREAK),
         )
         self.long_break_button.grid(
-            row=1, column=0, padx=3, pady=3, sticky=(tk.W, tk.E)
+            row=1,
+            column=0,
+            padx=initial_scaling["button_padx"],
+            pady=initial_scaling["button_pady"],
+            sticky=(tk.W, tk.E),
         )
 
         self.custom_button = ttk.Button(
@@ -280,25 +467,35 @@ class FocusGUI:
             text="Custom Session",
             command=self.start_custom_session,
         )
-        self.custom_button.grid(row=1, column=1, padx=3, pady=3, sticky=(tk.W, tk.E))
+        self.custom_button.grid(
+            row=1,
+            column=1,
+            padx=initial_scaling["button_padx"],
+            pady=initial_scaling["button_pady"],
+            sticky=(tk.W, tk.E),
+        )
 
         # Control buttons frame
         self.control_frame = ttk.Frame(self.main_frame)
-        self.control_frame.grid(row=4, column=0, columnspan=3, pady=(0, 15))
+        self.control_frame.grid(
+            row=4, column=0, columnspan=3, pady=(0, initial_scaling["frame_pady"])
+        )
 
         # Configure control frame for scaling
         self.control_frame.grid_columnconfigure(0, weight=1)
         self.control_frame.grid_columnconfigure(1, weight=1)
         self.control_frame.grid_columnconfigure(2, weight=1)
 
-        # Control buttons
+        # Control buttons with dynamic spacing
         self.pause_button = ttk.Button(
             self.control_frame,
             text="⏸ Pause",
             command=self.toggle_pause,
             state="disabled",
         )
-        self.pause_button.grid(row=0, column=0, padx=3, sticky=(tk.W, tk.E))
+        self.pause_button.grid(
+            row=0, column=0, padx=initial_scaling["button_padx"], sticky=(tk.W, tk.E)
+        )
 
         self.stop_button = ttk.Button(
             self.control_frame,
@@ -306,31 +503,41 @@ class FocusGUI:
             command=self.stop_session,
             state="disabled",
         )
-        self.stop_button.grid(row=0, column=1, padx=3, sticky=(tk.W, tk.E))
+        self.stop_button.grid(
+            row=0, column=1, padx=initial_scaling["button_padx"], sticky=(tk.W, tk.E)
+        )
 
         self.music_button = ttk.Button(
             self.control_frame, text="🎵 Music", command=self.toggle_music
         )
-        self.music_button.grid(row=0, column=2, padx=3, sticky=(tk.W, tk.E))
+        self.music_button.grid(
+            row=0, column=2, padx=initial_scaling["button_padx"], sticky=(tk.W, tk.E)
+        )
 
         # Status frame
         self.status_frame = ttk.Frame(self.main_frame)
-        self.status_frame.grid(row=5, column=0, columnspan=3, pady=(0, 8))
+        self.status_frame.grid(
+            row=5, column=0, columnspan=3, pady=(0, initial_scaling["frame_pady"])
+        )
 
-        # Status labels
+        # Status labels with dynamic spacing
         self.music_status_label = ttk.Label(
             self.status_frame,
             text="♪ Music Ready",
             font=("Arial", initial_sizes["small"]),
         )
-        self.music_status_label.grid(row=0, column=0, padx=8)
+        self.music_status_label.grid(
+            row=0, column=0, padx=initial_scaling["main_padding"]
+        )
 
         self.session_count_label = ttk.Label(
             self.status_frame,
             text="Sessions: 0",
             font=("Arial", initial_sizes["small"]),
         )
-        self.session_count_label.grid(row=0, column=1, padx=8)
+        self.session_count_label.grid(
+            row=0, column=1, padx=initial_scaling["main_padding"]
+        )
 
         # Additional buttons frame
         self.additional_frame = ttk.Frame(self.main_frame)
@@ -341,37 +548,65 @@ class FocusGUI:
         self.additional_frame.grid_columnconfigure(1, weight=1)
         self.additional_frame.grid_columnconfigure(2, weight=1)
 
-        # Additional buttons
+        # Additional buttons with dynamic spacing
         self.stats_button = ttk.Button(
             self.additional_frame,
             text="📊 Statistics",
             command=self.show_statistics,
         )
-        self.stats_button.grid(row=0, column=0, padx=3, pady=3, sticky=(tk.W, tk.E))
+        self.stats_button.grid(
+            row=0,
+            column=0,
+            padx=initial_scaling["button_padx"],
+            pady=initial_scaling["button_pady"],
+            sticky=(tk.W, tk.E),
+        )
 
         self.settings_button = ttk.Button(
             self.additional_frame,
             text="⚙️ Settings",
             command=self.show_settings,
         )
-        self.settings_button.grid(row=0, column=1, padx=3, pady=3, sticky=(tk.W, tk.E))
+        self.settings_button.grid(
+            row=0,
+            column=1,
+            padx=initial_scaling["button_padx"],
+            pady=initial_scaling["button_pady"],
+            sticky=(tk.W, tk.E),
+        )
 
         self.test_button = ttk.Button(
             self.additional_frame,
             text="🧪 Test Music",
             command=self.test_music,
         )
-        self.test_button.grid(row=0, column=2, padx=3, pady=3, sticky=(tk.W, tk.E))
+        self.test_button.grid(
+            row=0,
+            column=2,
+            padx=initial_scaling["button_padx"],
+            pady=initial_scaling["button_pady"],
+            sticky=(tk.W, tk.E),
+        )
 
         # Task Management Section (Native Integration)
         self.create_task_section()
 
     def create_task_section(self):
         """Create native task management section in the main GUI"""
-        # Task management frame (minimal, no label frame)
-        self.task_frame = ttk.Frame(self.main_frame, padding="4")
+        # Get current scaling for dynamic sizing
+        current_width = self.root.winfo_width() or 420  # Use 420 as fallback
+        scaling = self.calculate_ui_scaling(current_width)
+
+        # Task management frame (minimal, no label frame) with dynamic padding
+        self.task_frame = ttk.Frame(
+            self.main_frame, padding=str(scaling["task_padding"])
+        )
         self.task_frame.grid(
-            row=6, column=0, columnspan=3, pady=(2, 2), sticky=(tk.W, tk.E, tk.N, tk.S)
+            row=6,
+            column=0,
+            columnspan=3,
+            pady=(scaling["small_pady"], scaling["small_pady"]),
+            sticky=(tk.W, tk.E, tk.N, tk.S),
         )
         self.task_frame.grid_columnconfigure(0, weight=1)
         # Set expandable height to grow with window
@@ -383,7 +618,9 @@ class FocusGUI:
 
         # Minimal header with just add button and compact stats
         header_frame = ttk.Frame(self.task_frame)
-        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 2))
+        header_frame.grid(
+            row=0, column=0, sticky=(tk.W, tk.E), pady=(0, scaling["small_pady"])
+        )
         header_frame.grid_columnconfigure(0, weight=1)
 
         # Compact task stats (minimal)
@@ -399,7 +636,12 @@ class FocusGUI:
         # Add task entry frame (overlay style, doesn't expand layout)
         self.add_task_frame = ttk.Frame(self.task_frame)
         # Position as overlay in the tasks area instead of separate row
-        self.add_task_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(2, 4))
+        self.add_task_frame.grid(
+            row=1,
+            column=0,
+            sticky=(tk.W, tk.E),
+            pady=(scaling["small_pady"], scaling["task_padding"]),
+        )
         self.add_task_frame.grid_columnconfigure(0, weight=1)
 
         # Task entry widgets (wider entry field with better color control)
@@ -412,7 +654,9 @@ class FocusGUI:
             fg="#000000",  # Black text by default
             insertbackground="#000000",  # Black cursor
         )
-        self.task_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
+        self.task_entry.grid(
+            row=0, column=0, sticky=(tk.W, tk.E), padx=(0, scaling["button_padx"])
+        )
 
         # Placeholder functionality
         self.placeholder_text = "+add"
@@ -428,54 +672,60 @@ class FocusGUI:
         self.task_entry.bind("<Return>", lambda e: self.save_new_task())
         self.task_entry.bind("<Escape>", lambda e: self.cancel_add_task())
 
-        # Compact pomodoro count
+        # Compact pomodoro count with dynamic spacing
         self.pomodoro_var = tk.IntVar(value=1)
         pomodoro_label = ttk.Label(self.add_task_frame, text="🍅")
-        pomodoro_label.grid(row=0, column=1, padx=(5, 2))
+        pomodoro_label.grid(
+            row=0, column=1, padx=(scaling["button_padx"], scaling["small_pady"])
+        )
 
         self.pomodoro_spinbox = ttk.Spinbox(
             self.add_task_frame,
             from_=1,
             to=10,
-            width=3,
+            width=scaling["spinbox_width"],
             textvariable=self.pomodoro_var,
         )
-        self.pomodoro_spinbox.grid(row=0, column=2, padx=(0, 5))
+        self.pomodoro_spinbox.grid(row=0, column=2, padx=(0, scaling["button_padx"]))
 
-        # Compact save/cancel buttons
+        # Compact save/cancel buttons with dynamic width and spacing
         save_button = ttk.Button(
             self.add_task_frame,
             text="✓",
             command=self.save_new_task,
-            width=3,
+            width=scaling["small_button_width"],
         )
-        save_button.grid(row=0, column=3, padx=(0, 2))
+        save_button.grid(row=0, column=3, padx=(0, scaling["small_pady"]))
 
         cancel_button = ttk.Button(
             self.add_task_frame,
             text="✗",
             command=self.cancel_add_task,
-            width=3,
+            width=scaling["small_button_width"],
         )
         cancel_button.grid(row=0, column=4)
 
         # Always show add task widgets and initialize with placeholder
         self.show_placeholder()
 
-        # Tasks display area with scrolling capability
+        # Tasks display area with scrolling capability - dynamic spacing
         # Create a frame that can scroll if needed
         self.tasks_container = ttk.Frame(self.task_frame)
         self.tasks_container.grid(
-            row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(8, 0)
+            row=2,
+            column=0,
+            sticky=(tk.W, tk.E, tk.N, tk.S),
+            pady=(scaling["frame_pady"], 0),
         )
         self.tasks_container.grid_columnconfigure(0, weight=1)
         self.tasks_container.grid_rowconfigure(0, weight=1)
 
-        # Canvas for scrolling
+        # Canvas for scrolling with dynamic height
         self.tasks_canvas = tk.Canvas(
             self.tasks_container,
             bg="#2b2b2b",
             highlightthickness=0,
+            height=scaling["canvas_height"],  # Dynamic canvas height
         )
         self.tasks_scrollbar = ttk.Scrollbar(
             self.tasks_container, orient="vertical", command=self.tasks_canvas.yview
@@ -620,9 +870,19 @@ class FocusGUI:
 
     def create_task_row(self, parent, task, row):
         """Create a compact task row in the display"""
-        # Task row frame (more compact)
+        # Get current scaling for dynamic sizing
+        current_width = self.root.winfo_width() or 420
+        scaling = self.calculate_ui_scaling(current_width)
+
+        # Task row frame (more compact) with dynamic spacing
         task_row = ttk.Frame(parent)
-        task_row.grid(row=row, column=0, sticky=(tk.W, tk.E), pady=1, padx=2)
+        task_row.grid(
+            row=row,
+            column=0,
+            sticky=(tk.W, tk.E),
+            pady=scaling["small_pady"],
+            padx=scaling["small_pady"],
+        )
         task_row.grid_columnconfigure(1, weight=1)  # Title column expands
 
         # Completion checkbox
@@ -632,7 +892,7 @@ class FocusGUI:
             variable=completed_var,
             command=lambda: self.toggle_task(task, completed_var),
         )
-        check.grid(row=0, column=0, padx=(0, 5))
+        check.grid(row=0, column=0, padx=(0, scaling["button_padx"]))
 
         # Task title (more compact)
         title_text = task.title
@@ -650,7 +910,9 @@ class FocusGUI:
             bg="#2b2b2b",
             anchor="w",
         )
-        title_label.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 3))
+        title_label.grid(
+            row=0, column=1, sticky=(tk.W, tk.E), padx=(0, scaling["small_pady"])
+        )
 
         # Compact pomodoro progress
         pomodoro_text = f"{task.pomodoros_completed}/{task.pomodoros_planned}"
@@ -663,9 +925,11 @@ class FocusGUI:
             fg=pomodoro_color,
             bg="#2b2b2b",
         )
-        pomodoro_label.grid(row=0, column=2, padx=(3, 3))
+        pomodoro_label.grid(
+            row=0, column=2, padx=(scaling["small_pady"], scaling["small_pady"])
+        )
 
-        # Compact pomodoro buttons (for incomplete tasks)
+        # Compact pomodoro buttons (for incomplete tasks) with dynamic width
         if not task.completed:
             # Decrease pomodoro button (only if task has completed pomodoros)
             if task.pomodoros_completed > 0:
@@ -673,18 +937,26 @@ class FocusGUI:
                     task_row,
                     text="-",
                     command=lambda: self.remove_pomodoro_from_task(task),
-                    width=2,
+                    width=scaling["small_button_width"],
                 )
-                decrease_pomodoro_btn.grid(row=0, column=3, padx=(3, 1))
+                decrease_pomodoro_btn.grid(
+                    row=0,
+                    column=3,
+                    padx=(scaling["small_pady"], scaling["small_pady"] // 2),
+                )
 
                 # Add pomodoro button
                 add_pomodoro_btn = ttk.Button(
                     task_row,
                     text="+",
                     command=lambda: self.add_pomodoro_to_task(task),
-                    width=2,
+                    width=scaling["small_button_width"],
                 )
-                add_pomodoro_btn.grid(row=0, column=4, padx=(1, 3))
+                add_pomodoro_btn.grid(
+                    row=0,
+                    column=4,
+                    padx=(scaling["small_pady"] // 2, scaling["small_pady"]),
+                )
                 delete_column = 5
             else:
                 # Only add button when no completed pomodoros
@@ -692,21 +964,23 @@ class FocusGUI:
                     task_row,
                     text="+",
                     command=lambda: self.add_pomodoro_to_task(task),
-                    width=2,
+                    width=scaling["small_button_width"],
                 )
-                add_pomodoro_btn.grid(row=0, column=3, padx=(3, 3))
+                add_pomodoro_btn.grid(
+                    row=0, column=3, padx=(scaling["small_pady"], scaling["small_pady"])
+                )
                 delete_column = 4
         else:
             delete_column = 3
 
-        # Compact delete button
+        # Compact delete button with dynamic width
         delete_btn = ttk.Button(
             task_row,
             text="×",
             command=lambda: self.delete_task(task.id),
-            width=2,
+            width=scaling["small_button_width"],
         )
-        delete_btn.grid(row=0, column=delete_column, padx=(3, 0))
+        delete_btn.grid(row=0, column=delete_column, padx=(scaling["small_pady"], 0))
 
     def toggle_task(self, task, var):
         """Toggle task completion"""
