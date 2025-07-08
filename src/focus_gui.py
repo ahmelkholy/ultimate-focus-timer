@@ -1091,7 +1091,7 @@ class FocusGUI:
         # Attractive message with icon
         message_label = tk.Label(
             empty_container,
-            text="🎯 Add your first task to get started!",
+            text="🎯 Add first task!",
             font=("Arial", 12, "bold"),
             fg="#00ff00",
             bg="#2b2b2b",
@@ -1102,7 +1102,7 @@ class FocusGUI:
         # Instruction text
         instruction_label = tk.Label(
             empty_container,
-            text="Press 'T' key to add your first task",
+            text="'T' key to add task",
             font=("Arial", 10, "italic"),
             fg="#888888",
             bg="#2b2b2b",

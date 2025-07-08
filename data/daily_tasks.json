@@ -121,13 +121,149 @@
   ],
   "2025-06-25": [
     {
-      "id": "2025-06-25_1",
-      "title": "PHD",
+      "id": "2025-06-25_2",
+      "title": "PhD",
       "description": "",
       "completed": false,
       "pomodoros_planned": 1,
       "pomodoros_completed": 0,
-      "created_at": "2025-06-25T13:27:35.606848",
+      "created_at": "2025-06-25T21:52:00.172524",
+      "completed_at": null
+    },
+    {
+      "id": "2025-06-25_2",
+      "title": "Sacha",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2025-06-25T13:49:43.681644",
+      "completed_at": null
+    }
+  ],
+  "2025-06-26": [
+    {
+      "id": "2025-06-26_1",
+      "title": "PHD",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 4,
+      "created_at": "2025-06-26T01:12:36.833663",
+      "completed_at": null
+    }
+  ],
+  "2025-06-27": [
+    {
+      "id": "2025-06-27_1",
+      "title": "PHd",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2025-06-27T00:22:34.408833",
+      "completed_at": null
+    }
+  ],
+  "2025-06-28": [
+    {
+      "id": "2025-06-28_1",
+      "title": "Mahmoud",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 1,
+      "created_at": "2025-06-28T17:57:37.225066",
+      "completed_at": null
+    }
+  ],
+  "2025-06-29": [
+    {
+      "id": "2025-06-29_1",
+      "title": "phd",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2025-06-29T21:42:09.459839",
+      "completed_at": null
+    }
+  ],
+  "2025-06-30": [
+    {
+      "id": "2025-06-30_1",
+      "title": "PhD",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 3,
+      "created_at": "2025-06-30T12:47:46.308141",
+      "completed_at": null
+    }
+  ],
+  "2025-07-01": [
+    {
+      "id": "2025-07-01_1",
+      "title": "EV",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 1,
+      "created_at": "2025-07-01T16:45:00.494515",
+      "completed_at": null
+    }
+  ],
+  "2025-07-07": [
+    {
+      "id": "2025-07-07_3",
+      "title": "lahlah",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2025-07-07T14:38:07.449281",
+      "completed_at": null
+    },
+    {
+      "id": "2025-07-07_2",
+      "title": "zezo",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2025-07-07T14:37:42.661109",
+      "completed_at": null
+    },
+    {
+      "id": "2025-07-07_1",
+      "title": "PhD",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 3,
+      "created_at": "2025-07-07T14:17:47.889300",
+      "completed_at": null
+    }
+  ],
+  "2025-07-08": [
+    {
+      "id": "2025-07-08_2",
+      "title": "illyase",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2025-07-08T13:33:18.958984",
+      "completed_at": null
+    },
+    {
+      "id": "2025-07-08_1",
+      "title": "phd",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2025-07-08T13:33:09.733909",
       "completed_at": null
     }
   ]
