@@ -5,7 +5,6 @@ Handles desktop notifications across Windows, macOS, and Linux
 """
 
 import platform
-import sys
 from typing import Optional
 
 try:
@@ -39,8 +38,6 @@ class NotificationManager:
 
         # Determine best notification method for platform
         self.notification_method = self._get_best_notification_method()
-
-        print(f"📢 Notification method: {self.notification_method}")
 
     def _get_best_notification_method(self) -> str:
         """Determine the best notification method for current platform"""

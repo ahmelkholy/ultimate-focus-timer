@@ -123,7 +123,6 @@ class ConfigManager:
             # Cross-platform path handling
             self._fix_paths()
 
-            print(f"✓ Configuration loaded from {self.config_path}")
             return self.config
 
         except yaml.YAMLError as e:

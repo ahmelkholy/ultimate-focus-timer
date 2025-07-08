@@ -1798,7 +1798,6 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
 
     def run(self):
         """Start the GUI application"""
-        print("🎯 Starting Enhanced Focus Timer GUI...")
         self.root.mainloop()
 
 

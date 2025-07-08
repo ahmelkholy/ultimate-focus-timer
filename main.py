@@ -11,7 +11,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict
 
 # Add current directory and src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -159,7 +159,7 @@ class UltimateFocusLauncher:
         import os
 
         # Check for display environment variables
-        if os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY'):
+        if os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"):
             return True
 
         # On Windows, GUI is usually available
@@ -169,16 +169,18 @@ class UltimateFocusLauncher:
         # On macOS, check if we're in a terminal app
         if platform.system() == "Darwin":
             # Basic check - if we're not in SSH, display is likely available
-            return not os.environ.get('SSH_CLIENT') and not os.environ.get('SSH_TTY')
+            return not os.environ.get("SSH_CLIENT") and not os.environ.get("SSH_TTY")
 
         return False
 
-    def launch_gui(self, show_splash: bool = True):
+    def launch_gui(self, show_splash: bool = False):
         """Launch the GUI version as a separate process"""
         # Check if GUI display is available
         if not self._check_display_available():
             print("❌ No GUI display available")
-            print("💡 You appear to be running in a headless environment (like SSH, Docker, or Codespaces)")
+            print(
+                "💡 You appear to be running in a headless environment (like SSH, Docker, or Codespaces)"
+            )
             print("🖥️  GUI mode requires a graphical display")
             print("📋 Available alternatives:")
             print("   • Console mode: python main.py --console")
@@ -237,8 +239,6 @@ class UltimateFocusLauncher:
 
             # Check if process is still running
             if process.poll() is None:
-                print("✅ GUI launched successfully as separate process")
-                print("💡 Terminal is now available for other commands")
                 return True
             else:
                 returncode = process.returncode
@@ -372,7 +372,6 @@ class UltimateFocusLauncher:
                 print(f"\r{frame}", end="", flush=True)
                 time.sleep(0.3)
 
-        print("\r🎯 Focus Timer Ready!     ")
         time.sleep(0.5)
         print()
 

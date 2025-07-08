@@ -145,7 +145,6 @@ class MusicController:
         if volume is None:
             volume = self.config.get("classical_music_volume", 30)
 
-        print(f"🎵 Starting classical music...")
         if playlist_path:
             print(
                 f"   Playlist: {Path(playlist_path).name if Path(playlist_path).exists() else playlist_path}"
@@ -190,7 +189,6 @@ class MusicController:
             self.current_playlist = playlist_path
             self.is_playing = True
 
-            print(f"✅ Classical music started (PID: {self.mpv_process.pid})")
             return True
 
         except Exception as e:
@@ -215,7 +213,6 @@ class MusicController:
                 except subprocess.TimeoutExpired:
                     self.mpv_process.kill()
 
-                print("🔇 Classical music stopped")
                 stopped = True
             except Exception as e:
                 print(f"⚠️  Error stopping music process: {e}")
@@ -235,7 +232,6 @@ class MusicController:
 
                 self.pid_file.unlink()
                 if not stopped:
-                    print("🔇 Classical music stopped")
                     stopped = True
 
             except (FileNotFoundError, ProcessLookupError, ValueError):
@@ -247,9 +243,6 @@ class MusicController:
         self.mpv_process = None
         self.current_playlist = None
         self.is_playing = False
-
-        if not stopped:
-            print("ℹ️  No music was playing")
 
         return True
 
