@@ -174,7 +174,6 @@ class ConfigManager:
         try:
             with open(self.config_path, "w", encoding="utf-8") as f:
                 yaml.dump(self.config, f, default_flow_style=False, sort_keys=True)
-            print(f"✓ Configuration saved to {self.config_path}")
             return True
         except Exception as e:
             print(f"Error saving config: {e}")

@@ -191,7 +191,6 @@ class UltimateFocusLauncher:
         if show_splash:
             self._show_splash()
 
-        print("🎯 Launching GUI Mode...")
         try:
             # Get the current Python executable and script paths
             python_exe = sys.executable

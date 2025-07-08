@@ -299,9 +299,6 @@ if __name__ == "__main__":
     config = ConfigManager()
     notifications = NotificationManager(config)
 
-    print("Testing Notification Manager...")
-    print("=" * 50)
-
     # Test basic functionality
     notifications.test_notifications()
 
@@ -312,9 +309,7 @@ if __name__ == "__main__":
     if test_notifications == "y":
         import time
 
-        print("\nTesting session notifications...")
         notifications.show_session_start("work", 25)
-        time.sleep(2)
 
         notifications.show_early_warning("work", 2)
         time.sleep(2)
@@ -323,5 +318,3 @@ if __name__ == "__main__":
         time.sleep(2)
 
         notifications.show_motivational_message("You're doing great!")
-
-    print("\nNotification manager test complete.")
