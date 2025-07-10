@@ -41,6 +41,7 @@ try:
     from music_controller import MusicController
     from notification_manager import NotificationManager
     from session_manager import SessionManager
+    from task_manager import TaskManager
 except ImportError as e:
     print(f"❌ Error importing modules: {e}")
     sys.exit(1)
@@ -64,6 +65,7 @@ class UltimateCLI:
         self.music_controller = MusicController(self.config_manager)
         self.notification_manager = NotificationManager()
         self.session_analyzer = SessionAnalyzer()
+        self.task_manager = TaskManager()
 
     def print(self, *args, **kwargs):
         """Enhanced print function that uses rich if available"""
@@ -577,6 +579,39 @@ For more information, visit the project documentation.
         else:
             print(help_text)
 
+    def show_tasks(self):
+        """Display today's tasks in a table."""
+        tasks = self.task_manager.get_today_tasks()
+        if not tasks:
+            self.print("[yellow]No tasks for today. Add one with --add-task.[/yellow]")
+            return
+
+        if self.use_rich:
+            table = Table(title="Today's Tasks", show_header=True, header_style="bold magenta")
+            table.add_column("ID", style="dim", width=4)
+            table.add_column("Task", style="cyan", no_wrap=True)
+            table.add_column("Status", width=12)
+            table.add_column("Pomodoros", justify="right")
+
+            for task in tasks:
+                status = "✅ Completed" if task.completed else "⏳ Pending"
+                pomodoros = f"{task.pomodoros_completed}/{task.pomodoros_planned}"
+                table.add_row(str(task.id.split('_')[-1]), task.title, status, pomodoros)
+            self.console.print(table)
+        else:
+            print("\nToday's Tasks:")
+            for task in tasks:
+                status = "Completed" if task.completed else "Pending"
+                print(f"- {task.title} ({status})")
+
+    def add_task(self, title: str):
+        """Add a new task."""
+        if not title:
+            self.print("[red]Cannot add a task with an empty title.[/red]")
+            return
+        task = self.task_manager.add_task(title)
+        self.print(f"[green]✓ Added task:[/green] '{task.title}'")
+
 
 def main():
     """CLI entry point"""
@@ -601,6 +636,8 @@ def main():
     parser.add_argument(
         "--no-music", action="store_true", help="Disable music for this session"
     )
+    parser.add_argument("--tasks", action="store_true", help="Show today's tasks")
+    parser.add_argument("--add-task", type=str, metavar='TITLE', help="Add a new task")
 
     args = parser.parse_args()
 
@@ -618,6 +655,10 @@ def main():
             cli.run_focus_session(args.work, "work", not args.no_music)
         elif getattr(args, "break"):
             cli.run_focus_session(getattr(args, "break"), "break", not args.no_music)
+        elif args.tasks:
+            cli.show_tasks()
+        elif args.add_task:
+            cli.add_task(args.add_task)
         elif args.interactive:
             cli.interactive_mode()
         else:

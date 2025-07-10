@@ -182,6 +182,15 @@ class TaskManager:
             return True
         return False
 
+    def update_task_title(self, task_id: str, new_title: str) -> bool:
+        """Update the title of a task."""
+        task = self.get_task_by_id(task_id)
+        if task:
+            task.title = new_title
+            self.save_tasks()
+            return True
+        return False
+
     def get_incomplete_tasks(self) -> List[Task]:
         """Get all incomplete tasks for today"""
         return [task for task in self.get_today_tasks() if not task.completed]

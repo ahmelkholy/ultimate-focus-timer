@@ -21,7 +21,7 @@ classical_music_online_playlists:
 - https://www.youtube.com/watch?v=mdJU5ogrPMY
 classical_music_playlist_dir: C:\Users\ahm_e\mpv\PlayList
 classical_music_selected_playlist: C:\Users\ahm_e\mpv\PlayList\MixUnderGround.m3u
-classical_music_volume: 50
+classical_music_volume: 70
 color_scheme: forest
 compact_mode: false
 custom_css: ''
@@ -49,7 +49,7 @@ mpv_extra_args: --no-video --shuffle --loop-playlist
 notification_persistence: 5
 notification_priority: normal
 notify: true
-notify_early_warning: 2
+notify_early_warning: 1
 notify_sound: true
 pause_music_on_break: true
 post_break_cmd: ''
@@ -78,7 +78,7 @@ track_idle_time: true
 transparency: 0.95
 weekly_goals: 40
 weekly_reports: true
-window_geometry: 250x450+-456+97
+window_geometry: 251x755+-371+39
 work_end_cmd: scripts\classical_music.ps1 -Action stop
 work_mins: 25
 work_msg: Focus on your task

@@ -245,25 +245,16 @@
       "completed_at": null
     }
   ],
-  "2025-07-08": [
+  "2025-07-08": [],
+  "2025-07-10": [
     {
-      "id": "2025-07-08_2",
-      "title": "illyase",
-      "description": "",
-      "completed": false,
-      "pomodoros_planned": 1,
-      "pomodoros_completed": 0,
-      "created_at": "2025-07-08T13:33:18.958984",
-      "completed_at": null
-    },
-    {
-      "id": "2025-07-08_1",
+      "id": "2025-07-10_1",
       "title": "phd",
       "description": "",
       "completed": false,
       "pomodoros_planned": 1,
       "pomodoros_completed": 0,
-      "created_at": "2025-07-08T13:33:09.733909",
+      "created_at": "2025-07-10T19:18:40.757231",
       "completed_at": null
     }
   ]
