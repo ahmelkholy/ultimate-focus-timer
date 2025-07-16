@@ -2025,9 +2025,9 @@ class SettingsDialog:
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(pady=10)
 
-        ttk.Button(button_frame, text="Save", command=self.save_settings).pack(
-            side=tk.LEFT, padx=5
-        )
+        ttk.Button(
+            button_frame, text="Save", command=self.save_application_settings
+        ).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="Cancel", command=self.cancel).pack(
             side=tk.LEFT, padx=5
         )
@@ -2046,9 +2046,7 @@ class SettingsDialog:
         ttk.Label(tab, text="Short Break (minutes):").grid(
             row=1, column=0, sticky=tk.W, pady=5
         )
-        self.short_break_mins = tk.StringVar(
-            value=self.config.get("short_break_mins")
-        )
+        self.short_break_mins = tk.StringVar(value=self.config.get("short_break_mins"))
         ttk.Entry(tab, textvariable=self.short_break_mins).grid(
             row=1, column=1, sticky=tk.W
         )
@@ -2118,7 +2116,9 @@ class SettingsDialog:
             value=self.config.get("desktop_notifications")
         )
         ttk.Checkbutton(
-            tab, text="Enable Desktop Notifications", variable=self.desktop_notifications
+            tab,
+            text="Enable Desktop Notifications",
+            variable=self.desktop_notifications,
         ).grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=5)
 
     def create_theme_tab(self, notebook):
@@ -2137,31 +2137,25 @@ class SettingsDialog:
             row=1, column=1, sticky=tk.W
         )
 
-    def save_settings(self):
+    def save_application_settings(self):
         """Save all settings to config file"""
         try:
             # Timer settings
             self.config.set("work_mins", int(self.work_mins.get()))
             self.config.set("short_break_mins", int(self.short_break_mins.get()))
             self.config.set("long_break_mins", int(self.long_break_mins.get()))
-            self.config.set(
-                "long_break_interval", int(self.long_break_interval.get())
-            )
+            self.config.set("long_break_interval", int(self.long_break_interval.get()))
 
             # Music settings
             self.config.set("mpv_executable", self.mpv_executable.get())
             self.config.set(
                 "classical_music_default_playlist", self.default_playlist.get()
             )
-            self.config.set(
-                "classical_music_playlist_dir", self.music_directory.get()
-            )
+            self.config.set("classical_music_playlist_dir", self.music_directory.get())
 
             # Notification settings
             self.config.set("notify", self.notify.get())
-            self.config.set(
-                "desktop_notifications", self.desktop_notifications.get()
-            )
+            self.config.set("desktop_notifications", self.desktop_notifications.get())
 
             # Theme settings
             self.config.set("dark_theme", self.dark_theme.get())
@@ -2187,167 +2181,6 @@ class SettingsDialog:
     def cancel(self):
         """Cancel settings changes"""
         self.dialog.destroy()
-
-
-    def __init__(self, parent, config_manager):
-        self.config = config_manager
-        self.result = False
-
-        self.dialog = tk.Toplevel(parent)
-        self.dialog.title("Settings")
-        self.dialog.geometry("400x350")
-        self.dialog.resizable(False, False)
-
-        # Center on parent
-        self.dialog.transient(parent)
-        self.dialog.grab_set()
-
-        # Create notebook for tabs
-        notebook = ttk.Notebook(self.dialog)
-        notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-        # Session settings tab
-        session_frame = ttk.Frame(notebook, padding="10")
-        notebook.add(session_frame, text="Sessions")
-
-        # Work duration
-        ttk.Label(session_frame, text="Work Session (minutes):").grid(
-            row=0, column=0, sticky=tk.W, pady=5
-        )
-        self.work_mins_var = tk.StringVar(value=str(self.config.get("work_mins", 25)))
-        ttk.Entry(session_frame, textvariable=self.work_mins_var, width=10).grid(
-            row=0, column=1, padx=10
-        )
-
-        # Short break duration
-        ttk.Label(session_frame, text="Short Break (minutes):").grid(
-            row=1, column=0, sticky=tk.W, pady=5
-        )
-        self.short_break_var = tk.StringVar(
-            value=str(self.config.get("short_break_mins", 5))
-        )
-        ttk.Entry(session_frame, textvariable=self.short_break_var, width=10).grid(
-            row=1, column=1, padx=10
-        )
-
-        # Long break duration
-        ttk.Label(session_frame, text="Long Break (minutes):").grid(
-            row=2, column=0, sticky=tk.W, pady=5
-        )
-        self.long_break_var = tk.StringVar(
-            value=str(self.config.get("long_break_mins", 15))
-        )
-        ttk.Entry(session_frame, textvariable=self.long_break_var, width=10).grid(
-            row=2, column=1, padx=10
-        )
-
-        # Music settings tab
-        music_frame = ttk.Frame(notebook, padding="10")
-        notebook.add(music_frame, text="Music")
-
-        # Enable classical music
-        self.music_enabled_var = tk.BooleanVar(
-            value=self.config.get("classical_music", True)
-        )
-        ttk.Checkbutton(
-            music_frame, text="Enable Classical Music", variable=self.music_enabled_var
-        ).grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=5)
-
-        # Music volume
-        ttk.Label(music_frame, text="Music Volume (0-100):").grid(
-            row=1, column=0, sticky=tk.W, pady=5
-        )
-        self.volume_var = tk.StringVar(
-            value=str(self.config.get("classical_music_volume", 30))
-        )
-        ttk.Entry(music_frame, textvariable=self.volume_var, width=10).grid(
-            row=1, column=1, padx=10
-        )
-
-        # Pause music on break
-        self.pause_on_break_var = tk.BooleanVar(
-            value=self.config.get("pause_music_on_break", True)
-        )
-        ttk.Checkbutton(
-            music_frame,
-            text="Pause Music During Breaks",
-            variable=self.pause_on_break_var,
-        ).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=5)
-
-        # Playlist selection
-        ttk.Label(music_frame, text="Select Playlist:").grid(
-            row=3, column=0, sticky=tk.W, pady=5
-        )
-
-        # Get available playlists
-        from music_controller import MusicController
-
-        music_controller = MusicController(self.config)
-        self.available_playlists = music_controller.get_available_playlists()
-
-        # Create playlist options list
-        self.playlist_options = ["Auto (First Available)"]
-        self.playlist_paths = [None]  # None means auto-select
-
-        for playlist in self.available_playlists:
-            self.playlist_options.append(playlist["name"])
-            self.playlist_paths.append(playlist["path"])
-
-        # Get currently selected playlist
-        current_selected = self.config.get("classical_music_selected_playlist")
-        current_index = 0  # Default to "Auto"
-
-        if current_selected:
-            for i, path in enumerate(self.playlist_paths[1:], 1):  # Skip index 0 (Auto)
-                if path == current_selected:
-                    current_index = i
-                    break
-
-        self.playlist_var = tk.StringVar(value=self.playlist_options[current_index])
-        playlist_combo = ttk.Combobox(
-            music_frame,
-            textvariable=self.playlist_var,
-            values=self.playlist_options,
-            state="readonly",
-            width=25,
-        )
-        playlist_combo.grid(row=3, column=1, padx=10, pady=5, sticky=tk.W)
-
-        # Notification settings tab
-        notify_frame = ttk.Frame(notebook, padding="10")
-        notebook.add(notify_frame, text="Notifications")
-
-        # Enable notifications
-        self.notify_enabled_var = tk.BooleanVar(
-            value=self.config.get("desktop_notifications", True)
-        )
-        ttk.Checkbutton(
-            notify_frame,
-            text="Enable Desktop Notifications",
-            variable=self.notify_enabled_var,
-        ).grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=5)
-
-        # Early warning
-        ttk.Label(notify_frame, text="Early Warning (minutes):").grid(
-            row=1, column=0, sticky=tk.W, pady=5
-        )
-        self.warning_var = tk.StringVar(
-            value=str(self.config.get("notify_early_warning", 2))
-        )
-        ttk.Entry(notify_frame, textvariable=self.warning_var, width=10).grid(
-            row=1, column=1, padx=10
-        )
-
-        # Buttons
-        button_frame = ttk.Frame(self.dialog)
-        button_frame.pack(pady=10)
-
-        ttk.Button(button_frame, text="Save", command=self.save_settings).pack(
-            side=tk.LEFT, padx=5
-        )
-        ttk.Button(button_frame, text="Cancel", command=self.cancel_settings).pack(
-            side=tk.LEFT, padx=5
-        )
 
     def save_settings(self):
         """Save settings to configuration"""
