@@ -102,7 +102,21 @@ class ConfigManager:
 
     def __init__(self, config_path: str = "config.yml"):
         """Initialize config manager with path to config file"""
-        self.config_path = Path(config_path)
+        # Handle PyInstaller executable case
+        if getattr(sys, "frozen", False):
+            # Running as PyInstaller executable
+            exe_dir = Path(sys.executable).parent
+            self.config_path = exe_dir / config_path
+            if not self.config_path.exists():
+                # Try in the _internal directory (common for PyInstaller)
+                internal_dir = exe_dir / "_internal"
+                if internal_dir.exists():
+                    self.config_path = internal_dir / config_path
+        else:
+            # Running as script
+            script_dir = Path(__file__).resolve().parent.parent
+            self.config_path = script_dir / config_path
+
         self.config = self.DEFAULT_CONFIG.copy()
         self.load_config()
 

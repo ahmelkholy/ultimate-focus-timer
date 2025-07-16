@@ -7,7 +7,6 @@ Main entry point with comprehensive functionality and cross-platform support
 import argparse
 import os
 import platform
-import subprocess
 import sys
 import time
 import traceback
@@ -20,13 +19,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 # 2. Set console to UTF-8 on Windows
-if platform.system() == "Windows":
-    try:
-        subprocess.run(["chcp", "65001"], check=True, shell=True, capture_output=True)
-        sys.stdout.reconfigure(encoding='utf-8')
-        sys.stderr.reconfigure(encoding='utf-8')
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print("Warning: Could not set console to UTF-8. Some characters may not display correctly.")
+# if platform.system() == "Windows":
+#     try:
+#         subprocess.run(["chcp", "65001"], check=True, shell=True, capture_output=True)
+#         sys.stdout.reconfigure(encoding='utf-8')
+#         sys.stderr.reconfigure(encoding='utf-8')
+#     except (subprocess.CalledProcessError, FileNotFoundError):
+#         print("Warning: Could not set console to UTF-8. Some characters may not display correctly.")
+
 
 # 3. Define a global error logger
 def log_error(exc_info):
@@ -36,7 +36,10 @@ def log_error(exc_info):
         f.write(f"--- {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
         traceback.print_exception(exc_info[0], exc_info[1], exc_info[2], file=f)
         f.write("\n")
-    print(f"FATAL ERROR: An unexpected error occurred. Details have been logged to {log_file}")
+    print(
+        f"FATAL ERROR: An unexpected error occurred. Details have been logged to {log_file}"
+    )
+
 
 # --- Main Application ---
 try:
@@ -75,10 +78,14 @@ class UltimateFocusLauncher:
     def check_dependencies(self) -> Dict[str, bool]:
         """Comprehensive dependency check"""
         dependencies = {
-            "python": sys.version_info >= (3.8, 0), "tkinter": self._check_tkinter(),
-            "yaml": self._check_module("yaml"), "plyer": self._check_module("plyer"),
-            "psutil": self._check_module("psutil"), "matplotlib": self._check_module("matplotlib"),
-            "pandas": self._check_module("pandas"), "mpv": self.music_controller.is_mpv_available(),
+            "python": sys.version_info >= (3.8, 0),
+            "tkinter": self._check_tkinter(),
+            "yaml": self._check_module("yaml"),
+            "plyer": self._check_module("plyer"),
+            "psutil": self._check_module("psutil"),
+            "matplotlib": self._check_module("matplotlib"),
+            "pandas": self._check_module("pandas"),
+            "mpv": self.music_controller.is_mpv_available(),
         }
         return dependencies
 
@@ -92,6 +99,7 @@ class UltimateFocusLauncher:
     def _check_tkinter(self) -> bool:
         try:
             import tkinter
+
             return True
         except ImportError:
             return False
@@ -99,7 +107,9 @@ class UltimateFocusLauncher:
     def print_system_info(self):
         print("--- System Information ---")
         print("=" * 30)
-        print(f"Platform: {self.system_info['platform']} ({self.system_info['architecture']})")
+        print(
+            f"Platform: {self.system_info['platform']} ({self.system_info['architecture']})"
+        )
         print(f"Python: {self.system_info['python_version']}")
         print(f"OS Release: {self.system_info['os_release']}")
         print(f"Working Directory: {Path.cwd()}")
@@ -130,9 +140,12 @@ class UltimateFocusLauncher:
     def _print_fix_suggestion(self, dependency: str):
         suggestions = {
             "tkinter": "   - Install python3-tk (Linux) or use Python from python.org",
-            "yaml": "   - pip install PyYAML", "plyer": "   - pip install plyer",
-            "psutil": "   - pip install psutil", "matplotlib": "   - pip install matplotlib",
-            "pandas": "   - pip install pandas", "mpv": "   - Install MPV media player for music support",
+            "yaml": "   - pip install PyYAML",
+            "plyer": "   - pip install plyer",
+            "psutil": "   - pip install psutil",
+            "matplotlib": "   - pip install matplotlib",
+            "pandas": "   - pip install pandas",
+            "mpv": "   - Install MPV media player for music support",
         }
         if dependency in suggestions:
             print(f"      {suggestions[dependency]}")
@@ -149,8 +162,10 @@ class UltimateFocusLauncher:
             print("   Visit: https://mpv.io/installation/")
 
     def _check_display_available(self) -> bool:
-        if os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"): return True
-        if platform.system() == "Windows": return True
+        if os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"):
+            return True
+        if platform.system() == "Windows":
+            return True
         if platform.system() == "Darwin":
             return not os.environ.get("SSH_CLIENT") and not os.environ.get("SSH_TTY")
         return False
@@ -161,25 +176,10 @@ class UltimateFocusLauncher:
             print("    You may be in a headless environment (like SSH or Docker).")
             print("    Try console mode: --console")
             return False
-        if show_splash: self._show_splash()
+        if show_splash:
+            self._show_splash()
+
         try:
-            python_exe = sys.executable
-            gui_script = Path(__file__).parent / "src" / "focus_gui.py"
-            working_dir = Path(__file__).parent
-            env = os.environ.copy()
-            src_path = str(Path(__file__).parent / "src")
-            root_path = str(Path(__file__).parent)
-            env["PYTHONPATH"] = f"{root_path}{os.pathsep}{src_path}{os.pathsep}{env.get('PYTHONPATH', '')}"
-            env["PYTHONIOENCODING"] = "utf-8"
-            if platform.system() == "Windows":
-                env["PYTHONLEGACYWINDOWSSTDIO"] = "0"
-                process = subprocess.Popen([python_exe, str(gui_script)], cwd=working_dir, env=env, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
-            else:
-                process = subprocess.Popen([python_exe, str(gui_script)], cwd=working_dir, env=env, start_new_session=True)
-            time.sleep(2.0)
-            if process.poll() is None: return True
-            print(f"[X] GUI process exited unexpectedly (code: {process.returncode}).")
-            print("    Attempting to fall back to running in the current process...")
             app = FocusGUI()
             app.run()
             return True
@@ -217,11 +217,16 @@ class UltimateFocusLauncher:
         try:
             for remaining in range(minutes * 60, 0, -1):
                 mins, secs = divmod(remaining, 60)
-                print(f"\rTime: {mins:02d}:{secs:02d} - Stay focused!", end="", flush=True)
+                print(
+                    f"\rTime: {mins:02d}:{secs:02d} - Stay focused!", end="", flush=True
+                )
                 time.sleep(1)
             print("\n[OK] Session completed! Great work!")
             self.session_manager.log_session(session_type, minutes, "completed")
-            self.notification_manager.show_notification("Focus Session Complete!", f"{minutes}-minute {session_type} session finished.")
+            self.notification_manager.show_notification(
+                "Focus Session Complete!",
+                f"{minutes}-minute {session_type} session finished.",
+            )
         except KeyboardInterrupt:
             print("\n[!] Session paused by user.")
             self.session_manager.log_session(session_type, minutes, "interrupted")
@@ -242,11 +247,12 @@ class UltimateFocusLauncher:
             print("Start your productivity streak today!")
 
     def _show_splash(self):
-        for i in range(2):
-            for frame in ["Loading   ", "Loading.  ", "Loading.. ", "Loading..."]:
-                print(f"\rFocus Timer {frame}", end="", flush=True)
-                time.sleep(0.3)
-        print()
+        # for i in range(2):
+        #     for frame in ["Loading   ", "Loading.  ", "Loading.. ", "Loading..."]:
+        #         print(f"\rFocus Timer {frame}", end="", flush=True)
+        #         time.sleep(0.3)
+        # print()
+        pass
 
     def interactive_launcher(self):
         while True:
@@ -262,14 +268,22 @@ class UltimateFocusLauncher:
             print("9. Exit")
             try:
                 choice = input("Choose an option (1-9): ").strip()
-                if choice == "1": self.launch_gui()
-                elif choice == "2": self.launch_console()
-                elif choice == "3": self.launch_dashboard()
-                elif choice == "4": self.run_quick_session(25, "work")
-                elif choice == "5": self.run_quick_session(5, "break")
-                elif choice == "6": self.show_stats()
-                elif choice == "7": self.print_dependency_status()
-                elif choice == "8": self.print_system_info()
+                if choice == "1":
+                    self.launch_gui()
+                elif choice == "2":
+                    self.launch_console()
+                elif choice == "3":
+                    self.launch_dashboard()
+                elif choice == "4":
+                    self.run_quick_session(25, "work")
+                elif choice == "5":
+                    self.run_quick_session(5, "break")
+                elif choice == "6":
+                    self.show_stats()
+                elif choice == "7":
+                    self.print_dependency_status()
+                elif choice == "8":
+                    self.print_system_info()
                 elif choice == "9":
                     print("Thanks for using Focus Timer!")
                     break
@@ -288,32 +302,56 @@ def main():
         description="Ultimate Focus Timer - Cross-Platform Productivity Application",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="Examples:\n"
-                 "  python main.py                    # Interactive launcher\n"
-                 "  python main.py --gui              # Launch GUI directly\n"
-                 "  python main.py --console          # Launch console mode\n"
+        "  python main.py                    # Interactive launcher\n"
+        "  python main.py --gui              # Launch GUI directly\n"
+        "  python main.py --console          # Launch console mode\n",
     )
     parser.add_argument("--gui", action="store_true", help="Launch GUI mode")
     parser.add_argument("--console", action="store_true", help="Launch console mode")
-    parser.add_argument("--dashboard", action="store_true", help="Launch analytics dashboard")
-    parser.add_argument("--quick", type=int, metavar="MINUTES", help="Quick focus session")
-    parser.add_argument("--break", type=int, metavar="MINUTES", help="Quick break session")
-    parser.add_argument("--stats", action="store_true", help="Show productivity statistics")
-    parser.add_argument("--check", action="store_true", help="Check system dependencies")
+    parser.add_argument(
+        "--dashboard", action="store_true", help="Launch analytics dashboard"
+    )
+    parser.add_argument(
+        "--quick", type=int, metavar="MINUTES", help="Quick focus session"
+    )
+    parser.add_argument(
+        "--break", type=int, metavar="MINUTES", help="Quick break session"
+    )
+    parser.add_argument(
+        "--stats", action="store_true", help="Show productivity statistics"
+    )
+    parser.add_argument(
+        "--check", action="store_true", help="Check system dependencies"
+    )
     parser.add_argument("--info", action="store_true", help="Show system information")
     parser.add_argument("--no-splash", action="store_true", help="Skip splash screen")
     args = parser.parse_args()
 
     launcher = UltimateFocusLauncher()
 
-    if args.info: launcher.print_system_info()
-    elif args.check: launcher.print_dependency_status()
-    elif args.stats: launcher.show_stats()
-    elif args.gui: launcher.launch_gui(show_splash=not args.no_splash)
-    elif args.console: launcher.launch_console()
-    elif args.dashboard: launcher.launch_dashboard()
-    elif args.quick: launcher.run_quick_session(args.quick, "work")
-    elif getattr(args, "break"): launcher.run_quick_session(getattr(args, "break"), "break")
-    else: launcher.interactive_launcher()
+    # If running as PyInstaller executable with no arguments, launch GUI directly
+    if getattr(sys, "frozen", False) and len(sys.argv) == 1:
+        launcher.launch_gui(show_splash=not args.no_splash)
+        return
+
+    if args.info:
+        launcher.print_system_info()
+    elif args.check:
+        launcher.print_dependency_status()
+    elif args.stats:
+        launcher.show_stats()
+    elif args.gui:
+        launcher.launch_gui(show_splash=not args.no_splash)
+    elif args.console:
+        launcher.launch_console()
+    elif args.dashboard:
+        launcher.launch_dashboard()
+    elif args.quick:
+        launcher.run_quick_session(args.quick, "work")
+    elif getattr(args, "break"):
+        launcher.run_quick_session(getattr(args, "break"), "break")
+    else:
+        launcher.interactive_launcher()
 
 
 if __name__ == "__main__":

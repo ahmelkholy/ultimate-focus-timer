@@ -8,6 +8,7 @@ import os
 import platform
 import signal
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -36,6 +37,19 @@ class MusicController:
         # Try configured path first
         if self._test_mpv_executable(mpv_path):
             return mpv_path
+
+        # If running as PyInstaller executable, check the executable directory
+        if getattr(sys, "frozen", False):
+            exe_dir = Path(sys.executable).parent
+            exe_mpv_paths = [
+                exe_dir / "mpv.exe",
+                exe_dir / "mpv",
+                exe_dir / "_internal" / "mpv.exe",
+                exe_dir / "_internal" / "mpv",
+            ]
+            for path in exe_mpv_paths:
+                if self._test_mpv_executable(str(path)):
+                    return str(path)
 
         # Platform-specific search paths
         if platform.system() == "Darwin":  # macOS

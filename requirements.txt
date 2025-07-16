@@ -12,6 +12,7 @@ plyer>=2.1.0
 psutil>=5.9.0
 
 # Data analysis and visualization
+numpy>=1.24.0     # required for matplotlib and pandas
 matplotlib>=3.6.0
 pandas>=1.5.0
 seaborn>=0.12.0   # required for dashboard visualization

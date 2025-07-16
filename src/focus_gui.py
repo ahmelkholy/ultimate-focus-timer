@@ -21,39 +21,50 @@ class FocusGUI:
 
     def __init__(self):
         """Initialize the GUI application"""
-        # Initialize components
-        self.config = ConfigManager()
-        self.music = MusicController(self.config)
-        self.notifications = NotificationManager(self.config)
-        self.session_manager = SessionManager(
-            self.config, self.music, self.notifications
-        )
+        try:
+            # Initialize components
+            self.config = ConfigManager()
+            self.music = MusicController(self.config)
+            self.notifications = NotificationManager(self.config)
+            self.session_manager = SessionManager(
+                self.config, self.music, self.notifications
+            )
 
-        # Initialize task manager
-        self.task_manager = TaskManager()
+            # Initialize task manager
+            self.task_manager = TaskManager()
 
-        # Add a variable to store the current task ID
-        self.current_task_id = None
+            # Add a variable to store the current task ID
+            self.current_task_id = None
 
-        # Set up session callbacks
-        self.session_manager.set_callbacks(
-            on_tick=self.on_session_tick,
-            on_complete=self.on_session_complete,
-            on_state_change=self.on_session_state_change,
-        )
+            # Store scheduled callback IDs for proper cleanup
+            self.scheduled_callbacks = []
 
-        # GUI setup
-        self.root = tk.Tk()
-        self.setup_window()
-        self.create_widgets()
-        self.apply_theme()
-        self.setup_keyboard_shortcuts()
+            # Set up session callbacks
+            self.session_manager.set_callbacks(
+                on_tick=self.on_session_tick,
+                on_complete=self.on_session_complete,
+                on_state_change=self.on_session_state_change,
+            )
 
-        # Show task input dialog if no tasks exist for today
-        self.root.after(100, self.check_and_show_task_dialog)
+            # GUI setup
+            self.root = tk.Tk()
+            self.setup_window()
+            self.create_widgets()
+            self.apply_theme()
+            self.setup_keyboard_shortcuts()
 
-        # Start update loop
-        self.root.after(100, self.update_loop)
+            # Show task input dialog if no tasks exist for today
+            self.schedule_callback(100, self.check_and_show_task_dialog)
+
+            # Start update loop
+            self.schedule_callback(100, self.update_loop)
+
+        except Exception as e:
+            print(f"[X] Error initializing GUI: {e}")
+            import traceback
+
+            traceback.print_exc()
+            raise
 
     def setup_window(self):
         """Configure the main window"""
@@ -216,7 +227,9 @@ class FocusGUI:
 
             # Update button font
             style = ttk.Style()
-            style.configure("Modern.TButton", font=("Segoe UI", sizes["button"], "bold"))
+            style.configure(
+                "Modern.TButton", font=("Segoe UI", sizes["button"], "bold")
+            )
 
             # Update main frame padding for very small windows (legacy - will be handled by update_ui_scaling)
             if window_width < 300:
@@ -433,7 +446,7 @@ class FocusGUI:
             self.session_frame,
             text=f"Work Session ({self.config.get('work_mins')} min)",
             command=lambda: self.start_session(SessionType.WORK),
-            style="Modern.TButton"
+            style="Modern.TButton",
         )
         self.work_button.grid(
             row=0,
@@ -447,7 +460,7 @@ class FocusGUI:
             self.session_frame,
             text=f"Short Break ({self.config.get('short_break_mins')} min)",
             command=lambda: self.start_session(SessionType.SHORT_BREAK),
-            style="Modern.TButton"
+            style="Modern.TButton",
         )
         self.short_break_button.grid(
             row=0,
@@ -461,7 +474,7 @@ class FocusGUI:
             self.session_frame,
             text=f"Long Break ({self.config.get('long_break_mins')} min)",
             command=lambda: self.start_session(SessionType.LONG_BREAK),
-            style="Modern.TButton"
+            style="Modern.TButton",
         )
         self.long_break_button.grid(
             row=1,
@@ -475,7 +488,7 @@ class FocusGUI:
             self.session_frame,
             text="Custom Session",
             command=self.start_custom_session,
-            style="Modern.TButton"
+            style="Modern.TButton",
         )
         self.custom_button.grid(
             row=1,
@@ -502,7 +515,7 @@ class FocusGUI:
             text="⏸ Pause",
             command=self.toggle_pause,
             state="disabled",
-            style="Modern.TButton"
+            style="Modern.TButton",
         )
         self.pause_button.grid(
             row=0, column=0, padx=initial_scaling["button_padx"], sticky=(tk.W, tk.E)
@@ -513,15 +526,17 @@ class FocusGUI:
             text="⏹ Stop",
             command=self.stop_session,
             state="disabled",
-            style="Modern.TButton"
+            style="Modern.TButton",
         )
         self.stop_button.grid(
             row=0, column=1, padx=initial_scaling["button_padx"], sticky=(tk.W, tk.E)
         )
 
         self.music_button = ttk.Button(
-            self.control_frame, text="🎵 Music", command=self.toggle_music,
-            style="Modern.TButton"
+            self.control_frame,
+            text="🎵 Music",
+            command=self.toggle_music,
+            style="Modern.TButton",
         )
         self.music_button.grid(
             row=0, column=2, padx=initial_scaling["button_padx"], sticky=(tk.W, tk.E)
@@ -545,7 +560,7 @@ class FocusGUI:
             self.additional_frame,
             text="📊 Statistics",
             command=self.show_statistics,
-            style="Modern.TButton"
+            style="Modern.TButton",
         )
         self.stats_button.grid(
             row=0,
@@ -559,7 +574,7 @@ class FocusGUI:
             self.additional_frame,
             text="⚙️ Settings",
             command=self.show_settings,
-            style="Modern.TButton"
+            style="Modern.TButton",
         )
         self.settings_button.grid(
             row=0,
@@ -573,7 +588,7 @@ class FocusGUI:
             self.additional_frame,
             text="🧪 Test Music",
             command=self.test_music,
-            style="Modern.TButton"
+            style="Modern.TButton",
         )
         self.test_button.grid(
             row=0,
@@ -914,7 +929,9 @@ class FocusGUI:
         title_label.grid(
             row=0, column=1, sticky=(tk.W, tk.E), padx=(0, scaling["small_pady"])
         )
-        title_label.bind("<Double-1>", lambda event, task=task: self.edit_task_title(event, task))
+        title_label.bind(
+            "<Double-1>", lambda event, task=task: self.edit_task_title(event, task)
+        )
 
         # Compact pomodoro progress
         pomodoro_text = f"{task.pomodoros_completed}/{task.pomodoros_planned}"
@@ -989,7 +1006,12 @@ class FocusGUI:
         # Create an entry widget over the label
         entry = ttk.Entry(event.widget.master, font=("Arial", 9))
         entry.insert(0, task.title)
-        entry.place(x=event.widget.winfo_x(), y=event.widget.winfo_y(), width=event.widget.winfo_width(), height=event.widget.winfo_height())
+        entry.place(
+            x=event.widget.winfo_x(),
+            y=event.widget.winfo_y(),
+            width=event.widget.winfo_width(),
+            height=event.widget.winfo_height(),
+        )
         entry.focus_set()
 
         def save_edit(event):
@@ -1150,22 +1172,33 @@ class FocusGUI:
                 select_color = "#404040"
                 accent_color = self.config.get("accent_color", "#00ff00")
 
-                style.configure("TLabel", background=bg_color, foreground=fg_color, font=("Segoe UI", 9))
+                style.configure(
+                    "TLabel",
+                    background=bg_color,
+                    foreground=fg_color,
+                    font=("Segoe UI", 9),
+                )
                 style.configure("TFrame", background=bg_color)
-                style.configure("TProgressbar", background=accent_color, troughcolor=select_color)
+                style.configure(
+                    "TProgressbar", background=accent_color, troughcolor=select_color
+                )
                 style.configure("Current.TFrame", background=select_color)
 
                 # Modern button style
-                style.configure("Modern.TButton", 
-                                background=select_color, 
-                                foreground=fg_color, 
-                                borderwidth=0, 
-                                focusthickness=0, 
-                                padding=10, 
-                                font=("Segoe UI", 10, "bold"))
-                style.map("Modern.TButton",
-                          background=[('active', accent_color), ('pressed', accent_color)],
-                          foreground=[('active', bg_color)])
+                style.configure(
+                    "Modern.TButton",
+                    background=select_color,
+                    foreground=fg_color,
+                    borderwidth=0,
+                    focusthickness=0,
+                    padding=10,
+                    font=("Segoe UI", 10, "bold"),
+                )
+                style.map(
+                    "Modern.TButton",
+                    background=[("active", accent_color), ("pressed", accent_color)],
+                    foreground=[("active", bg_color)],
+                )
 
                 self.root.configure(bg=bg_color)
 
@@ -1206,7 +1239,7 @@ class FocusGUI:
         self.root.focus_force()
 
         # Set up a periodic focus refresh to ensure shortcuts always work
-        self.root.after(1000, self.refresh_keyboard_focus)
+        self.schedule_callback(1000, self.refresh_keyboard_focus)
 
     def refresh_keyboard_focus(self):
         """Periodically refresh keyboard focus to ensure shortcuts continue working"""
@@ -1219,7 +1252,7 @@ class FocusGUI:
             pass  # Ignore focus errors
 
         # Schedule next refresh
-        self.root.after(2000, self.refresh_keyboard_focus)
+        self.schedule_callback(2000, self.refresh_keyboard_focus)
 
     def shortcut_add_task(self):
         """Handle T key shortcut to focus task entry"""
@@ -1576,11 +1609,11 @@ class FocusGUI:
             else:
                 self.current_task_id = None
         else:
-            self.current_task_id = None # No current task for breaks
+            self.current_task_id = None  # No current task for breaks
 
         self.session_manager.start_session(session_type)
         self.update_button_states()
-        self.update_task_display() # Refresh display to show highlight
+        self.update_task_display()  # Refresh display to show highlight
 
     def start_custom_session(self):
         """Start a custom duration session"""
@@ -1615,14 +1648,14 @@ class FocusGUI:
         """Toggle music on/off"""
         if self.music.is_playing:
             self.music.stop_music()
-            if hasattr(self, 'music_status_label'):
+            if hasattr(self, "music_status_label"):
                 self.music_status_label.config(text="♪ Music Stopped")
         else:
             if self.music.start_music():
-                if hasattr(self, 'music_status_label'):
+                if hasattr(self, "music_status_label"):
                     self.music_status_label.config(text="♪ Music Playing")
             else:
-                if hasattr(self, 'music_status_label'):
+                if hasattr(self, "music_status_label"):
                     self.music_status_label.config(text="♪ Music Error")
 
     def test_music(self):
@@ -1642,7 +1675,7 @@ class FocusGUI:
         if result:
             self.music.start_music(volume=20)
             self.root.after(5000, lambda: self.music.stop_music())
-            if hasattr(self, 'music_status_label'):
+            if hasattr(self, "music_status_label"):
                 self.music_status_label.config(text="♪ Testing Music...")
             self.root.after(
                 5500, lambda: self.music_status_label.config(text="♪ Test Complete")
@@ -1779,12 +1812,12 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         self.progress_var.set(info["progress_percent"])
 
         # Update session counter
-        if hasattr(self, 'session_count_label'):
+        if hasattr(self, "session_count_label"):
             self.session_count_label.config(text=f"Sessions: {info['session_count']}")
 
         # Update music status
         music_status = self.music.get_status()
-        if hasattr(self, 'music_status_label'):
+        if hasattr(self, "music_status_label"):
             if music_status["is_playing"]:
                 self.music_status_label.config(text="♪ Music Playing")
             else:
@@ -1828,8 +1861,11 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
 
     def update_loop(self):
         """Main update loop for GUI"""
-        self.update_display()
-        self.root.after(1000, self.update_loop)  # Update every second
+        try:
+            self.update_display()
+            self.schedule_callback(1000, self.update_loop)  # Update every second
+        except:
+            pass  # Ignore errors if window is being destroyed
 
     def on_closing(self):
         """Handle application closing"""
@@ -1840,11 +1876,13 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
             )
 
             if result:
+                self.cleanup_callbacks()
                 self.save_window_dimensions()
                 self.session_manager.cleanup()
                 self.music.cleanup()
                 self.root.destroy()
         else:
+            self.cleanup_callbacks()
             self.save_window_dimensions()
             self.session_manager.cleanup()
             self.music.cleanup()
@@ -1852,7 +1890,33 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
 
     def run(self):
         """Start the GUI application"""
-        self.root.mainloop()
+        try:
+            self.root.mainloop()
+            print("GUI mainloop finished.")
+        except Exception as e:
+            print(f"[X] Error in GUI mainloop: {e}")
+            import traceback
+
+            traceback.print_exc()
+            raise
+
+    def schedule_callback(self, delay, callback):
+        """Schedule a callback and store its ID for proper cleanup"""
+        try:
+            callback_id = self.root.after(delay, callback)
+            self.scheduled_callbacks.append(callback_id)
+            return callback_id
+        except:
+            return None
+
+    def cleanup_callbacks(self):
+        """Cancel all scheduled callbacks to prevent threading errors"""
+        for callback_id in self.scheduled_callbacks:
+            try:
+                self.root.after_cancel(callback_id)
+            except:
+                pass
+        self.scheduled_callbacks.clear()
 
 
 class CustomSessionDialog:
@@ -2274,17 +2338,3 @@ class WorkCompletionDialog:
         """Skip task tracking for this session"""
         self.result = True
         self.dialog.destroy()
-
-
-if __name__ == "__main__":
-    # Run the GUI application
-    try:
-        app = FocusGUI()
-        app.run()
-    except KeyboardInterrupt:
-        print("\n👋 Focus Timer GUI closed by user")
-    except Exception as e:
-        print(f"❌ Error running GUI: {e}")
-        import traceback
-
-        traceback.print_exc()
