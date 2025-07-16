@@ -78,7 +78,7 @@ track_idle_time: true
 transparency: 0.95
 weekly_goals: 40
 weekly_reports: true
-window_geometry: 250x565+-432+-3
+window_geometry: 250x565+520+348
 work_end_cmd: scripts\classical_music.ps1 -Action stop
 work_mins: 25
 work_msg: Focus on your task

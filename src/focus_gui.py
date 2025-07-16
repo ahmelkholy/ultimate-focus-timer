@@ -2005,6 +2005,196 @@ class SettingsDialog:
 
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Settings")
+        self.dialog.geometry("500x600")
+        self.dialog.resizable(True, True)
+
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+
+        main_frame = ttk.Frame(self.dialog, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        notebook = ttk.Notebook(main_frame)
+        notebook.pack(fill=tk.BOTH, expand=True, pady=10)
+
+        self.create_timer_tab(notebook)
+        self.create_music_tab(notebook)
+        self.create_notifications_tab(notebook)
+        self.create_theme_tab(notebook)
+
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(pady=10)
+
+        ttk.Button(button_frame, text="Save", command=self.save_settings).pack(
+            side=tk.LEFT, padx=5
+        )
+        ttk.Button(button_frame, text="Cancel", command=self.cancel).pack(
+            side=tk.LEFT, padx=5
+        )
+
+    def create_timer_tab(self, notebook):
+        """Create timer settings tab"""
+        tab = ttk.Frame(notebook, padding="10")
+        notebook.add(tab, text="Timer")
+
+        ttk.Label(tab, text="Work Duration (minutes):").grid(
+            row=0, column=0, sticky=tk.W, pady=5
+        )
+        self.work_mins = tk.StringVar(value=self.config.get("work_mins"))
+        ttk.Entry(tab, textvariable=self.work_mins).grid(row=0, column=1, sticky=tk.W)
+
+        ttk.Label(tab, text="Short Break (minutes):").grid(
+            row=1, column=0, sticky=tk.W, pady=5
+        )
+        self.short_break_mins = tk.StringVar(
+            value=self.config.get("short_break_mins")
+        )
+        ttk.Entry(tab, textvariable=self.short_break_mins).grid(
+            row=1, column=1, sticky=tk.W
+        )
+
+        ttk.Label(tab, text="Long Break (minutes):").grid(
+            row=2, column=0, sticky=tk.W, pady=5
+        )
+        self.long_break_mins = tk.StringVar(value=self.config.get("long_break_mins"))
+        ttk.Entry(tab, textvariable=self.long_break_mins).grid(
+            row=2, column=1, sticky=tk.W
+        )
+
+        ttk.Label(tab, text="Long Break Interval:").grid(
+            row=3, column=0, sticky=tk.W, pady=5
+        )
+        self.long_break_interval = tk.StringVar(
+            value=self.config.get("long_break_interval")
+        )
+        ttk.Entry(tab, textvariable=self.long_break_interval).grid(
+            row=3, column=1, sticky=tk.W
+        )
+
+    def create_music_tab(self, notebook):
+        """Create music settings tab"""
+        tab = ttk.Frame(notebook, padding="10")
+        notebook.add(tab, text="Music")
+
+        ttk.Label(tab, text="MPV Executable Path:").grid(
+            row=0, column=0, sticky=tk.W, pady=5
+        )
+        self.mpv_executable = tk.StringVar(value=self.config.get("mpv_executable"))
+        ttk.Entry(tab, textvariable=self.mpv_executable, width=40).grid(
+            row=0, column=1, sticky=tk.W
+        )
+
+        ttk.Label(tab, text="Default Playlist Path:").grid(
+            row=1, column=0, sticky=tk.W, pady=5
+        )
+        self.default_playlist = tk.StringVar(
+            value=self.config.get("classical_music_default_playlist")
+        )
+        ttk.Entry(tab, textvariable=self.default_playlist, width=40).grid(
+            row=1, column=1, sticky=tk.W
+        )
+
+        ttk.Label(tab, text="Music Directory:").grid(
+            row=2, column=0, sticky=tk.W, pady=5
+        )
+        self.music_directory = tk.StringVar(
+            value=self.config.get("classical_music_playlist_dir")
+        )
+        ttk.Entry(tab, textvariable=self.music_directory, width=40).grid(
+            row=2, column=1, sticky=tk.W
+        )
+
+    def create_notifications_tab(self, notebook):
+        """Create notifications settings tab"""
+        tab = ttk.Frame(notebook, padding="10")
+        notebook.add(tab, text="Notifications")
+
+        self.notify = tk.BooleanVar(value=self.config.get("notify"))
+        ttk.Checkbutton(tab, text="Enable Notifications", variable=self.notify).grid(
+            row=0, column=0, columnspan=2, sticky=tk.W, pady=5
+        )
+
+        self.desktop_notifications = tk.BooleanVar(
+            value=self.config.get("desktop_notifications")
+        )
+        ttk.Checkbutton(
+            tab, text="Enable Desktop Notifications", variable=self.desktop_notifications
+        ).grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=5)
+
+    def create_theme_tab(self, notebook):
+        """Create theme settings tab"""
+        tab = ttk.Frame(notebook, padding="10")
+        notebook.add(tab, text="Theme")
+
+        self.dark_theme = tk.BooleanVar(value=self.config.get("dark_theme"))
+        ttk.Checkbutton(tab, text="Enable Dark Theme", variable=self.dark_theme).grid(
+            row=0, column=0, columnspan=2, sticky=tk.W, pady=5
+        )
+
+        ttk.Label(tab, text="Accent Color:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.accent_color = tk.StringVar(value=self.config.get("accent_color"))
+        ttk.Entry(tab, textvariable=self.accent_color).grid(
+            row=1, column=1, sticky=tk.W
+        )
+
+    def save_settings(self):
+        """Save all settings to config file"""
+        try:
+            # Timer settings
+            self.config.set("work_mins", int(self.work_mins.get()))
+            self.config.set("short_break_mins", int(self.short_break_mins.get()))
+            self.config.set("long_break_mins", int(self.long_break_mins.get()))
+            self.config.set(
+                "long_break_interval", int(self.long_break_interval.get())
+            )
+
+            # Music settings
+            self.config.set("mpv_executable", self.mpv_executable.get())
+            self.config.set(
+                "classical_music_default_playlist", self.default_playlist.get()
+            )
+            self.config.set(
+                "classical_music_playlist_dir", self.music_directory.get()
+            )
+
+            # Notification settings
+            self.config.set("notify", self.notify.get())
+            self.config.set(
+                "desktop_notifications", self.desktop_notifications.get()
+            )
+
+            # Theme settings
+            self.config.set("dark_theme", self.dark_theme.get())
+            self.config.set("accent_color", self.accent_color.get())
+
+            if self.config.save_config():
+                messagebox.showinfo(
+                    "Settings Saved",
+                    "Settings saved successfully. Please restart the application for all changes to take effect.",
+                )
+                self.result = True
+                self.dialog.destroy()
+            else:
+                messagebox.showerror("Error", "Failed to save settings.")
+
+        except ValueError:
+            messagebox.showerror(
+                "Invalid Input", "Please enter valid numbers for durations."
+            )
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+
+    def cancel(self):
+        """Cancel settings changes"""
+        self.dialog.destroy()
+
+
+    def __init__(self, parent, config_manager):
+        self.config = config_manager
+        self.result = False
+
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("Settings")
         self.dialog.geometry("400x350")
         self.dialog.resizable(False, False)
 

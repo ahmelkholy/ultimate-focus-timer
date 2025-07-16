@@ -139,7 +139,7 @@ class MusicController:
     ) -> bool:
         """Start classical music playback"""
         if not self.is_mpv_available():
-            print("❌ MPV is not available. Please install MPV for music support.")
+            print("MPV is not available. Please install MPV for music support.")
             return False
 
         # Stop any existing playback
@@ -347,6 +347,7 @@ class MusicController:
 
     def cleanup(self):
         """Cleanup resources on exit"""
+        print("Cleaning up music controller...")
         self.stop_music()
 
 
