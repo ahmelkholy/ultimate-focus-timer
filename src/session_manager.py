@@ -6,7 +6,7 @@ Core session logic, timing, and logging functionality
 
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
@@ -84,7 +84,7 @@ class SessionManager:
     ) -> bool:
         """Start a new focus session"""
         if self.state == SessionState.RUNNING:
-            print("⚠️  Session already running")
+            print("Session already running")
             return False
 
         # Set session parameters
@@ -125,7 +125,7 @@ class SessionManager:
         # Log session start
         self._log_session_event("Started", duration_minutes)
 
-        print(f"🎯 Started {session_type.value} session ({duration_minutes} minutes)")
+        print(f"Started {session_type.value} session ({duration_minutes} minutes)")
         return True
 
     def pause_session(self) -> bool:
@@ -140,7 +140,7 @@ class SessionManager:
         if self.session_type == SessionType.WORK:
             self.music.pause_music()
 
-        print("⏸️  Session paused")
+        print("Session paused")
         return True
 
     def resume_session(self) -> bool:
@@ -155,7 +155,7 @@ class SessionManager:
         if self.session_type == SessionType.WORK:
             self.music.resume_music()
 
-        print("▶️  Session resumed")
+        print("Session resumed")
         return True
 
     def stop_session(self) -> bool:
@@ -178,7 +178,7 @@ class SessionManager:
         completed_minutes = round(self.elapsed_seconds / 60, 1)
         self._log_session_event("Stopped", completed_minutes)
 
-        print(f"⏹️  Session stopped (completed {completed_minutes} minutes)")
+        print(f"Session stopped (completed {completed_minutes} minutes)")
         return True
 
     def _timer_loop(self):
@@ -256,7 +256,7 @@ class SessionManager:
             except Exception as e:
                 print(f"Complete callback error: {e}")
 
-        print(f"✅ {self.session_type.value} session completed!")
+        print(f"{self.session_type.value} session completed!")
 
         # Auto-suggest next session
         self._suggest_next_session()
@@ -278,7 +278,7 @@ class SessionManager:
                     duration = self.config.get("short_break_mins", 5)
 
                 print(
-                    f"🚀 Auto-starting {next_type.value.replace('_', ' ')} ({duration} minutes)..."
+                    f"Auto-starting {next_type.value.replace('_', ' ')} ({duration} minutes)..."
                 )
 
                 # Wait configured delay before starting next session
@@ -300,7 +300,7 @@ class SessionManager:
                 else:
                     next_type = SessionType.SHORT_BREAK
                 print(
-                    f"💡 Consider starting a {next_type.value.replace('_', ' ')} session next"
+                    f"Consider starting a {next_type.value.replace('_', ' ')} session next"
                 )
         else:
             # Handle break completion - only suggest, don't auto-start work
@@ -308,7 +308,7 @@ class SessionManager:
                 next_type = SessionType.WORK
                 duration = self.config.get("work_mins", 25)
                 print(
-                    f"🚀 Auto-starting {next_type.value} session ({duration} minutes)..."
+                    f"Auto-starting {next_type.value} session ({duration} minutes)..."
                 )
 
                 # Wait configured delay before starting next session

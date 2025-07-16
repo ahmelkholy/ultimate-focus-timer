@@ -96,7 +96,7 @@ class MusicController:
         playlists = self.get_available_playlists()
 
         if not playlists:
-            print("⚠️  No playlists available")
+            print("No playlists available")
             return None
 
         # Check if user has selected a specific playlist
@@ -109,9 +109,7 @@ class MusicController:
                     or playlist["name"] == selected_playlist
                 ):
                     return playlist["path"]
-            print(
-                f"⚠️  Selected playlist '{selected_playlist}' not found, using default"
-            )
+            print(f"Selected playlist '{selected_playlist}' not found, using default")
 
         # Prefer local playlists if in local mode
         if self.config.get("classical_music_local_mode"):
@@ -170,7 +168,7 @@ class MusicController:
         if playlist_path:
             mpv_args.append(playlist_path)
         else:
-            print("❌ No valid playlist path to play")
+            print("No valid playlist path to play")
             return False
 
         try:
@@ -192,7 +190,7 @@ class MusicController:
             return True
 
         except Exception as e:
-            print(f"❌ Error starting MPV: {e}")
+            print(f"Error starting MPV: {e}")
             return False
 
     def stop_music(self) -> bool:
@@ -215,7 +213,7 @@ class MusicController:
 
                 stopped = True
             except Exception as e:
-                print(f"⚠️  Error stopping music process: {e}")
+                print(f"Error stopping music process: {e}")
 
         # Also try to stop by PID file
         if self.pid_file.exists():
@@ -237,7 +235,7 @@ class MusicController:
             except (FileNotFoundError, ProcessLookupError, ValueError):
                 pass
             except Exception as e:
-                print(f"⚠️  Error stopping music by PID: {e}")
+                print(f"Error stopping music by PID: {e}")
 
         # Reset state
         self.mpv_process = None
@@ -249,13 +247,13 @@ class MusicController:
     def set_volume(self, volume: int) -> bool:
         """Set music volume (0-100)"""
         if not self.is_playing:
-            print("ℹ️  No music currently playing")
+            print("No music currently playing")
             return False
 
         # For basic implementation, we'll restart with new volume
         # Advanced MPV control would require IPC/JSON API
-        print(f"🔊 Setting volume to {volume}%")
-        print("ℹ️  Note: Volume will take effect on next music start")
+        print(f"Setting volume to {volume}%")
+        print("Note: Volume will take effect on next music start")
 
         # Update config for next session
         self.config.set("classical_music_volume", volume)
@@ -292,12 +290,12 @@ class MusicController:
         print("🧪 Testing MPV installation...")
 
         if not self.is_mpv_available():
-            print("❌ MPV is not installed or not accessible")
-            print("📥 Please install MPV:")
-            print("   • Windows: choco install mpv  or  winget install mpv")
-            print("   • macOS: brew install mpv")
-            print("   • Linux: sudo apt install mpv  or  sudo yum install mpv")
-            print("   • Or download from: https://mpv.io/")
+            print("MPV is not installed or not accessible")
+            print("Please install MPV:")
+            print("Windows: choco install mpv  or  winget install mpv")
+            print("macOS: brew install mpv")
+            print("Linux: sudo apt install mpv  or  sudo yum install mpv")
+            print("Or download from: https://mpv.io/")
             return False
 
         try:
@@ -310,27 +308,27 @@ class MusicController:
 
             if result.returncode == 0:
                 version_line = result.stdout.split("\n")[0]
-                print(f"✅ MPV is available: {version_line}")
+                print(f"MPV is available: {version_line}")
 
                 # Test with a short audio if available
                 playlists = self.get_available_playlists()
                 if playlists:
-                    print(f"📋 Found {len(playlists)} playlist(s):")
+                    print(f"Found {len(playlists)} playlist(s):")
                     for playlist in playlists[:3]:  # Show first 3
                         print(f"   • {playlist['name']} ({playlist['type']})")
                 else:
-                    print("⚠️  No playlists configured")
+                    print("No playlists configured")
 
                 return True
             else:
-                print(f"❌ MPV test failed: {result.stderr}")
+                print(f"MPV test failed: {result.stderr}")
                 return False
 
         except subprocess.TimeoutExpired:
-            print("❌ MPV test timed out")
+            print(" MPV test timed out")
             return False
         except Exception as e:
-            print(f"❌ MPV test error: {e}")
+            print(f"MPV test error: {e}")
             return False
 
     def cleanup(self):

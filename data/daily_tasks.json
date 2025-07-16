@@ -257,5 +257,18 @@
       "created_at": "2025-07-10T19:18:40.757231",
       "completed_at": null
     }
-  ]
+  ],
+  "2025-07-11": [
+    {
+      "id": "2025-07-11_1",
+      "title": "phd",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 1,
+      "created_at": "2025-07-11T13:40:56.281376",
+      "completed_at": null
+    }
+  ],
+  "2025-07-12": []
 }

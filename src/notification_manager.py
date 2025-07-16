@@ -14,7 +14,7 @@ try:
 except ImportError:
     PLYER_AVAILABLE = False
     notification = None
-    print("⚠️  plyer not available - install with: pip install plyer")
+    print("plyer not available - install with: pip install plyer")
 
 # Platform-specific imports
 if platform.system() == "Darwin":  # macOS
@@ -114,7 +114,7 @@ class NotificationManager:
                 return self._show_console(title, message, notification_type)
 
         except Exception as e:
-            print(f"⚠️  Notification error: {e}")
+            print(f"Notification error: {e}")
             # Fallback to console
             return self._show_console(title, message, notification_type)
 
@@ -188,15 +188,14 @@ class NotificationManager:
         reset_color = "\033[0m"
         color = colors.get(notification_type, colors["info"])
 
-        print(f"\n{color}📢 {title}{reset_color}")
-        print(f"{color}   {message}{reset_color}\n")
+        print(f"\n{color} {title}{reset_color}")
+        print(f"{color} {message}{reset_color}\n")
 
         return True
 
     def show_session_start(self, session_type: str, duration: int) -> bool:
         """Show notification for session start"""
         icons = {"work": "🎯", "short_break": "☕", "long_break": "🛋️", "custom": "⏱️"}
-
         icon = icons.get(session_type, "⏱️")
         title = f"{icon} Focus Session Started"
         message = f"{session_type.replace('_', ' ').title()} session ({duration} min)"
