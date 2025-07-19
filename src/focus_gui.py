@@ -598,6 +598,26 @@ class FocusGUI:
             sticky=(tk.W, tk.E),
         )
 
+        # Playlist selection dropdown
+        self.playlist_var = tk.StringVar()
+        self.playlist_combo = ttk.Combobox(
+            self.additional_frame,
+            textvariable=self.playlist_var,
+            state="readonly",
+            width=20
+        )
+        self.playlist_combo.grid(
+            row=1, 
+            column=0, 
+            columnspan=3, 
+            pady=(initial_scaling["button_pady"], 0),
+            sticky=(tk.W, tk.E)
+        )
+        self.playlist_combo.bind("<<ComboboxSelected>>", self.on_playlist_change)
+
+        # Load playlists into the dropdown
+        self.load_playlists()
+
         # Task Management Section (Native Integration)
         self.create_task_section()
 
@@ -1239,7 +1259,7 @@ class FocusGUI:
         self.root.focus_force()
 
         # Set up a periodic focus refresh to ensure shortcuts always work
-        self.schedule_callback(1000, self.refresh_keyboard_focus)
+        # self.schedule_callback(1000, self.refresh_keyboard_focus)
 
     def refresh_keyboard_focus(self):
         """Periodically refresh keyboard focus to ensure shortcuts continue working"""
@@ -1252,7 +1272,7 @@ class FocusGUI:
             pass  # Ignore focus errors
 
         # Schedule next refresh
-        self.schedule_callback(2000, self.refresh_keyboard_focus)
+        # self.schedule_callback(2000, self.refresh_keyboard_focus)
 
     def shortcut_add_task(self):
         """Handle T key shortcut to focus task entry"""
@@ -1680,6 +1700,41 @@ class FocusGUI:
             self.root.after(
                 5500, lambda: self.music_status_label.config(text="♪ Test Complete")
             )
+
+    def load_playlists(self):
+        """Load playlists into the combobox."""
+        self.playlists = self.config.get_music_playlists()
+        playlist_names = [p["name"] for p in self.playlists]
+        self.playlist_combo["values"] = playlist_names
+
+        default_playlist_path = self.config.get("classical_music_default_playlist")
+        if default_playlist_path:
+            for p in self.playlists:
+                if p["path"] == default_playlist_path:
+                    self.playlist_var.set(p["name"])
+                    return
+
+        if playlist_names:
+            self.playlist_var.set(playlist_names[0])
+            # Also set this as the default in config if it's not set
+            if not default_playlist_path:
+                selected_playlist = next((p for p in self.playlists if p["name"] == playlist_names[0]), None)
+                if selected_playlist:
+                    self.config.set("classical_music_default_playlist", selected_playlist["path"])
+                    self.config.save_config()
+
+    def on_playlist_change(self, event=None):
+        """Handle playlist selection change."""
+        selected_name = self.playlist_var.get()
+        selected_playlist = next((p for p in self.playlists if p["name"] == selected_name), None)
+
+        if selected_playlist:
+            self.config.set("classical_music_default_playlist", selected_playlist["path"])
+            self.config.save_config()
+
+            if self.music.is_playing:
+                self.music.stop_music()
+                self.music.start_music()
 
     def show_statistics(self):
         """Show session statistics"""

@@ -114,7 +114,7 @@ class MusicController:
             return None
 
         # Check if user has selected a specific playlist
-        selected_playlist = self.config.get("classical_music_selected_playlist")
+        selected_playlist = self.config.get("classical_music_default_playlist")
         if selected_playlist:
             # Verify the selected playlist still exists
             for playlist in playlists:
