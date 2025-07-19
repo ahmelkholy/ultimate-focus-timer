@@ -450,7 +450,7 @@ Cross-Platform Productivity Suite
                 "Session type", choices=["work", "break", "custom"], default="work"
             )
             duration = int(Prompt.ask("Duration (minutes)", default="25"))
-            with_music = Confirm.ask("Play classical music?", default=True)
+            with_music = True
         else:
             session_type = (
                 input("Session type (work/break/custom) [work]: ").strip() or "work"

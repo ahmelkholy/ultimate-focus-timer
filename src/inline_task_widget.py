@@ -508,19 +508,8 @@ class InlineTaskWidget:
     def check_and_prompt_for_tasks(self) -> bool:
         """Check if there are tasks and prompt to add some if none exist"""
         if not self.task_manager.has_tasks_for_today():
-            result = messagebox.askyesno(
-                "No Tasks Found",
-                "You don't have any tasks for today.\n\n"
-                "Would you like to add some tasks to help you stay focused during your Pomodoro sessions?",
-                parent=self.parent,
-            )
-
-            if result:
-                self.show_add_task_entry()
-                return False  # Don't start session yet
-            else:
-                # User chose to proceed without tasks
-                return True
+            self.show_add_task_entry()
+            return False  # Don't start session yet
 
         return True  # Has tasks, can proceed
 

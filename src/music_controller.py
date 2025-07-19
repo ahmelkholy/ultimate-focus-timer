@@ -157,11 +157,7 @@ class MusicController:
         if volume is None:
             volume = self.config.get("classical_music_volume", 30)
 
-        if playlist_path:
-            print(
-                f"   Playlist: {Path(playlist_path).name if Path(playlist_path).exists() else playlist_path}"
-            )
-        print(f"   Volume: {volume}%")
+        
 
         # Build MPV arguments
         mpv_args = [
@@ -347,7 +343,6 @@ class MusicController:
 
     def cleanup(self):
         """Cleanup resources on exit"""
-        print("Cleaning up music controller...")
         self.stop_music()
 
 

@@ -1656,13 +1656,8 @@ class FocusGUI:
 
     def stop_session(self):
         """Stop the current session"""
-        result = messagebox.askyesno(
-            "Stop Session", "Are you sure you want to stop the current session?"
-        )
-
-        if result:
-            self.session_manager.stop_session()
-            self.update_button_states()
+        self.session_manager.stop_session()
+        self.update_button_states()
 
     def toggle_music(self):
         """Toggle music on/off"""
@@ -1687,10 +1682,6 @@ class FocusGUI:
                 "Visit: https://mpv.io/ for installation instructions.",
             )
             return
-
-        result = messagebox.askyesno(
-            "Music Test", "Test classical music for 5 seconds?"
-        )
 
         if result:
             self.music.start_music(volume=20)
@@ -1841,12 +1832,6 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
 
     def show_break_completion_dialog(self, session_name: str, duration: int):
         """Show break session completion dialog"""
-        result = messagebox.askyesno(
-            "Break Complete! 🎉",
-            f"Great! You completed a {duration}-minute {session_name}.\n\n"
-            f"Ready to start a Work Session?",
-        )
-
         if result:
             self.start_session(SessionType.WORK)
 
@@ -1925,17 +1910,11 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
     def on_closing(self):
         """Handle application closing"""
         if self.session_manager.state in [SessionState.RUNNING, SessionState.PAUSED]:
-            result = messagebox.askyesno(
-                "Close Application",
-                "A session is currently active. Stop the session and close?",
-            )
-
-            if result:
-                self.cleanup_callbacks()
-                self.save_window_dimensions()
-                self.session_manager.cleanup()
-                self.music.cleanup()
-                self.root.destroy()
+            self.cleanup_callbacks()
+            self.save_window_dimensions()
+            self.session_manager.cleanup()
+            self.music.cleanup()
+            self.root.destroy()
         else:
             self.cleanup_callbacks()
             self.save_window_dimensions()
@@ -1983,7 +1962,7 @@ class CustomSessionDialog:
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Custom Session")
         self.dialog.geometry("300x200")
-        self.dialog.resizable(False, False)
+        self.dialog.resizable(True, True)
 
         # Center on parent
         self.dialog.transient(parent)
@@ -2297,7 +2276,7 @@ class WorkCompletionDialog:
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("🎉 Work Session Complete!")
         self.dialog.geometry("400x300")
-        self.dialog.resizable(False, False)
+        self.dialog.resizable(True, True)
         self.dialog.transient(parent)
         self.dialog.grab_set()
 
