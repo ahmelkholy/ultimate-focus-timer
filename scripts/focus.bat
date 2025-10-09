@@ -23,6 +23,12 @@ if not exist "%VENV_ACTIVATE%" (
     exit /b 1
 )
 
+if not exist "%MAIN_SCRIPT%" (
+    echo ❌ Main launcher not found at: %MAIN_SCRIPT%
+    echo 💡 Please verify the installation integrity.
+    exit /b 1
+)
+
 REM Save current directory
 set ORIGINAL_DIR=%CD%
 
@@ -33,45 +39,55 @@ REM Activate virtual environment
 call "%VENV_ACTIVATE%"
 
 REM Parse command line arguments
-if "%1"=="" (
+set MODE=%~1
+set DURATION=%~2
+
+if /I "%MODE%"=="" (
     REM No parameters - show interactive launcher
-    python main.py
-) else if "%1"=="gui" (
-    python main.py --gui
-) else if "%1"=="console" (
-    python main.py --console
-) else if "%1"=="dashboard" (
-    python main.py --dashboard
-) else if "%1"=="stats" (
-    python main.py --stats
-) else if "%1"=="quick" (
-    if "%2"=="" (
-        python main.py --quick 25
+    python "%MAIN_SCRIPT%"
+) else if /I "%MODE%"=="gui" (
+    python "%MAIN_SCRIPT%" --gui
+) else if /I "%MODE%"=="console" (
+    python "%MAIN_SCRIPT%" --console
+) else if /I "%MODE%"=="dashboard" (
+    python "%MAIN_SCRIPT%" --dashboard
+) else if /I "%MODE%"=="stats" (
+    python "%MAIN_SCRIPT%" --stats
+) else if /I "%MODE%"=="quick" (
+    if "%DURATION%"=="" (
+        python "%MAIN_SCRIPT%" --quick-session 25
     ) else (
-        python main.py --quick %2
+        python "%MAIN_SCRIPT%" --quick-session %DURATION%
     )
-) else if "%1"=="break" (
-    if "%2"=="" (
-        python main.py --break 5
+) else if /I "%MODE%"=="break" (
+    if "%DURATION%"=="" (
+        python "%MAIN_SCRIPT%" --quick-break 5
     ) else (
-        python main.py --break %2
+        python "%MAIN_SCRIPT%" --quick-break %DURATION%
     )
-) else if "%1"=="check" (
-    python main.py --check
-) else if "%1"=="info" (
-    python main.py --info
+) else if /I "%MODE%"=="check" (
+    python "%MAIN_SCRIPT%" --check-deps
+) else if /I "%MODE%"=="info" (
+    python "%MAIN_SCRIPT%" --sys-info
+) else if /I "%MODE%"=="interactive" (
+    python "%MAIN_SCRIPT%" --interactive
 ) else (
-    echo ❌ Unknown mode: %1
-    echo 📖 Available modes: gui, console, dashboard, quick [minutes], break [minutes], stats, check, info
+    echo ❌ Unknown mode: %MODE%
+    echo 📖 Available modes: gui, console, dashboard, quick [minutes], break [minutes], stats, check, info, interactive
     echo 📝 Examples:
     echo    focus
     echo    focus gui
     echo    focus quick 25
     echo    focus break 5
     echo    focus stats
+    echo.
+    echo 👉 Passing arguments directly to the app...
+    python "%MAIN_SCRIPT%" %*
 )
+
+set EXITCODE=%ERRORLEVEL%
 
 REM Restore original directory
 cd /d "%ORIGINAL_DIR%"
 
-endlocal
+endlocal & exit /b %EXITCODE%

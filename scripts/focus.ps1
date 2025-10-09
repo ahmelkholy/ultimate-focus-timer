@@ -6,7 +6,7 @@
     This script activates the virtual environment and launches the Focus Timer
     from anywhere on your system.
 .PARAMETER Mode
-    Launch mode: gui, console, dashboard, quick, break, stats
+    Launch mode: gui, console, dashboard, quick, break, stats, check, info, interactive
 .PARAMETER Duration
     Duration in minutes for quick sessions
 .EXAMPLE
@@ -41,6 +41,12 @@ if (-not (Test-Path $VENV_ACTIVATE)) {
     exit 1
 }
 
+if (-not (Test-Path $MAIN_SCRIPT)) {
+    Write-Host "❌ Main launcher not found at: $MAIN_SCRIPT" -ForegroundColor Red
+    Write-Host "💡 Please verify the Focus Timer installation." -ForegroundColor Yellow
+    exit 1
+}
+
 # Save current location
 $originalLocation = Get-Location
 
@@ -54,49 +60,61 @@ try {
     # Determine command based on parameters
     if ($Mode -eq "") {
         # No parameters - show interactive launcher
-        python main.py
+        python "$MAIN_SCRIPT"
     }
     elseif ($Mode -eq "gui") {
-        python main.py --gui
+        python "$MAIN_SCRIPT" --gui
     }
     elseif ($Mode -eq "console") {
-        python main.py --console
+        python "$MAIN_SCRIPT" --console
     }
     elseif ($Mode -eq "dashboard") {
-        python main.py --dashboard
+        python "$MAIN_SCRIPT" --dashboard
     }
     elseif ($Mode -eq "stats") {
-        python main.py --stats
+        python "$MAIN_SCRIPT" --stats
     }
     elseif ($Mode -eq "quick") {
         if ($Duration -gt 0) {
-            python main.py --quick $Duration
+            python "$MAIN_SCRIPT" --quick-session $Duration
         } else {
-            python main.py --quick 25  # Default 25 minutes
+            python "$MAIN_SCRIPT" --quick-session 25  # Default 25 minutes
         }
     }
     elseif ($Mode -eq "break") {
         if ($Duration -gt 0) {
-            python main.py --break $Duration
+            python "$MAIN_SCRIPT" --quick-break $Duration
         } else {
-            python main.py --break 5   # Default 5 minutes
+            python "$MAIN_SCRIPT" --quick-break 5   # Default 5 minutes
         }
     }
     elseif ($Mode -eq "check") {
-        python main.py --check
+        python "$MAIN_SCRIPT" --check-deps
     }
     elseif ($Mode -eq "info") {
-        python main.py --info
+        python "$MAIN_SCRIPT" --sys-info
+    }
+    elseif ($Mode -eq "interactive") {
+        python "$MAIN_SCRIPT" --interactive
+    }
+    elseif ($Mode.StartsWith('-')) {
+        python "$MAIN_SCRIPT" @($Mode) @args
     }
     else {
         Write-Host "❌ Unknown mode: $Mode" -ForegroundColor Red
-        Write-Host "📖 Available modes: gui, console, dashboard, quick [minutes], break [minutes], stats, check, info" -ForegroundColor Yellow
+        Write-Host "📖 Available modes: gui, console, dashboard, quick [minutes], break [minutes], stats, check, info, interactive" -ForegroundColor Yellow
         Write-Host "📝 Examples:" -ForegroundColor Cyan
         Write-Host "   focus" -ForegroundColor White
         Write-Host "   focus gui" -ForegroundColor White
         Write-Host "   focus quick 25" -ForegroundColor White
         Write-Host "   focus break 5" -ForegroundColor White
         Write-Host "   focus stats" -ForegroundColor White
+        Write-Host "" -ForegroundColor White
+        Write-Host "👉 Forwarding arguments directly to main.py" -ForegroundColor Yellow
+        $forwardArgs = @($Mode)
+        if ($Duration -ne 0) { $forwardArgs += $Duration }
+        if ($args.Count -gt 0) { $forwardArgs += $args }
+        python "$MAIN_SCRIPT" @forwardArgs
     }
 }
 catch {
@@ -105,4 +123,8 @@ catch {
 finally {
     # Restore original location
     Set-Location $originalLocation
+}
+
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
 }

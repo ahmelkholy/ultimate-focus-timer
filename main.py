@@ -307,18 +307,6 @@ def main():
         action="store_true",
         help="Launch the GUI version of the application",
     )
-
-    args = parser.parse_args()
-
-    if args.gui:
-        from src.focus_gui import FocusGUI
-
-        gui = FocusGUI()
-        gui.run()
-        return
-
-    launcher = UltimateFocusLauncher()
-
     parser.add_argument(
         "--console",
         action="store_true",
@@ -363,6 +351,8 @@ def main():
     )
 
     args = parser.parse_args()
+
+    launcher = UltimateFocusLauncher()
 
     if args.gui:
         launcher.launch_gui(show_splash=True)

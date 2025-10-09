@@ -21,6 +21,12 @@ if [ ! -f "$VENV_ACTIVATE" ]; then
     exit 1
 fi
 
+if [ ! -f "$MAIN_SCRIPT" ]; then
+    echo "❌ Main launcher not found at: $MAIN_SCRIPT"
+    echo "💡 Please verify the Focus Timer installation."
+    exit 1
+fi
+
 # Save current directory
 ORIGINAL_DIR=$(pwd)
 
@@ -34,49 +40,58 @@ source "$VENV_ACTIVATE"
 case "$1" in
     "")
         # No parameters - show interactive launcher
-        python main.py
+        python "$MAIN_SCRIPT"
         ;;
     "gui")
-        python main.py --gui
+        python "$MAIN_SCRIPT" --gui
         ;;
     "console")
-        python main.py --console
+        python "$MAIN_SCRIPT" --console
         ;;
     "dashboard")
-        python main.py --dashboard
+        python "$MAIN_SCRIPT" --dashboard
         ;;
     "stats")
-        python main.py --stats
+        python "$MAIN_SCRIPT" --stats
         ;;
     "quick")
         if [ -n "$2" ]; then
-            python main.py --quick "$2"
+            python "$MAIN_SCRIPT" --quick-session "$2"
         else
-            python main.py --quick 25  # Default 25 minutes
+            python "$MAIN_SCRIPT" --quick-session 25  # Default 25 minutes
         fi
         ;;
     "break")
         if [ -n "$2" ]; then
-            python main.py --break "$2"
+            python "$MAIN_SCRIPT" --quick-break "$2"
         else
-            python main.py --break 5   # Default 5 minutes
+            python "$MAIN_SCRIPT" --quick-break 5   # Default 5 minutes
         fi
         ;;
     "check")
-        python main.py --check
+        python "$MAIN_SCRIPT" --check-deps
         ;;
     "info")
-        python main.py --info
+        python "$MAIN_SCRIPT" --sys-info
+        ;;
+    "interactive")
+        python "$MAIN_SCRIPT" --interactive
+        ;;
+    --*)
+        python "$MAIN_SCRIPT" "$@"
         ;;
     *)
         echo "❌ Unknown mode: $1"
-        echo "📖 Available modes: gui, console, dashboard, quick [minutes], break [minutes], stats, check, info"
+        echo "📖 Available modes: gui, console, dashboard, quick [minutes], break [minutes], stats, check, info, interactive"
         echo "📝 Examples:"
         echo "   focus"
         echo "   focus gui"
         echo "   focus quick 25"
         echo "   focus break 5"
         echo "   focus stats"
+        echo ""
+        echo "👉 Forwarding arguments directly to main.py"
+        python "$MAIN_SCRIPT" "$@"
         ;;
 esac
 
