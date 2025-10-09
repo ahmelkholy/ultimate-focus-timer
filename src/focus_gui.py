@@ -604,14 +604,14 @@ class FocusGUI:
             self.additional_frame,
             textvariable=self.playlist_var,
             state="readonly",
-            width=20
+            width=20,
         )
         self.playlist_combo.grid(
-            row=1, 
-            column=0, 
-            columnspan=3, 
+            row=1,
+            column=0,
+            columnspan=3,
             pady=(initial_scaling["button_pady"], 0),
-            sticky=(tk.W, tk.E)
+            sticky=(tk.W, tk.E),
         )
         self.playlist_combo.bind("<<ComboboxSelected>>", self.on_playlist_change)
 
@@ -1683,6 +1683,12 @@ class FocusGUI:
             )
             return
 
+        result = messagebox.askyesno(
+            "Test Music",
+            "This will play a short music sample for 5 seconds.\n\n"
+            "Would you like to proceed with the music test?",
+        )
+
         if result:
             self.music.start_music(volume=20)
             self.root.after(5000, lambda: self.music.stop_music())
@@ -1709,18 +1715,26 @@ class FocusGUI:
             self.playlist_var.set(playlist_names[0])
             # Also set this as the default in config if it's not set
             if not default_playlist_path:
-                selected_playlist = next((p for p in self.playlists if p["name"] == playlist_names[0]), None)
+                selected_playlist = next(
+                    (p for p in self.playlists if p["name"] == playlist_names[0]), None
+                )
                 if selected_playlist:
-                    self.config.set("classical_music_default_playlist", selected_playlist["path"])
+                    self.config.set(
+                        "classical_music_default_playlist", selected_playlist["path"]
+                    )
                     self.config.save_config()
 
     def on_playlist_change(self, event=None):
         """Handle playlist selection change."""
         selected_name = self.playlist_var.get()
-        selected_playlist = next((p for p in self.playlists if p["name"] == selected_name), None)
+        selected_playlist = next(
+            (p for p in self.playlists if p["name"] == selected_name), None
+        )
 
         if selected_playlist:
-            self.config.set("classical_music_default_playlist", selected_playlist["path"])
+            self.config.set(
+                "classical_music_default_playlist", selected_playlist["path"]
+            )
             self.config.save_config()
 
             if self.music.is_playing:
@@ -1832,6 +1846,12 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
 
     def show_break_completion_dialog(self, session_name: str, duration: int):
         """Show break session completion dialog"""
+        result = messagebox.askyesno(
+            "Break Complete! 😌",
+            f"Great! You completed a {duration}-minute {session_name}.\n\n"
+            f"Ready to get back to work?",
+        )
+
         if result:
             self.start_session(SessionType.WORK)
 

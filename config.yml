@@ -10,7 +10,7 @@ blur_background: true
 break_end_cmd: scripts\classical_music.ps1 -Action start -Volume 20
 break_start_cmd: ''
 classical_music: true
-classical_music_default_playlist: C:\Users\ahm_e\mpv\PlayList\ClassicalMusic.m3u
+classical_music_default_playlist: C:\Users\ahm_e\mpv\PlayList\Mix - Mohamed Mounir.m3u
 classical_music_genres:
 - baroque
 - classical
@@ -38,7 +38,7 @@ fade_sound: true
 goal_tracking: true
 gradient_backgrounds: true
 idle_cmd: ''
-long_break_interval: 4
+long_break_interval: 3
 long_break_mins: 15
 long_break_msg: Take a long break
 max_daily_sessions: 0
@@ -61,7 +61,7 @@ save_incomplete: true
 session_cmd: scripts\classical_music.ps1 -Action start -Volume 30
 session_goals: 8
 session_quality_rating: true
-short_break_mins: 7
+short_break_mins: 5
 short_break_msg: Take a breather
 show_progress_bar: true
 show_seconds: true
@@ -78,8 +78,8 @@ track_idle_time: true
 transparency: 0.95
 weekly_goals: 40
 weekly_reports: true
-window_geometry: 250x565+-907+-10
+window_geometry: 250x594+-340+81
 work_end_cmd: scripts\classical_music.ps1 -Action stop
-work_mins: 25
+work_mins: 20
 work_msg: Focus on your task
 work_start_cmd: scripts\classical_music.ps1 -Action start -Volume 30
