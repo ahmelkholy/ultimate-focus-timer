@@ -60,8 +60,6 @@ class TaskManager:
         if data_dir is None:
             # Use a consistent absolute path for all sessions
             # This ensures tasks persist across different working directories
-            import os
-
             script_dir = Path(
                 __file__
             ).parent.parent  # Go up from src/ to the project root

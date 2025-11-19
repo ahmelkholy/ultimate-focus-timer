@@ -43,7 +43,7 @@ def build():
     print("Running command:", " ".join(cmd))
 
     try:
-        result = subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True)
         print("\nBuild completed successfully!")
         print("Executable created in: dist/focus.exe")
         return True

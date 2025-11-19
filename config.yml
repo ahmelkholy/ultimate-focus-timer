@@ -10,7 +10,7 @@ blur_background: true
 break_end_cmd: scripts\classical_music.ps1 -Action start -Volume 20
 break_start_cmd: ''
 classical_music: true
-classical_music_default_playlist: C:\Users\ahm_e\mpv\PlayList\Mix - Mohamed Mounir.m3u
+classical_music_default_playlist: C:\Users\ahm_e\mpv\PlayList\ClassicalMusic.m3u
 classical_music_genres:
 - baroque
 - classical
@@ -29,7 +29,7 @@ custom_notifications: true
 dark_theme: true
 data_retention_days: 365
 deep_focus_mode: false
-desktop_notifications: true
+desktop_notifications: false
 detailed_analytics: true
 distraction_tracking: true
 export_format: csv
@@ -48,7 +48,7 @@ mpv_executable: C:\Users\ahm_e\mpv\portable_config\mpv.exe
 mpv_extra_args: --no-video --shuffle --loop-playlist
 notification_persistence: 5
 notification_priority: normal
-notify: true
+notify: false
 notify_early_warning: 1
 notify_sound: true
 pause_music_on_break: true
@@ -78,7 +78,7 @@ track_idle_time: true
 transparency: 0.95
 weekly_goals: 40
 weekly_reports: true
-window_geometry: 250x594+-340+81
+window_geometry: 250x594+434+191
 work_end_cmd: scripts\classical_music.ps1 -Action stop
 work_mins: 20
 work_msg: Focus on your task

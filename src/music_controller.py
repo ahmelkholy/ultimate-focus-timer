@@ -13,6 +13,10 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+current_dir = Path(__file__).resolve().parent
+sys.path.insert(0, str(current_dir))
+sys.path.insert(0, str(current_dir.parent))
+
 
 class MusicController:
     """Cross-platform music controller using MPV"""
@@ -156,8 +160,6 @@ class MusicController:
         # Set volume
         if volume is None:
             volume = self.config.get("classical_music_volume", 30)
-
-        
 
         # Build MPV arguments
         mpv_args = [
@@ -348,7 +350,7 @@ class MusicController:
 
 if __name__ == "__main__":
     # Test music controller functionality
-    from config_manager import ConfigManager
+    from src.config_manager import ConfigManager
 
     config = ConfigManager()
     music = MusicController(config)

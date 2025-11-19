@@ -4,12 +4,17 @@ Session Manager for Enhanced Focus Timer
 Core session logic, timing, and logging functionality
 """
 
+import sys
 import threading
 import time
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
+
+current_dir = Path(__file__).resolve().parent
+sys.path.insert(0, str(current_dir))
+sys.path.insert(0, str(current_dir.parent))
 
 
 class SessionType(Enum):
@@ -84,7 +89,6 @@ class SessionManager:
     ) -> bool:
         """Start a new focus session"""
         if self.state == SessionState.RUNNING:
-            
             return False
 
         # Set session parameters
@@ -125,7 +129,6 @@ class SessionManager:
         # Log session start
         self._log_session_event("Started", duration_minutes)
 
-        
         return True
 
     def pause_session(self) -> bool:
@@ -140,7 +143,6 @@ class SessionManager:
         if self.session_type == SessionType.WORK:
             self.music.pause_music()
 
-        
         return True
 
     def resume_session(self) -> bool:
@@ -155,7 +157,6 @@ class SessionManager:
         if self.session_type == SessionType.WORK:
             self.music.resume_music()
 
-        
         return True
 
     def stop_session(self) -> bool:
@@ -178,7 +179,6 @@ class SessionManager:
         completed_minutes = round(self.elapsed_seconds / 60, 1)
         self._log_session_event("Stopped", completed_minutes)
 
-        
         return True
 
     def _timer_loop(self):
@@ -200,7 +200,6 @@ class SessionManager:
                     and remaining_seconds <= early_warning_time
                     and remaining_seconds > 0
                 ):
-
                     minutes_remaining = max(1, round(remaining_seconds / 60))
                     self.notifications.show_early_warning(
                         self.session_type.value, minutes_remaining
@@ -256,8 +255,6 @@ class SessionManager:
             except Exception as e:
                 print(f"Complete callback error: {e}")
 
-        
-
         # Auto-suggest next session
         self._suggest_next_session()
 
@@ -278,8 +275,6 @@ class SessionManager:
                     duration = self.config.get("short_break_mins", 5)
 
                 # Wait configured delay before starting next session
-                import time
-
                 delay = self.config.get("auto_start_delay", 2)
                 time.sleep(delay)
 
@@ -305,8 +300,6 @@ class SessionManager:
                 duration = self.config.get("work_mins", 25)
 
                 # Wait configured delay before starting next session
-                import time
-
                 delay = self.config.get("auto_start_delay", 2)
                 time.sleep(delay)
 
@@ -483,9 +476,9 @@ class SessionManager:
 
 if __name__ == "__main__":
     # Test session manager
-    from config_manager import ConfigManager
-    from music_controller import MusicController
-    from notification_manager import NotificationManager
+    from src.config_manager import ConfigManager
+    from src.music_controller import MusicController
+    from src.notification_manager import NotificationManager
 
     print("Testing Session Manager...")
     print("=" * 50)
@@ -517,7 +510,7 @@ if __name__ == "__main__":
             print(f"\rTime remaining: {remaining}s", end="", flush=True)
 
         def on_complete(session_type, duration):
-            print(f"\n✅ Test session completed!")
+            print("\n✅ Test session completed!")
 
         session_manager.set_callbacks(on_tick=on_tick, on_complete=on_complete)
         session_manager.start_session(

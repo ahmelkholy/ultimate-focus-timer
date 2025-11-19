@@ -7,14 +7,11 @@ Advanced command-line interface with rich terminal output
 import argparse
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 try:
     from rich.console import Console
-    from rich.layout import Layout
-    from rich.live import Live
     from rich.panel import Panel
     from rich.progress import (
         BarColumn,
@@ -23,25 +20,26 @@ try:
         TextColumn,
         TimeElapsedColumn,
     )
-    from rich.prompt import Confirm, Prompt
+    from rich.prompt import Prompt
     from rich.table import Table
-    from rich.text import Text
 
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
     Console = None
 
-# Add current directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent))
+# Add current directory and project root to path for imports
+current_dir = Path(__file__).resolve().parent
+sys.path.insert(0, str(current_dir))
+sys.path.insert(0, str(current_dir.parent))
 
 try:
-    from config_manager import ConfigManager
-    from dashboard import SessionAnalyzer
-    from music_controller import MusicController
-    from notification_manager import NotificationManager
-    from session_manager import SessionManager
-    from task_manager import TaskManager
+    from src.config_manager import ConfigManager
+    from src.dashboard import SessionAnalyzer
+    from src.music_controller import MusicController
+    from src.notification_manager import NotificationManager
+    from src.session_manager import SessionManager
+    from src.task_manager import TaskManager
 except ImportError as e:
     print(f"❌ Error importing modules: {e}")
     sys.exit(1)
@@ -587,7 +585,9 @@ For more information, visit the project documentation.
             return
 
         if self.use_rich:
-            table = Table(title="Today's Tasks", show_header=True, header_style="bold magenta")
+            table = Table(
+                title="Today's Tasks", show_header=True, header_style="bold magenta"
+            )
             table.add_column("ID", style="dim", width=4)
             table.add_column("Task", style="cyan", no_wrap=True)
             table.add_column("Status", width=12)
@@ -596,7 +596,9 @@ For more information, visit the project documentation.
             for task in tasks:
                 status = "✅ Completed" if task.completed else "⏳ Pending"
                 pomodoros = f"{task.pomodoros_completed}/{task.pomodoros_planned}"
-                table.add_row(str(task.id.split('_')[-1]), task.title, status, pomodoros)
+                table.add_row(
+                    str(task.id.split("_")[-1]), task.title, status, pomodoros
+                )
             self.console.print(table)
         else:
             print("\nToday's Tasks:")
@@ -637,7 +639,7 @@ def main():
         "--no-music", action="store_true", help="Disable music for this session"
     )
     parser.add_argument("--tasks", action="store_true", help="Show today's tasks")
-    parser.add_argument("--add-task", type=str, metavar='TITLE', help="Add a new task")
+    parser.add_argument("--add-task", type=str, metavar="TITLE", help="Add a new task")
 
     args = parser.parse_args()
 

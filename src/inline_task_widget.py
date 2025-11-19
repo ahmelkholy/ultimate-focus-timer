@@ -4,11 +4,17 @@ Inline Task Widget for Ultimate Focus Timer
 Simple task management directly in the main GUI
 """
 
+import sys
 import tkinter as tk
-from tkinter import messagebox, ttk
+from pathlib import Path
+from tkinter import ttk
 from typing import Optional
 
-from task_manager import Task, TaskManager
+current_dir = Path(__file__).resolve().parent
+sys.path.insert(0, str(current_dir))
+sys.path.insert(0, str(current_dir.parent))
+
+from src.task_manager import Task, TaskManager
 
 
 class InlineTaskWidget:
@@ -258,7 +264,7 @@ class InlineTaskWidget:
         try:
             self.task_entry.focus_set()
             self.task_entry.select_range(0, tk.END)
-        except:
+        except Exception:
             pass  # Ignore focus errors
 
     def save_new_task(self):
@@ -305,7 +311,12 @@ class InlineTaskWidget:
         # Update stats label
         if stats["total"] > 0:
             completion_rate = int(stats["completion_rate"])
-            stats_text = f"Progress: {stats['completed']}/{stats['total']} tasks ({completion_rate}%) | 🍅 {stats['total_pomodoros_completed']}/{stats['total_pomodoros_planned']}"
+            stats_text = (
+                f"Progress: {stats['completed']}/{stats['total']} tasks "
+                f"({completion_rate}%) | 🍅 "
+                f"{stats['total_pomodoros_completed']}/"
+                f"{stats['total_pomodoros_planned']}"
+            )
             self.stats_label.config(text=stats_text)
         else:
             self.stats_label.config(text="No tasks yet - add your first task!")
@@ -560,7 +571,7 @@ class InlineTaskWidget:
                 current = current.master
             if hasattr(current, "focus_set"):
                 current.focus_set()
-        except:
+        except Exception:
             pass  # Ignore any focus errors
 
     def on_entry_key_press(self, event):
@@ -578,7 +589,7 @@ class InlineTaskWidget:
                 focused_widget = self.task_entry.focus_get()
                 has_focus = focused_widget == self.task_entry
                 typing_state = typing_state or has_focus
-            except:
+            except Exception:
                 pass  # Ignore focus errors
 
         return typing_state

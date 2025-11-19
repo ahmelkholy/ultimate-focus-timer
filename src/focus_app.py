@@ -5,27 +5,29 @@ Main entry point for the Focus Timer application with GUI/Console mode selection
 """
 
 import argparse
+import importlib.util
 import os
-import sys
 import subprocess
-import webbrowser
-from pathlib import Path
-from typing import Optional
+import sys
 import tkinter as tk
-from tkinter import ttk, messagebox
+from pathlib import Path
+from tkinter import messagebox, ttk
 
-# Add current directory and src to path for imports
-sys.path.insert(0, str(Path(__file__).parent))
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+# Add current directory and project root to path for imports
+current_dir = Path(__file__).resolve().parent
+sys.path.insert(0, str(current_dir))
+sys.path.insert(0, str(current_dir.parent))
 
 try:
-    from config_manager import ConfigManager
-    from focus_gui import FocusGUI
-    from focus_console import ConsoleInterface
-    from dashboard import DashboardGUI, SessionAnalyzer
+    from src.config_manager import ConfigManager
+    from src.dashboard import DashboardGUI, SessionAnalyzer
+    from src.focus_console import ConsoleInterface
+    from src.focus_gui import FocusGUI
 except ImportError as e:
     print(f"Error importing modules: {e}")
-    print("Please ensure all required files are present and dependencies are installed.")
+    print(
+        "Please ensure all required files are present and dependencies are installed."
+    )
     sys.exit(1)
 
 
@@ -37,14 +39,14 @@ class LauncherGUI:
         self.root.title("🎯 Focus Timer Launcher")
         self.root.geometry("600x500")
         self.root.resizable(False, False)
-        self.root.configure(bg='#2c3e50')
+        self.root.configure(bg="#2c3e50")
 
         # Center window
         self.center_window()
 
         # Configure styles
         self.style = ttk.Style()
-        self.style.theme_use('clam')
+        self.style.theme_use("clam")
         self.configure_styles()
 
         self.create_widgets()
@@ -58,158 +60,234 @@ class LauncherGUI:
 
     def configure_styles(self):
         """Configure custom styles"""
-        self.style.configure('Title.TLabel',
-                           font=('Arial', 24, 'bold'),
-                           background='#2c3e50',
-                           foreground='#ecf0f1')
+        self.style.configure(
+            "Title.TLabel",
+            font=("Arial", 24, "bold"),
+            background="#2c3e50",
+            foreground="#ecf0f1",
+        )
 
-        self.style.configure('Subtitle.TLabel',
-                           font=('Arial', 12),
-                           background='#2c3e50',
-                           foreground='#bdc3c7')
+        self.style.configure(
+            "Subtitle.TLabel",
+            font=("Arial", 12),
+            background="#2c3e50",
+            foreground="#bdc3c7",
+        )
 
-        self.style.configure('Launch.TButton',
-                           font=('Arial', 14, 'bold'),
-                           padding=(20, 15))
+        self.style.configure(
+            "Launch.TButton", font=("Arial", 14, "bold"), padding=(20, 15)
+        )
 
-        self.style.configure('Option.TButton',
-                           font=('Arial', 11),
-                           padding=(15, 10))
+        self.style.configure("Option.TButton", font=("Arial", 11), padding=(15, 10))
 
-        self.style.configure('Card.TFrame',
-                           background='#34495e',
-                           relief='raised',
-                           borderwidth=2)
+        self.style.configure(
+            "Card.TFrame",
+            background="#34495e",
+            relief="raised",
+            borderwidth=2,
+        )
 
     def create_widgets(self):
         """Create and layout widgets"""
         # Header
-        header_frame = tk.Frame(self.root, bg='#2c3e50', height=120)
-        header_frame.pack(fill='x', padx=20, pady=(20, 0))
+        header_frame = tk.Frame(self.root, bg="#2c3e50", height=120)
+        header_frame.pack(fill="x", padx=20, pady=(20, 0))
         header_frame.pack_propagate(False)
 
-        title_label = ttk.Label(header_frame, text="🎯 FOCUS TIMER", style='Title.TLabel')
+        title_label = ttk.Label(
+            header_frame, text="🎯 FOCUS TIMER", style="Title.TLabel"
+        )
         title_label.pack(pady=(20, 5))
 
-        subtitle_label = ttk.Label(header_frame,
-                                  text="Boost your productivity with the Pomodoro Technique",
-                                  style='Subtitle.TLabel')
+        subtitle_label = ttk.Label(
+            header_frame,
+            text="Boost your productivity with the Pomodoro Technique",
+            style="Subtitle.TLabel",
+        )
         subtitle_label.pack()
 
         # Main content
-        content_frame = tk.Frame(self.root, bg='#2c3e50')
-        content_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        content_frame = tk.Frame(self.root, bg="#2c3e50")
+        content_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
         # Launch options
-        options_frame = ttk.Frame(content_frame, style='Card.TFrame')
-        options_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        options_frame = ttk.Frame(content_frame, style="Card.TFrame")
+        options_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         # Option 1: GUI Timer
-        gui_frame = tk.Frame(options_frame, bg='#34495e')
-        gui_frame.pack(fill='x', padx=20, pady=(20, 10))
+        gui_frame = tk.Frame(options_frame, bg="#34495e")
+        gui_frame.pack(fill="x", padx=20, pady=(20, 10))
 
-        gui_icon = tk.Label(gui_frame, text="🖥️", font=('Arial', 32), bg='#34495e', fg='#3498db')
-        gui_icon.pack(side='left', padx=(0, 15))
+        gui_icon = tk.Label(
+            gui_frame, text="🖥️", font=("Arial", 32), bg="#34495e", fg="#3498db"
+        )
+        gui_icon.pack(side="left", padx=(0, 15))
 
-        gui_info = tk.Frame(gui_frame, bg='#34495e')
-        gui_info.pack(side='left', fill='both', expand=True)
+        gui_info = tk.Frame(gui_frame, bg="#34495e")
+        gui_info.pack(side="left", fill="both", expand=True)
 
-        gui_title = tk.Label(gui_info, text="GUI Timer", font=('Arial', 16, 'bold'),
-                            bg='#34495e', fg='white')
-        gui_title.pack(anchor='w')
+        gui_title = tk.Label(
+            gui_info,
+            text="GUI Timer",
+            font=("Arial", 16, "bold"),
+            bg="#34495e",
+            fg="white",
+        )
+        gui_title.pack(anchor="w")
 
-        gui_desc = tk.Label(gui_info, text="Modern graphical interface with progress bars,\nstatistics, and easy session management",
-                           font=('Arial', 10), bg='#34495e', fg='#bdc3c7')
-        gui_desc.pack(anchor='w')
+        gui_desc = tk.Label(
+            gui_info,
+            text="Modern graphical interface with progress bars,\nstatistics, and easy session management",
+            font=("Arial", 10),
+            bg="#34495e",
+            fg="#bdc3c7",
+        )
+        gui_desc.pack(anchor="w")
 
-        gui_button = ttk.Button(gui_frame, text="Launch GUI", style='Launch.TButton',
-                               command=self.launch_gui)
-        gui_button.pack(side='right', padx=(10, 0))
+        gui_button = ttk.Button(
+            gui_frame,
+            text="Launch GUI",
+            style="Launch.TButton",
+            command=self.launch_gui,
+        )
+        gui_button.pack(side="right", padx=(10, 0))
 
         # Separator
-        separator1 = ttk.Separator(options_frame, orient='horizontal')
-        separator1.pack(fill='x', padx=20, pady=10)
+        separator1 = ttk.Separator(options_frame, orient="horizontal")
+        separator1.pack(fill="x", padx=20, pady=10)
 
         # Option 2: Console Timer
-        console_frame = tk.Frame(options_frame, bg='#34495e')
-        console_frame.pack(fill='x', padx=20, pady=10)
+        console_frame = tk.Frame(options_frame, bg="#34495e")
+        console_frame.pack(fill="x", padx=20, pady=10)
 
-        console_icon = tk.Label(console_frame, text="⌨️", font=('Arial', 32), bg='#34495e', fg='#2ecc71')
-        console_icon.pack(side='left', padx=(0, 15))
+        console_icon = tk.Label(
+            console_frame, text="⌨️", font=("Arial", 32), bg="#34495e", fg="#2ecc71"
+        )
+        console_icon.pack(side="left", padx=(0, 15))
 
-        console_info = tk.Frame(console_frame, bg='#34495e')
-        console_info.pack(side='left', fill='both', expand=True)
+        console_info = tk.Frame(console_frame, bg="#34495e")
+        console_info.pack(side="left", fill="both", expand=True)
 
-        console_title = tk.Label(console_info, text="Console Timer", font=('Arial', 16, 'bold'),
-                                bg='#34495e', fg='white')
-        console_title.pack(anchor='w')
+        console_title = tk.Label(
+            console_info,
+            text="Console Timer",
+            font=("Arial", 16, "bold"),
+            bg="#34495e",
+            fg="white",
+        )
+        console_title.pack(anchor="w")
 
-        console_desc = tk.Label(console_info, text="Terminal-based interface for keyboard enthusiasts\nand minimal resource usage",
-                               font=('Arial', 10), bg='#34495e', fg='#bdc3c7')
-        console_desc.pack(anchor='w')
+        console_desc = tk.Label(
+            console_info,
+            text="Terminal-based interface for keyboard enthusiasts\nand minimal resource usage",
+            font=("Arial", 10),
+            bg="#34495e",
+            fg="#bdc3c7",
+        )
+        console_desc.pack(anchor="w")
 
-        console_button = ttk.Button(console_frame, text="Launch Console", style='Launch.TButton',
-                                   command=self.launch_console)
-        console_button.pack(side='right', padx=(10, 0))
+        console_button = ttk.Button(
+            console_frame,
+            text="Launch Console",
+            style="Launch.TButton",
+            command=self.launch_console,
+        )
+        console_button.pack(side="right", padx=(10, 0))
 
         # Separator
-        separator2 = ttk.Separator(options_frame, orient='horizontal')
-        separator2.pack(fill='x', padx=20, pady=10)
+        separator2 = ttk.Separator(options_frame, orient="horizontal")
+        separator2.pack(fill="x", padx=20, pady=10)
 
         # Option 3: Analytics Dashboard
-        dashboard_frame = tk.Frame(options_frame, bg='#34495e')
-        dashboard_frame.pack(fill='x', padx=20, pady=10)
+        dashboard_frame = tk.Frame(options_frame, bg="#34495e")
+        dashboard_frame.pack(fill="x", padx=20, pady=10)
 
-        dashboard_icon = tk.Label(dashboard_frame, text="📊", font=('Arial', 32), bg='#34495e', fg='#e74c3c')
-        dashboard_icon.pack(side='left', padx=(0, 15))
+        dashboard_icon = tk.Label(
+            dashboard_frame, text="📊", font=("Arial", 32), bg="#34495e", fg="#e74c3c"
+        )
+        dashboard_icon.pack(side="left", padx=(0, 15))
 
-        dashboard_info = tk.Frame(dashboard_frame, bg='#34495e')
-        dashboard_info.pack(side='left', fill='both', expand=True)
+        dashboard_info = tk.Frame(dashboard_frame, bg="#34495e")
+        dashboard_info.pack(side="left", fill="both", expand=True)
 
-        dashboard_title = tk.Label(dashboard_info, text="Analytics Dashboard", font=('Arial', 16, 'bold'),
-                                  bg='#34495e', fg='white')
-        dashboard_title.pack(anchor='w')
+        dashboard_title = tk.Label(
+            dashboard_info,
+            text="Analytics Dashboard",
+            font=("Arial", 16, "bold"),
+            bg="#34495e",
+            fg="white",
+        )
+        dashboard_title.pack(anchor="w")
 
-        dashboard_desc = tk.Label(dashboard_info, text="Detailed productivity analytics with charts,\ninsights, and session history",
-                                 font=('Arial', 10), bg='#34495e', fg='#bdc3c7')
-        dashboard_desc.pack(anchor='w')
+        dashboard_desc = tk.Label(
+            dashboard_info,
+            text="Detailed productivity analytics with charts,\ninsights, and session history",
+            font=("Arial", 10),
+            bg="#34495e",
+            fg="#bdc3c7",
+        )
+        dashboard_desc.pack(anchor="w")
 
-        dashboard_button = ttk.Button(dashboard_frame, text="View Analytics", style='Launch.TButton',
-                                     command=self.launch_dashboard)
-        dashboard_button.pack(side='right', padx=(10, 0))
+        dashboard_button = ttk.Button(
+            dashboard_frame,
+            text="View Analytics",
+            style="Launch.TButton",
+            command=self.launch_dashboard,
+        )
+        dashboard_button.pack(side="right", padx=(10, 0))
 
         # Bottom section
-        bottom_frame = tk.Frame(content_frame, bg='#2c3e50')
-        bottom_frame.pack(fill='x', pady=(20, 0))
+        bottom_frame = tk.Frame(content_frame, bg="#2c3e50")
+        bottom_frame.pack(fill="x", pady=(20, 0))
 
         # Utility buttons
-        utils_frame = tk.Frame(bottom_frame, bg='#2c3e50')
-        utils_frame.pack(fill='x')
+        utils_frame = tk.Frame(bottom_frame, bg="#2c3e50")
+        utils_frame.pack(fill="x")
 
-        ttk.Button(utils_frame, text="⚙️ Configuration", style='Option.TButton',
-                  command=self.open_config).pack(side='left', padx=(0, 10))
+        ttk.Button(
+            utils_frame,
+            text="⚙️ Configuration",
+            style="Option.TButton",
+            command=self.open_config,
+        ).pack(side="left", padx=(0, 10))
 
-        ttk.Button(utils_frame, text="📁 Open Data Folder", style='Option.TButton',
-                  command=self.open_data_folder).pack(side='left', padx=(0, 10))
+        ttk.Button(
+            utils_frame,
+            text="📁 Open Data Folder",
+            style="Option.TButton",
+            command=self.open_data_folder,
+        ).pack(side="left", padx=(0, 10))
 
-        ttk.Button(utils_frame, text="🆘 Help", style='Option.TButton',
-                  command=self.show_help).pack(side='left', padx=(0, 10))
+        ttk.Button(
+            utils_frame, text="🆘 Help", style="Option.TButton", command=self.show_help
+        ).pack(side="left", padx=(0, 10))
 
-        ttk.Button(utils_frame, text="❌ Exit", style='Option.TButton',
-                  command=self.root.quit).pack(side='right')
+        ttk.Button(
+            utils_frame, text="❌ Exit", style="Option.TButton", command=self.root.quit
+        ).pack(side="right")
 
         # Status bar
-        status_frame = tk.Frame(bottom_frame, bg='#2c3e50', height=30)
-        status_frame.pack(fill='x', pady=(10, 0))
+        status_frame = tk.Frame(bottom_frame, bg="#2c3e50", height=30)
+        status_frame.pack(fill="x", pady=(10, 0))
         status_frame.pack_propagate(False)
 
-        self.status_label = tk.Label(status_frame, text="Ready to focus! Select an option above to begin.",
-                                   font=('Arial', 9), bg='#2c3e50', fg='#95a5a6')
-        self.status_label.pack(side='left', pady=5)
+        self.status_label = tk.Label(
+            status_frame,
+            text="Ready to focus! Select an option above to begin.",
+            font=("Arial", 9),
+            bg="#2c3e50",
+            fg="#95a5a6",
+        )
+        self.status_label.pack(side="left", pady=5)
 
-        version_label = tk.Label(status_frame, text="v2.0 Python Edition",
-                               font=('Arial', 9), bg='#2c3e50', fg='#95a5a6')
-        version_label.pack(side='right', pady=5)
+        version_label = tk.Label(
+            status_frame,
+            text="v2.0 Python Edition",
+            font=("Arial", 9),
+            bg="#2c3e50",
+            fg="#95a5a6",
+        )
+        version_label.pack(side="right", pady=5)
 
     def update_status(self, message: str):
         """Update status message"""
@@ -231,7 +309,9 @@ class LauncherGUI:
             self.update_status("GUI Timer closed. Ready for next session!")
 
         except Exception as e:
-            messagebox.showerror("Launch Error", f"Failed to launch GUI Timer:\n{str(e)}")
+            messagebox.showerror(
+                "Launch Error", f"Failed to launch GUI Timer:\n{str(e)}"
+            )
             self.update_status("Error launching GUI Timer")
 
     def launch_console(self):
@@ -243,34 +323,53 @@ class LauncherGUI:
             python_exe = sys.executable
             script_path = Path(__file__).parent / "src" / "focus_console.py"
 
-            if os.name == 'nt':  # Windows
-                subprocess.Popen([
-                    'cmd', '/c', 'start', 'cmd', '/k',
-                    f'"{python_exe}" "{script_path}" --interactive'
-                ])
-            elif os.name == 'posix':  # macOS/Linux
-                if sys.platform == 'darwin':  # macOS
-                    subprocess.Popen([
-                        'osascript', '-e',
-                        f'tell application "Terminal" to do script "{python_exe} {script_path} --interactive"'
-                    ])
+            if os.name == "nt":  # Windows
+                subprocess.Popen(
+                    [
+                        "cmd",
+                        "/c",
+                        "start",
+                        "cmd",
+                        "/k",
+                        f'"{python_exe}" "{script_path}" --interactive',
+                    ]
+                )
+            elif os.name == "posix":  # macOS/Linux
+                if sys.platform == "darwin":  # macOS
+                    subprocess.Popen(
+                        [
+                            "osascript",
+                            "-e",
+                            f'tell application "Terminal" to do script "{python_exe} {script_path} --interactive"',
+                        ]
+                    )
                 else:  # Linux
                     # Try different terminal emulators
-                    terminals = ['gnome-terminal', 'xterm', 'konsole', 'xfce4-terminal']
+                    terminals = ["gnome-terminal", "xterm", "konsole", "xfce4-terminal"]
                     for terminal in terminals:
                         try:
-                            subprocess.Popen([terminal, '-e', f'{python_exe} {script_path} --interactive'])
+                            subprocess.Popen(
+                                [
+                                    terminal,
+                                    "-e",
+                                    f"{python_exe} {script_path} --interactive",
+                                ]
+                            )
                             break
                         except FileNotFoundError:
                             continue
                     else:
                         # Fallback: run in current terminal
-                        subprocess.Popen([python_exe, str(script_path), '--interactive'])
+                        subprocess.Popen(
+                            [python_exe, str(script_path), "--interactive"]
+                        )
 
             self.update_status("Console Timer launched in new terminal")
 
         except Exception as e:
-            messagebox.showerror("Launch Error", f"Failed to launch Console Timer:\n{str(e)}")
+            messagebox.showerror(
+                "Launch Error", f"Failed to launch Console Timer:\n{str(e)}"
+            )
             self.update_status("Error launching Console Timer")
 
     def launch_dashboard(self):
@@ -286,7 +385,9 @@ class LauncherGUI:
             self.update_status("Analytics Dashboard closed")
 
         except Exception as e:
-            messagebox.showerror("Launch Error", f"Failed to launch Analytics Dashboard:\n{str(e)}")
+            messagebox.showerror(
+                "Launch Error", f"Failed to launch Analytics Dashboard:\n{str(e)}"
+            )
             self.update_status("Error launching Analytics Dashboard")
 
     def open_config(self):
@@ -296,16 +397,18 @@ class LauncherGUI:
             config_path = config.config_path
 
             if config_path.exists():
-                if os.name == 'nt':  # Windows
+                if os.name == "nt":  # Windows
                     os.startfile(str(config_path))
-                elif sys.platform == 'darwin':  # macOS
-                    subprocess.run(['open', str(config_path)])
+                elif sys.platform == "darwin":  # macOS
+                    subprocess.run(["open", str(config_path)])
                 else:  # Linux
-                    subprocess.run(['xdg-open', str(config_path)])
+                    subprocess.run(["xdg-open", str(config_path)])
 
                 self.update_status(f"Opened configuration file: {config_path}")
             else:
-                messagebox.showwarning("File Not Found", "Configuration file not found!")
+                messagebox.showwarning(
+                    "File Not Found", "Configuration file not found!"
+                )
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open configuration:\n{str(e)}")
@@ -314,16 +417,16 @@ class LauncherGUI:
         """Open the data folder"""
         try:
             config = ConfigManager()
-            data_path = config.get_app_config()['data_path']
+            data_path = config.get_app_config()["data_path"]
             data_dir = Path(data_path).parent
 
             if data_dir.exists():
-                if os.name == 'nt':  # Windows
+                if os.name == "nt":  # Windows
                     os.startfile(str(data_dir))
-                elif sys.platform == 'darwin':  # macOS
-                    subprocess.run(['open', str(data_dir)])
+                elif sys.platform == "darwin":  # macOS
+                    subprocess.run(["open", str(data_dir)])
                 else:  # Linux
-                    subprocess.run(['xdg-open', str(data_dir)])
+                    subprocess.run(["xdg-open", str(data_dir)])
 
                 self.update_status(f"Opened data folder: {data_dir}")
             else:
@@ -386,22 +489,31 @@ For more help, visit the configuration file or check the documentation.
         help_window.title("🆘 Focus Timer Help")
         help_window.geometry("600x700")
         help_window.resizable(True, True)
-        help_window.configure(bg='#2c3e50')
+        help_window.configure(bg="#2c3e50")
 
         # Text widget with scrollbar
-        text_frame = tk.Frame(help_window, bg='#2c3e50')
-        text_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        text_frame = tk.Frame(help_window, bg="#2c3e50")
+        text_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
-        text_widget = tk.Text(text_frame, wrap='word', bg='#34495e', fg='white',
-                             font=('Consolas', 11), padx=15, pady=15)
-        scrollbar = ttk.Scrollbar(text_frame, orient='vertical', command=text_widget.yview)
+        text_widget = tk.Text(
+            text_frame,
+            wrap="word",
+            bg="#34495e",
+            fg="white",
+            font=("Consolas", 11),
+            padx=15,
+            pady=15,
+        )
+        scrollbar = ttk.Scrollbar(
+            text_frame, orient="vertical", command=text_widget.yview
+        )
         text_widget.configure(yscrollcommand=scrollbar.set)
 
-        text_widget.pack(side='left', fill='both', expand=True)
-        scrollbar.pack(side='right', fill='y')
+        text_widget.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
-        text_widget.insert('1.0', help_text)
-        text_widget.config(state='disabled')
+        text_widget.insert("1.0", help_text)
+        text_widget.config(state="disabled")
 
         # Close button
         ttk.Button(help_window, text="Close", command=help_window.destroy).pack(pady=10)
@@ -413,32 +525,19 @@ For more help, visit the configuration file or check the documentation.
 
 def check_dependencies():
     """Check if all required dependencies are available"""
-    missing_deps = []
+    optional_modules = {
+        "yaml": "PyYAML",
+        "matplotlib": "matplotlib",
+        "pandas": "pandas",
+        "seaborn": "seaborn",
+        "plyer": "plyer",
+    }
 
-    try:
-        import yaml
-    except ImportError:
-        missing_deps.append("PyYAML")
-
-    try:
-        import matplotlib
-    except ImportError:
-        missing_deps.append("matplotlib")
-
-    try:
-        import pandas
-    except ImportError:
-        missing_deps.append("pandas")
-
-    try:
-        import seaborn
-    except ImportError:
-        missing_deps.append("seaborn")
-
-    try:
-        import plyer
-    except ImportError:
-        missing_deps.append("plyer")
+    missing_deps = [
+        friendly_name
+        for module_name, friendly_name in optional_modules.items()
+        if importlib.util.find_spec(module_name) is None
+    ]
 
     if missing_deps:
         print("❌ Missing required dependencies:")
@@ -458,22 +557,42 @@ def main():
     parser = argparse.ArgumentParser(description="Focus Timer Application Launcher")
 
     # Mode selection
-    parser.add_argument('--gui', action='store_true', help='Launch GUI timer directly')
-    parser.add_argument('--console', action='store_true', help='Launch console timer directly')
-    parser.add_argument('--dashboard', action='store_true', help='Launch analytics dashboard directly')
-    parser.add_argument('--launcher', action='store_true', help='Show launcher GUI (default)')
+    parser.add_argument("--gui", action="store_true", help="Launch GUI timer directly")
+    parser.add_argument(
+        "--console", action="store_true", help="Launch console timer directly"
+    )
+    parser.add_argument(
+        "--dashboard", action="store_true", help="Launch analytics dashboard directly"
+    )
+    parser.add_argument(
+        "--launcher", action="store_true", help="Show launcher GUI (default)"
+    )
 
     # Quick start options
-    parser.add_argument('--work', type=int, metavar='MINUTES',
-                       help='Start a work session for specified minutes (console mode)')
-    parser.add_argument('--break-session', type=int, metavar='MINUTES', dest='break_session',
-                       help='Start a break session for specified minutes (console mode)')
-    parser.add_argument('--pomodoro', action='store_true',
-                       help='Start a standard 25-minute Pomodoro session (console mode)')
+    parser.add_argument(
+        "--work",
+        type=int,
+        metavar="MINUTES",
+        help="Start a work session for specified minutes (console mode)",
+    )
+    parser.add_argument(
+        "--break-session",
+        type=int,
+        metavar="MINUTES",
+        dest="break_session",
+        help="Start a break session for specified minutes (console mode)",
+    )
+    parser.add_argument(
+        "--pomodoro",
+        action="store_true",
+        help="Start a standard 25-minute Pomodoro session (console mode)",
+    )
 
     # Configuration
-    parser.add_argument('--config', type=str, help='Path to configuration file')
-    parser.add_argument('--check-deps', action='store_true', help='Check dependencies and exit')
+    parser.add_argument("--config", type=str, help="Path to configuration file")
+    parser.add_argument(
+        "--check-deps", action="store_true", help="Check dependencies and exit"
+    )
 
     args = parser.parse_args()
 
@@ -492,11 +611,11 @@ def main():
         if args.work or args.break_session or args.pomodoro:
             console = ConsoleInterface(args.config)
             if args.work:
-                console.run_command('start', args.work, 'work')
+                console.run_command("start", args.work, "work")
             elif args.break_session:
-                console.run_command('start', args.break_session, 'short_break')
+                console.run_command("start", args.break_session, "short_break")
             elif args.pomodoro:
-                console.run_command('start', 25, 'work')
+                console.run_command("start", 25, "work")
 
         # Handle direct mode launches
         elif args.gui:

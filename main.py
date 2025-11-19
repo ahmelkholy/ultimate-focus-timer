@@ -32,12 +32,25 @@ def log_error(exc_info):
     )
 
 
+def register_global_exception_handler():
+    """Register a global handler to log fatal errors and notify the user."""
+
+    def _handle_unhandled_exception(exc_type, exc_value, exc_traceback):
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+        log_error((exc_type, exc_value, exc_traceback))
+        print("[X] Unexpected fatal error. Details have been logged to error.log.")
+
+    sys.excepthook = _handle_unhandled_exception
+
+
 # --- Main Application ---
-from config_manager import ConfigManager
-from focus_console import ConsoleInterface
-from music_controller import MusicController
-from notification_manager import NotificationManager
-from session_manager import SessionManager
+from src.config_manager import ConfigManager
+from src.focus_console import ConsoleInterface
+from src.music_controller import MusicController
+from src.notification_manager import NotificationManager
+from src.session_manager import SessionManager
 
 
 class UltimateFocusLauncher:
@@ -85,8 +98,7 @@ class UltimateFocusLauncher:
 
     def _check_tkinter(self) -> bool:
         try:
-            import tkinter
-
+            __import__("tkinter")
             return True
         except ImportError:
             return False
@@ -167,7 +179,7 @@ class UltimateFocusLauncher:
             self._show_splash()
 
         try:
-            from focus_gui import FocusGUI
+            from src.focus_gui import FocusGUI
 
             app = FocusGUI()
             app.run()
@@ -189,7 +201,7 @@ class UltimateFocusLauncher:
     def launch_dashboard(self):
         print("--- Launching Analytics Dashboard ---")
         try:
-            from dashboard import DashboardGUI, SessionAnalyzer
+            from src.dashboard import DashboardGUI, SessionAnalyzer
 
             analyzer = SessionAnalyzer()
             dashboard = DashboardGUI(analyzer)
@@ -230,7 +242,7 @@ class UltimateFocusLauncher:
     def show_stats(self):
         print("--- Productivity Statistics ---")
         try:
-            from dashboard import SessionAnalyzer
+            from src.dashboard import SessionAnalyzer
 
             analyzer = SessionAnalyzer()
             stats = analyzer.get_quick_stats()
@@ -289,7 +301,7 @@ class UltimateFocusLauncher:
                     break
                 else:
                     print("[!] Invalid choice. Please try again.")
-            except KeyboardInterrupt:
+            except (KeyboardInterrupt, EOFError):
                 print("\nGoodbye!")
                 break
             except Exception as e:
@@ -376,4 +388,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    register_global_exception_handler()
+    try:
+        main()
+    except (KeyboardInterrupt, EOFError):
+        print("\nGoodbye!")

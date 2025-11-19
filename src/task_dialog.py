@@ -315,7 +315,11 @@ class TaskDisplayWidget:
 
         # Update stats label
         if stats["total"] > 0:
-            stats_text = f"Tasks: {stats['completed']}/{stats['total']} | Pomodoros: {stats['total_pomodoros_completed']}/{stats['total_pomodoros_planned']}"
+            stats_text = (
+                f"Tasks: {stats['completed']}/{stats['total']} | "
+                f"Pomodoros: {stats['total_pomodoros_completed']}/"
+                f"{stats['total_pomodoros_planned']}"
+            )
             self.stats_label.config(text=stats_text)
         else:
             self.stats_label.config(text="No tasks for today")

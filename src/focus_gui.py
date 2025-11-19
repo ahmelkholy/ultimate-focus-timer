@@ -4,16 +4,23 @@ GUI Focus Timer for Enhanced Focus Timer
 Cross-platform GUI using tkinter with modern styling
 """
 
+import sys
 import tkinter as tk
+from pathlib import Path
 from tkinter import messagebox, ttk
 
-from config_manager import ConfigManager
+# Ensure project root is importable when running as a script
+current_dir = Path(__file__).resolve().parent
+sys.path.insert(0, str(current_dir))
+sys.path.insert(0, str(current_dir.parent))
+
+from src.config_manager import ConfigManager
 
 # Removed old InlineTaskWidget import - now using native task management
-from music_controller import MusicController
-from notification_manager import NotificationManager
-from session_manager import SessionManager, SessionState, SessionType
-from task_manager import TaskManager
+from src.music_controller import MusicController
+from src.notification_manager import NotificationManager
+from src.session_manager import SessionManager, SessionState, SessionType
+from src.task_manager import TaskManager
 
 
 class FocusGUI:
@@ -101,7 +108,7 @@ class FocusGUI:
                 # Use default centered position
                 self.center_window_default()
 
-        except Exception as e:
+        except Exception:
             # Fall back to default if loading fails
             self.center_window_default()
 
@@ -128,7 +135,7 @@ class FocusGUI:
             # Save to config
             self.config.set("window_geometry", geometry)
             self.config.save_config()
-        except Exception as e:
+        except Exception:
             # Silently ignore save errors
             pass
 
@@ -239,7 +246,7 @@ class FocusGUI:
             else:
                 self.main_frame.configure(padding="8")
 
-        except Exception as e:
+        except Exception:
             # Silently handle any font update errors to prevent crashes
             pass
 
@@ -358,7 +365,7 @@ class FocusGUI:
             if hasattr(self, "update_task_display"):
                 self.update_task_display()
 
-        except Exception as e:
+        except Exception:
             # Silently handle any UI scaling errors to prevent crashes
             pass
 
@@ -871,7 +878,11 @@ class FocusGUI:
             # Show header with stats when there are tasks
             self.task_stats_label.grid(row=0, column=0, sticky=tk.W)
             # Minimal format: "2/5 🍅4/8"
-            stats_text = f"{stats['completed']}/{stats['total']} 🍅{stats['total_pomodoros_completed']}/{stats['total_pomodoros_planned']}"
+            stats_text = (
+                f"{stats['completed']}/{stats['total']} "
+                f"🍅{stats['total_pomodoros_completed']}/"
+                f"{stats['total_pomodoros_planned']}"
+            )
             self.task_stats_label.config(text=stats_text)
         else:
             # No tasks yet - decide what to show based on typing state
@@ -1268,7 +1279,7 @@ class FocusGUI:
             focused_widget = self.root.focus_get()
             if not focused_widget or not self.typing_active:
                 self.root.focus_set()
-        except:
+        except Exception:
             pass  # Ignore focus errors
 
         # Schedule next refresh
@@ -1500,7 +1511,12 @@ class FocusGUI:
 
         if stats["total"] > 0:
             completion_rate = int(stats["completion_rate"])
-            stats_text = f"{stats['completed']}/{stats['total']} tasks ({completion_rate}%) | 🍅 {stats['total_pomodoros_completed']}/{stats['total_pomodoros_planned']}"
+            stats_text = (
+                f"{stats['completed']}/{stats['total']} tasks "
+                f"({completion_rate}%) | 🍅 "
+                f"{stats['total_pomodoros_completed']}/"
+                f"{stats['total_pomodoros_planned']}"
+            )
             self.separate_stats_label.config(text=stats_text)
         else:
             self.separate_stats_label.config(text="No tasks yet")
@@ -1924,7 +1940,7 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         try:
             self.update_display()
             self.schedule_callback(1000, self.update_loop)  # Update every second
-        except:
+        except Exception:
             pass  # Ignore errors if window is being destroyed
 
     def on_closing(self):
@@ -1960,7 +1976,7 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
             callback_id = self.root.after(delay, callback)
             self.scheduled_callbacks.append(callback_id)
             return callback_id
-        except:
+        except Exception:
             return None
 
     def cleanup_callbacks(self):
@@ -1968,7 +1984,7 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         for callback_id in self.scheduled_callbacks:
             try:
                 self.root.after_cancel(callback_id)
-            except:
+            except Exception:
                 pass
         self.scheduled_callbacks.clear()
 

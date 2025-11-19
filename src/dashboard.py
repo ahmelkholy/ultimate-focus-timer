@@ -16,9 +16,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -28,11 +27,12 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 try:
     # Configure matplotlib for better display
     import matplotlib
+
     # Try TkAgg first, fallback to Agg for headless environments
     try:
         matplotlib.use("TkAgg")  # For GUI mode
     except Exception:
-        matplotlib.use("Agg")   # For headless mode
+        matplotlib.use("Agg")  # For headless mode
 
     plt.style.use("seaborn-v0_8")
     sns.set_palette("husl")
@@ -66,7 +66,10 @@ class SessionAnalyzer:
             print(f"Log file not found: {self.log_path}")
             return
 
-        pattern = r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) - (Started|Completed|Paused|Resumed) (\w+) session.*?(\d+) minutes"
+        pattern = (
+            r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) - "
+            r"(Started|Completed|Paused|Resumed) (\w+) session.*?(\d+) minutes"
+        )
 
         try:
             with open(self.log_path, "r", encoding="utf-8") as file:
@@ -393,22 +396,22 @@ class DashboardGUI:
             self.is_running = False
 
             # Cancel any scheduled callbacks
-            if hasattr(self, 'check_running_id') and self.check_running_id:
+            if hasattr(self, "check_running_id") and self.check_running_id:
                 try:
                     self.root.after_cancel(self.check_running_id)
                     self.check_running_id = None
-                except:
+                except Exception:
                     pass  # Ignore errors if already cancelled or invalid
 
             if hasattr(self, "root") and self.root:
                 print("Destroying tkinter root window...")
                 try:
                     self.root.quit()  # Exit the mainloop
-                except:
+                except Exception:
                     pass  # Ignore errors if already destroyed
                 try:
                     self.root.destroy()  # Destroy the window
-                except:
+                except Exception:
                     pass  # Ignore errors if already destroyed
 
             # Close any matplotlib figures
@@ -883,6 +886,12 @@ class DashboardGUI:
 
             if filename:
                 sessions = self.analyzer.filter_sessions(self.current_period)
+                if not sessions:
+                    messagebox.showinfo(
+                        "No Data",
+                        "No sessions available for the selected period to generate a report.",
+                    )
+                    return
 
                 # Create a comprehensive report figure
                 fig, axes = plt.subplots(3, 2, figsize=(15, 12))
