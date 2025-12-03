@@ -62,23 +62,23 @@ class LauncherGUI:
         """Configure custom styles"""
         self.style.configure(
             "Title.TLabel",
-            font=("Arial", 24, "bold"),
+            font=("Arial", 20, "bold"),
             background="#2c3e50",
             foreground="#ecf0f1",
         )
 
         self.style.configure(
             "Subtitle.TLabel",
-            font=("Arial", 12),
+            font=("Arial", 10),
             background="#2c3e50",
             foreground="#bdc3c7",
         )
 
         self.style.configure(
-            "Launch.TButton", font=("Arial", 14, "bold"), padding=(20, 15)
+            "Launch.TButton", font=("Arial", 12, "bold"), padding=(16, 12)
         )
 
-        self.style.configure("Option.TButton", font=("Arial", 11), padding=(15, 10))
+        self.style.configure("Option.TButton", font=("Arial", 10), padding=(12, 8))
 
         self.style.configure(
             "Card.TFrame",
@@ -119,7 +119,7 @@ class LauncherGUI:
         gui_frame.pack(fill="x", padx=20, pady=(20, 10))
 
         gui_icon = tk.Label(
-            gui_frame, text="🖥️", font=("Arial", 32), bg="#34495e", fg="#3498db"
+            gui_frame, text="🖥️", font=("Arial", 28), bg="#34495e", fg="#3498db"
         )
         gui_icon.pack(side="left", padx=(0, 15))
 
@@ -129,7 +129,7 @@ class LauncherGUI:
         gui_title = tk.Label(
             gui_info,
             text="GUI Timer",
-            font=("Arial", 16, "bold"),
+            font=("Arial", 14, "bold"),
             bg="#34495e",
             fg="white",
         )
@@ -138,7 +138,7 @@ class LauncherGUI:
         gui_desc = tk.Label(
             gui_info,
             text="Modern graphical interface with progress bars,\nstatistics, and easy session management",
-            font=("Arial", 10),
+            font=("Arial", 9),
             bg="#34495e",
             fg="#bdc3c7",
         )
@@ -161,7 +161,7 @@ class LauncherGUI:
         console_frame.pack(fill="x", padx=20, pady=10)
 
         console_icon = tk.Label(
-            console_frame, text="⌨️", font=("Arial", 32), bg="#34495e", fg="#2ecc71"
+            console_frame, text="⌨️", font=("Arial", 28), bg="#34495e", fg="#2ecc71"
         )
         console_icon.pack(side="left", padx=(0, 15))
 
@@ -171,7 +171,7 @@ class LauncherGUI:
         console_title = tk.Label(
             console_info,
             text="Console Timer",
-            font=("Arial", 16, "bold"),
+            font=("Arial", 14, "bold"),
             bg="#34495e",
             fg="white",
         )
@@ -180,7 +180,7 @@ class LauncherGUI:
         console_desc = tk.Label(
             console_info,
             text="Terminal-based interface for keyboard enthusiasts\nand minimal resource usage",
-            font=("Arial", 10),
+            font=("Arial", 9),
             bg="#34495e",
             fg="#bdc3c7",
         )
@@ -203,7 +203,7 @@ class LauncherGUI:
         dashboard_frame.pack(fill="x", padx=20, pady=10)
 
         dashboard_icon = tk.Label(
-            dashboard_frame, text="📊", font=("Arial", 32), bg="#34495e", fg="#e74c3c"
+            dashboard_frame, text="📊", font=("Arial", 28), bg="#34495e", fg="#e74c3c"
         )
         dashboard_icon.pack(side="left", padx=(0, 15))
 
@@ -213,7 +213,7 @@ class LauncherGUI:
         dashboard_title = tk.Label(
             dashboard_info,
             text="Analytics Dashboard",
-            font=("Arial", 16, "bold"),
+            font=("Arial", 14, "bold"),
             bg="#34495e",
             fg="white",
         )
@@ -222,7 +222,7 @@ class LauncherGUI:
         dashboard_desc = tk.Label(
             dashboard_info,
             text="Detailed productivity analytics with charts,\ninsights, and session history",
-            font=("Arial", 10),
+            font=("Arial", 9),
             bg="#34495e",
             fg="#bdc3c7",
         )

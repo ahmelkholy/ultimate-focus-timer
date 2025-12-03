@@ -79,7 +79,7 @@ class FocusGUI:
 
     def setup_window(self):
         """Configure the main window"""
-        self.root.title("🎯 Enhanced Focus Timer")
+        self.root.title("FT")
         self.root.resizable(True, True)  # Enable resizing
 
         # Set minimum window size to prevent it from becoming too small
@@ -95,6 +95,9 @@ class FocusGUI:
         # Bind minimize/restore events for mini indicator
         self.root.bind("<Unmap>", self.on_minimize)
         self.root.bind("<Map>", self.on_restore)
+        # Show the mini indicator when the application loses focus (not only on minimize)
+        self.root.bind("<FocusOut>", self.on_focus_out)
+        self.root.bind("<FocusIn>", self.on_focus_in)
 
         # Handle window close
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -146,7 +149,8 @@ class FocusGUI:
     def create_widgets(self):
         """Create and layout GUI widgets"""
         # Fixed sizes for consistent UI (no dynamic scaling)
-        initial_sizes = {"title": 9, "time": 18, "normal": 7, "small": 6, "button": 7}
+        # Smaller base font sizes for more compact display (reduced further per user request)
+        initial_sizes = {"title": 7, "time": 12, "normal": 5, "small": 4, "button": 5}
         initial_scaling = {
             "main_padding": 4,
             "frame_pady": 3,
@@ -996,7 +1000,7 @@ class FocusGUI:
                     "TLabel",
                     background=bg_color,
                     foreground=fg_color,
-                    font=("Segoe UI", 8),
+                    font=("Segoe UI", 7),
                 )
                 style.configure("TFrame", background=bg_color)
                 style.configure(
@@ -1012,7 +1016,7 @@ class FocusGUI:
                     borderwidth=0,
                     focusthickness=0,
                     padding=10,
-                    font=("Segoe UI", 8, "bold"),
+                    font=("Segoe UI", 7, "bold"),
                 )
                 style.map(
                     "Modern.TButton",
@@ -1193,7 +1197,7 @@ class FocusGUI:
         self.separate_stats_label = tk.Label(
             header_frame,
             text="No tasks yet",
-            font=("Arial", 7),
+            font=("Arial", 5),
             fg="#00ff00",
             bg="#2b2b2b",
         )
@@ -1839,14 +1843,57 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
     def on_minimize(self, event=None):
         """Handle window minimize - show mini indicator"""
         if event and event.widget == self.root:
-            self.update_mini_indicator()
-            self.mini_indicator.deiconify()
+            # Show mini indicator only if a session is active
+            if self.session_manager.state in [SessionState.RUNNING, SessionState.PAUSED]:
+                self.update_mini_indicator()
+                self.mini_indicator.deiconify()
 
     def on_restore(self, event=None):
         """Handle window restore - hide mini indicator"""
         if event and event.widget == self.root:
             if self.mini_indicator:
                 self.mini_indicator.withdraw()
+
+    def on_focus_out(self, event=None):
+        """Handle application losing focus - show mini indicator if app loses focus
+
+        We use after(50) to check the focus ownership (to avoid showing the mini
+        indicator on quick internal focus changes between widgets).
+        """
+        try:
+            # Delay slightly to allow focus changes to settle
+            self.root.after(50, self._handle_focus_out)
+        except Exception:
+            pass
+
+    def _handle_focus_out(self):
+        try:
+            # If no widget in the root has focus, consider the app unfocused
+            if not self.root.focus_get():
+                # Only show mini indicator if a session is active (running or paused)
+                if self.session_manager.state in [SessionState.RUNNING, SessionState.PAUSED]:
+                    if self.mini_indicator:
+                        self.update_mini_indicator()
+                        self.mini_indicator.deiconify()
+        except Exception:
+            pass
+
+    def on_focus_in(self, event=None):
+        """Handle application focus gained - hide mini indicator"""
+        try:
+            # Small delay to ensure focus is inside the app
+            self.root.after(50, self._handle_focus_in)
+        except Exception:
+            pass
+
+    def _handle_focus_in(self):
+        try:
+            # If any widget in the root has focus (app resumed), hide mini indicator
+            if self.root.focus_get():
+                if self.mini_indicator:
+                    self.mini_indicator.withdraw()
+        except Exception:
+            pass
 
     def restore_from_mini(self, event=None):
         """Restore main window when mini indicator is clicked"""
@@ -2269,7 +2316,7 @@ class WorkCompletionDialog:
 
         # Instruction
         instruction_label = ttk.Label(
-            main_frame, text="Which task were you working on?", font=("Arial", 7)
+            main_frame, text="Which task were you working on?", font=("Arial", 5)
         )
         instruction_label.grid(row=1, column=0, pady=(0, 15), sticky=tk.W)
 
