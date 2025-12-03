@@ -60,6 +60,10 @@ class FocusGUI:
             self.apply_theme()
             self.setup_keyboard_shortcuts()
 
+            # Mini indicator for minimized state
+            self.mini_indicator = None
+            self.setup_mini_indicator()
+
             # Show task input dialog if no tasks exist for today
             self.schedule_callback(100, self.check_and_show_task_dialog)
 
@@ -91,6 +95,10 @@ class FocusGUI:
 
         # Bind resize event to adjust fonts
         self.root.bind("<Configure>", self.on_window_resize)
+
+        # Bind minimize/restore events for mini indicator
+        self.root.bind("<Unmap>", self.on_minimize)
+        self.root.bind("<Map>", self.on_restore)
 
         # Handle window close
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -1816,6 +1824,10 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         """Handle session state changes"""
         self.root.after_idle(self.update_display)
         self.root.after_idle(self.update_button_states)
+        # Hide mini indicator when session stops or completes
+        if new_state in [SessionState.COMPLETED, SessionState.STOPPED, SessionState.READY]:
+            if self.mini_indicator:
+                self.mini_indicator.withdraw()
 
     def show_completion_dialog(self, session_type: SessionType, duration: int):
         """Show session completion dialog"""
@@ -1939,12 +1951,22 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         """Main update loop for GUI"""
         try:
             self.update_display()
+            # Update mini indicator if visible
+            if self.mini_indicator and self.mini_indicator.winfo_viewable():
+                self.update_mini_indicator()
             self.schedule_callback(1000, self.update_loop)  # Update every second
         except Exception:
             pass  # Ignore errors if window is being destroyed
 
     def on_closing(self):
         """Handle application closing"""
+        # Hide and destroy mini indicator
+        if self.mini_indicator:
+            try:
+                self.mini_indicator.destroy()
+            except Exception:
+                pass
+
         if self.session_manager.state in [SessionState.RUNNING, SessionState.PAUSED]:
             self.cleanup_callbacks()
             self.save_window_dimensions()
@@ -1987,6 +2009,104 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
             except Exception:
                 pass
         self.scheduled_callbacks.clear()
+
+    # ============== Mini Indicator Methods ==============
+
+    def setup_mini_indicator(self):
+        """Setup the mini floating indicator window"""
+        self.mini_indicator = tk.Toplevel(self.root)
+        self.mini_indicator.withdraw()  # Start hidden
+        self.mini_indicator.overrideredirect(True)  # Borderless
+        self.mini_indicator.attributes("-topmost", True)  # Always on top
+        self.mini_indicator.configure(bg="#2c3e50")
+
+        # Position in bottom-right corner of screen
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        self.mini_indicator.geometry(f"120x40+{screen_width - 130}+{screen_height - 80}")
+
+        # Create indicator content
+        self.mini_frame = tk.Frame(self.mini_indicator, bg="#2c3e50", padx=5, pady=3)
+        self.mini_frame.pack(fill="both", expand=True)
+
+        # Timer label
+        self.mini_time_label = tk.Label(
+            self.mini_frame,
+            text="00:00",
+            font=("Arial", 14, "bold"),
+            fg="#ecf0f1",
+            bg="#2c3e50"
+        )
+        self.mini_time_label.pack()
+
+        # Session type indicator (small colored bar)
+        self.mini_status_bar = tk.Frame(self.mini_frame, height=4, bg="#3498db")
+        self.mini_status_bar.pack(fill="x", pady=(2, 0))
+
+        # Click to restore
+        for widget in [self.mini_indicator, self.mini_frame, self.mini_time_label, self.mini_status_bar]:
+            widget.bind("<Button-1>", self.restore_from_mini)
+
+        # Drag support
+        self.mini_indicator.bind("<Button-3>", self.start_mini_drag)
+        self.mini_indicator.bind("<B3-Motion>", self.do_mini_drag)
+
+    def on_minimize(self, event=None):
+        """Handle window minimize - show mini indicator"""
+        if event and event.widget == self.root:
+            # Only show if a session is active
+            if self.session_manager.state in [SessionState.RUNNING, SessionState.PAUSED]:
+                self.update_mini_indicator()
+                self.mini_indicator.deiconify()
+
+    def on_restore(self, event=None):
+        """Handle window restore - hide mini indicator"""
+        if event and event.widget == self.root:
+            if self.mini_indicator:
+                self.mini_indicator.withdraw()
+
+    def restore_from_mini(self, event=None):
+        """Restore main window when mini indicator is clicked"""
+        self.mini_indicator.withdraw()
+        self.root.deiconify()
+        self.root.lift()
+        self.root.focus_force()
+
+    def update_mini_indicator(self):
+        """Update mini indicator display"""
+        if not self.mini_indicator or not self.mini_indicator.winfo_exists():
+            return
+
+        # Update time
+        time_text = self.session_manager.get_time_display()
+        self.mini_time_label.config(text=time_text)
+
+        # Update color based on session type
+        info = self.session_manager.get_session_info()
+        session_type = info.get("session_type", "")
+        state = info.get("state", "")
+
+        if state == "paused":
+            color = "#f39c12"  # Orange for paused
+        elif "work" in session_type.lower():
+            color = "#e74c3c"  # Red for work
+        elif "long" in session_type.lower():
+            color = "#2ecc71"  # Green for long break
+        else:
+            color = "#3498db"  # Blue for short break
+
+        self.mini_status_bar.config(bg=color)
+
+    def start_mini_drag(self, event):
+        """Start dragging mini indicator"""
+        self.mini_drag_x = event.x
+        self.mini_drag_y = event.y
+
+    def do_mini_drag(self, event):
+        """Handle dragging mini indicator"""
+        x = self.mini_indicator.winfo_x() + event.x - self.mini_drag_x
+        y = self.mini_indicator.winfo_y() + event.y - self.mini_drag_y
+        self.mini_indicator.geometry(f"+{x}+{y}")
 
 
 class CustomSessionDialog:
