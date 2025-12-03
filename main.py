@@ -78,7 +78,7 @@ class UltimateFocusLauncher:
     def check_dependencies(self) -> Dict[str, bool]:
         """Comprehensive dependency check"""
         dependencies = {
-            "python": sys.version_info >= (3.8, 0),
+            "python": sys.version_info >= (3, 8),
             "tkinter": self._check_tkinter(),
             "yaml": self._check_module("yaml"),
             "plyer": self._check_module("plyer"),
