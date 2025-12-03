@@ -1815,10 +1815,12 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         self.mini_indicator.attributes("-alpha", 0.9)  # Transparency
         self.mini_indicator.configure(bg="#1a1a2e")
 
-        # Position in bottom-right corner of screen
-        screen_width = self.root.winfo_screenwidth()
+        # Position in bottom-left corner of screen (was bottom-right)
         screen_height = self.root.winfo_screenheight()
-        self.mini_indicator.geometry(f"75x30+{screen_width - 85}+{screen_height - 70}")
+        # Use small margins from the left and bottom edges for consistency
+        left_margin = 10
+        bottom_margin = 70
+        self.mini_indicator.geometry(f"75x30+{left_margin}+{screen_height - bottom_margin}")
 
         # Timer label - smaller font
         self.mini_time_label = tk.Label(
