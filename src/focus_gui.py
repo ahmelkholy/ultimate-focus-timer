@@ -83,7 +83,6 @@ class FocusGUI:
         self.root.resizable(True, True)  # Enable resizing
 
         # Set minimum window size to prevent it from becoming too small
-        # Further reduced minimum width for very compact windows
         self.root.minsize(250, 450)
 
         # Configure grid weights for proper expansion
@@ -92,9 +91,6 @@ class FocusGUI:
 
         # Load saved window dimensions or use defaults
         self.load_window_dimensions()
-
-        # Bind resize event to adjust fonts
-        self.root.bind("<Configure>", self.on_window_resize)
 
         # Bind minimize/restore events for mini indicator
         self.root.bind("<Unmap>", self.on_minimize)
@@ -123,8 +119,8 @@ class FocusGUI:
     def center_window_default(self):
         """Center window with default dimensions"""
         # Default size optimized for compact usage
-        default_width = 420
-        default_height = 600
+        default_width = 300
+        default_height = 400
 
         self.root.update_idletasks()
         screen_width = self.root.winfo_screenwidth()
@@ -147,246 +143,22 @@ class FocusGUI:
             # Silently ignore save errors
             pass
 
-    def calculate_font_sizes(self, window_width):
-        """Calculate font sizes based on window width"""
-        # Base sizes for 420px width (new more compact default)
-        base_width = 420
-        ratio = window_width / base_width
-
-        # Scale fonts with more aggressive scaling for very small windows
-        # Title font: scale from 18 down to 10 for very small windows
-        title_size = max(10, min(22, int(18 * ratio)))
-
-        # Time font: scale from 36 down to 18 for very small windows
-        time_size = max(18, min(42, int(36 * ratio)))
-
-        # Normal text: scale from 9 down to 7
-        normal_size = max(7, min(11, int(9 * ratio)))
-
-        # Small text: scale from 7 down to 6
-        small_size = max(6, min(9, int(7 * ratio)))
-
-        # Button text: scale from 8 down to 6
-        button_size = max(6, min(10, int(8 * ratio)))
-
-        return {
-            "title": title_size,
-            "time": time_size,
-            "normal": normal_size,
-            "small": small_size,
-            "button": button_size,
-        }
-
-    def calculate_ui_scaling(self, window_width):
-        """Calculate scaling factors for all UI elements based on window width"""
-        # Base dimensions for 420px width (compact default)
-        base_width = 420
-        ratio = window_width / base_width
-
-        # More aggressive scaling for very small windows
-        ratio = max(0.6, min(1.5, ratio))  # Limit scaling between 60% and 150%
-
-        return {
-            # Padding and spacing
-            "main_padding": max(4, int(8 * ratio)),
-            "task_padding": max(2, int(4 * ratio)),
-            "button_padx": max(1, int(3 * ratio)),
-            "button_pady": max(1, int(3 * ratio)),
-            "frame_pady": max(2, int(8 * ratio)),
-            "small_pady": max(1, int(2 * ratio)),
-            # Widget sizes
-            "button_width": max(8, int(15 * ratio)),
-            "small_button_width": max(2, int(3 * ratio)),
-            "spinbox_width": max(2, int(3 * ratio)),
-            "entry_height": max(1, int(1 * ratio)),
-            "progress_height": max(15, int(25 * ratio)),
-            # Canvas and container heights
-            "canvas_height": max(60, int(120 * ratio)),
-            "task_row_height": max(20, int(30 * ratio)),
-            # Border and spacing
-            "border_width": max(1, int(1 * ratio)),
-            "separator_height": max(1, int(2 * ratio)),
-        }
-
-    def on_window_resize(self, event):
-        """Handle window resize events to adjust font sizes and UI scaling"""
-        # Only respond to main window resize events
-        if event.widget == self.root:
-            window_width = self.root.winfo_width()
-            if window_width > 0:  # Ensure valid width
-                self.update_font_sizes(window_width)
-                self.update_ui_scaling(window_width)
-
-    def update_font_sizes(self, window_width):
-        """Update all font sizes based on window width"""
-        sizes = self.calculate_font_sizes(window_width)
-
-        try:
-            # Update title font
-            self.title_label.configure(font=("Arial", sizes["title"], "bold"))
-
-            # Update time display font
-            self.time_label.configure(font=("Courier New", sizes["time"], "bold"))
-
-            # Update status label fonts
-            if hasattr(self, "music_status_label"):
-                self.music_status_label.configure(font=("Arial", sizes["small"]))
-            if hasattr(self, "session_count_label"):
-                self.session_count_label.configure(font=("Arial", sizes["small"]))
-
-            # Update task-related fonts if they exist
-            if hasattr(self, "task_stats_label"):
-                self.task_stats_label.configure(font=("Arial", sizes["small"]))
-            if hasattr(self, "task_entry"):
-                self.task_entry.configure(font=("Arial", sizes["normal"]))
-
-            # Update button font
-            style = ttk.Style()
-            style.configure(
-                "Modern.TButton", font=("Segoe UI", sizes["button"], "bold")
-            )
-
-            # Update main frame padding for very small windows (legacy - will be handled by update_ui_scaling)
-            if window_width < 300:
-                self.main_frame.configure(padding="4")
-            elif window_width < 350:
-                self.main_frame.configure(padding="6")
-            else:
-                self.main_frame.configure(padding="8")
-
-        except Exception:
-            # Silently handle any font update errors to prevent crashes
-            pass
-
-    def update_ui_scaling(self, window_width):
-        """Update all UI element sizes and spacing based on window width"""
-        scaling = self.calculate_ui_scaling(window_width)
-
-        try:
-            # Update main frame padding
-            self.main_frame.configure(padding=str(scaling["main_padding"]))
-
-            # Update task frame padding if it exists
-            if hasattr(self, "task_frame"):
-                self.task_frame.configure(padding=str(scaling["task_padding"]))
-
-            # Update button spacing in session frame
-            if hasattr(self, "session_frame"):
-                for child in self.session_frame.winfo_children():
-                    if isinstance(child, ttk.Button):
-                        child.grid_configure(
-                            padx=scaling["button_padx"], pady=scaling["button_pady"]
-                        )
-
-            # Update control frame button spacing
-            if hasattr(self, "control_frame"):
-                for child in self.control_frame.winfo_children():
-                    if isinstance(child, ttk.Button):
-                        child.grid_configure(padx=scaling["button_padx"])
-
-            # Update additional frame button spacing
-            if hasattr(self, "additional_frame"):
-                for child in self.additional_frame.winfo_children():
-                    if isinstance(child, ttk.Button):
-                        child.grid_configure(
-                            padx=scaling["button_padx"], pady=scaling["button_pady"]
-                        )
-
-            # Update progress bar height and padding
-            if hasattr(self, "progress_bar"):
-                # For progressbar height, we need to use style configuration
-                style = ttk.Style()
-                style.configure(
-                    "Scaled.Horizontal.TProgressbar",
-                    thickness=scaling["progress_height"],
-                )
-                self.progress_bar.configure(style="Scaled.Horizontal.TProgressbar")
-
-                # Update progress bar grid padding
-                self.progress_bar.grid_configure(pady=(0, scaling["frame_pady"]))
-
-            # Update spinbox width in task entry
-            if hasattr(self, "pomodoro_spinbox"):
-                self.pomodoro_spinbox.configure(width=scaling["spinbox_width"])
-
-            # Update small button widths in task entry
-            if hasattr(self, "add_task_frame"):
-                for child in self.add_task_frame.winfo_children():
-                    if isinstance(child, ttk.Button):
-                        child.configure(width=scaling["small_button_width"])
-
-            # Update canvas height if it exists
-            if hasattr(self, "tasks_canvas"):
-                # Calculate dynamic height based on window size and available space
-                window_height = self.root.winfo_height()
-                # Reserve space for other elements (approximately 400px at default size)
-                reserved_space = int(400 * (window_width / 420))
-                available_height = max(
-                    scaling["canvas_height"], window_height - reserved_space
-                )
-                self.tasks_canvas.configure(height=available_height)
-
-            # Update title and time label padding
-            if hasattr(self, "title_label"):
-                self.title_label.grid_configure(pady=(0, scaling["frame_pady"]))
-            if hasattr(self, "time_label"):
-                self.time_label.grid_configure(pady=(0, scaling["frame_pady"]))
-
-            # Update progress bar padding
-            if hasattr(self, "progress_bar"):
-                self.progress_bar.grid_configure(
-                    pady=(0, scaling["frame_pady"]), padx=scaling["main_padding"]
-                )
-
-            # Update status frame spacing and labels
-            if hasattr(self, "status_frame"):
-                self.status_frame.grid_configure(pady=(0, scaling["frame_pady"]))
-                # Update status label spacing
-                if hasattr(self, "music_status_label"):
-                    self.music_status_label.grid_configure(padx=scaling["main_padding"])
-                if hasattr(self, "session_count_label"):
-                    self.session_count_label.grid_configure(
-                        padx=scaling["main_padding"]
-                    )
-
-            # Update task entry spacing if it exists
-            if hasattr(self, "task_entry"):
-                self.task_entry.grid_configure(padx=(0, scaling["button_padx"]))
-
-            # Update task frame spacing
-            if hasattr(self, "task_frame"):
-                self.task_frame.grid_configure(
-                    pady=(scaling["small_pady"], scaling["small_pady"])
-                )
-
-            # Update tasks container spacing
-            if hasattr(self, "tasks_container"):
-                self.tasks_container.grid_configure(pady=(scaling["frame_pady"], 0))
-
-            # Update frame spacing for session, control, and additional frames
-            if hasattr(self, "session_frame"):
-                self.session_frame.grid_configure(pady=(0, scaling["frame_pady"]))
-            if hasattr(self, "control_frame"):
-                self.control_frame.grid_configure(pady=(0, scaling["frame_pady"]))
-
-            # Refresh task display to apply scaling to task rows
-            if hasattr(self, "update_task_display"):
-                self.update_task_display()
-
-        except Exception:
-            # Silently handle any UI scaling errors to prevent crashes
-            pass
-
     def create_widgets(self):
         """Create and layout GUI widgets"""
-        # Calculate initial font sizes and UI scaling based on new compact default
-        initial_sizes = self.calculate_font_sizes(420)  # New compact default width
-        initial_scaling = self.calculate_ui_scaling(420)  # Calculate initial UI scaling
+        # Fixed sizes for consistent UI (no dynamic scaling)
+        initial_sizes = {"title": 9, "time": 18, "normal": 7, "small": 6, "button": 7}
+        initial_scaling = {
+            "main_padding": 4,
+            "frame_pady": 3,
+            "button_padx": 1,
+            "button_pady": 1,
+            "progress_height": 12,
+            "canvas_height": 80,
+            "task_row_height": 18,
+        }
 
-        # Main frame with dynamic padding
-        self.main_frame = ttk.Frame(
-            self.root, padding=str(initial_scaling["main_padding"])
-        )
+        # Main frame with fixed padding
+        self.main_frame = ttk.Frame(self.root, padding="4")
         self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         # Configure main frame grid weights for proper scaling
@@ -641,9 +413,19 @@ class FocusGUI:
 
     def create_task_section(self):
         """Create native task management section in the main GUI"""
-        # Get current scaling for dynamic sizing
-        current_width = self.root.winfo_width() or 420  # Use 420 as fallback
-        scaling = self.calculate_ui_scaling(current_width)
+        # Fixed scaling values - all keys needed throughout this method
+        scaling = {
+            "task_padding": 2,
+            "small_pady": 1,
+            "canvas_height": 70,
+            "task_row_height": 18,
+            "button_padx": 1,
+            "button_pady": 1,
+            "spinbox_width": 2,
+            "small_button_width": 2,
+            "frame_pady": 3,
+            "main_padding": 4,
+        }
 
         # Task management frame (minimal, no label frame) with dynamic padding
         self.task_frame = ttk.Frame(
@@ -675,7 +457,7 @@ class FocusGUI:
         self.task_stats_label = tk.Label(
             header_frame,
             text="0/0",
-            font=("Arial", 8),
+            font=("Arial", 6),
             fg="#00ff00",
             bg="#2b2b2b",
         )
@@ -697,7 +479,7 @@ class FocusGUI:
         self.task_entry = tk.Entry(
             self.add_task_frame,
             textvariable=self.task_entry_var,
-            font=("Arial", 10),
+            font=("Arial", 7),
             bg="#ffffff",  # White background
             fg="#000000",  # Black text by default
             insertbackground="#000000",  # Black cursor
@@ -922,9 +704,8 @@ class FocusGUI:
 
     def create_task_row(self, parent, task, row):
         """Create a compact task row in the display"""
-        # Get current scaling for dynamic sizing
-        current_width = self.root.winfo_width() or 420
-        scaling = self.calculate_ui_scaling(current_width)
+        # Fixed scaling values
+        scaling = {"small_pady": 1, "button_padx": 1, "small_button_width": 2}
 
         # Task row frame (more compact) with dynamic spacing
         task_row = ttk.Frame(parent)
@@ -960,7 +741,7 @@ class FocusGUI:
         title_label = tk.Label(
             task_row,
             text=title_text,
-            font=("Arial", 9),  # Smaller font
+            font=("Arial", 7),  # Smaller font
             fg=text_color,
             bg="#2b2b2b",
             anchor="w",
@@ -979,7 +760,7 @@ class FocusGUI:
         pomodoro_label = tk.Label(
             task_row,
             text=pomodoro_text,
-            font=("Arial", 8),  # Smaller font
+            font=("Arial", 6),  # Smaller font
             fg=pomodoro_color,
             bg="#2b2b2b",
         )
@@ -1043,7 +824,7 @@ class FocusGUI:
     def edit_task_title(self, event, task):
         """Handle double-click to edit a task title."""
         # Create an entry widget over the label
-        entry = ttk.Entry(event.widget.master, font=("Arial", 9))
+        entry = ttk.Entry(event.widget.master, font=("Arial", 7))
         entry.insert(0, task.title)
         entry.place(
             x=event.widget.winfo_x(),
@@ -1188,7 +969,7 @@ class FocusGUI:
         instruction_label = tk.Label(
             empty_container,
             text="'T' key to add task",
-            font=("Arial", 10, "italic"),
+            font=("Arial", 7, "italic"),
             fg="#888888",
             bg="#2b2b2b",
             justify="center",
@@ -1215,7 +996,7 @@ class FocusGUI:
                     "TLabel",
                     background=bg_color,
                     foreground=fg_color,
-                    font=("Segoe UI", 9),
+                    font=("Segoe UI", 8),
                 )
                 style.configure("TFrame", background=bg_color)
                 style.configure(
@@ -1231,7 +1012,7 @@ class FocusGUI:
                     borderwidth=0,
                     focusthickness=0,
                     padding=10,
-                    font=("Segoe UI", 10, "bold"),
+                    font=("Segoe UI", 8, "bold"),
                 )
                 style.map(
                     "Modern.TButton",
@@ -1377,7 +1158,7 @@ class FocusGUI:
 
         # Title
         title_label = ttk.Label(
-            main_frame, text="📝 Task Manager", font=("Arial", 16, "bold")
+            main_frame, text="📝 Task Manager", font=("Arial", 8, "bold")
         )
         title_label.grid(row=0, column=0, pady=(0, 10))
 
@@ -1412,7 +1193,7 @@ class FocusGUI:
         self.separate_stats_label = tk.Label(
             header_frame,
             text="No tasks yet",
-            font=("Arial", 10),
+            font=("Arial", 7),
             fg="#00ff00",
             bg="#2b2b2b",
         )
@@ -1437,7 +1218,7 @@ class FocusGUI:
         self.separate_entry = ttk.Entry(
             self.separate_add_frame,
             textvariable=self.separate_task_var,
-            font=("Arial", 10),
+            font=("Arial", 7),
         )
         self.separate_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
 
@@ -1534,7 +1315,7 @@ class FocusGUI:
             placeholder = tk.Label(
                 self.separate_tasks_display,
                 text="🎯 No tasks yet!\nAdd your first task above",
-                font=("Arial", 11, "italic"),
+                font=("Arial", 7, "italic"),
                 fg="#666666",
                 bg="#2b2b2b",
                 justify="center",
@@ -1566,7 +1347,7 @@ class FocusGUI:
         title_label = tk.Label(
             task_row,
             text=title_text,
-            font=("Arial", 10),
+            font=("Arial", 7),
             fg=text_color,
             bg="#2b2b2b",
             anchor="w",
@@ -1578,7 +1359,7 @@ class FocusGUI:
         pomodoro_label = tk.Label(
             task_row,
             text=pomodoro_text,
-            font=("Arial", 9),
+            font=("Arial", 7),
             fg="#00ff00",
             bg="#2b2b2b",
         )
@@ -1812,20 +1593,37 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
 
     def on_session_complete(self, session_type: SessionType, duration: int):
         """Handle session completion"""
+        # Ensure window is visible and focused
+        self.root.after_idle(self._ensure_window_visible)
         self.root.after_idle(self.update_display)
         self.root.after_idle(self.update_button_states)
 
-        # Show completion dialog
+        # Handle completion (auto-start next session)
         self.root.after_idle(
             lambda: self.show_completion_dialog(session_type, duration)
         )
+
+    def _ensure_window_visible(self):
+        """Ensure the main window is visible and focused"""
+        try:
+            self.root.deiconify()
+            self.root.lift()
+            self.root.attributes("-topmost", True)
+            self.root.after(100, lambda: self.root.attributes("-topmost", False))
+            self.root.focus_force()
+        except Exception:
+            pass
 
     def on_session_state_change(self, old_state: SessionState, new_state: SessionState):
         """Handle session state changes"""
         self.root.after_idle(self.update_display)
         self.root.after_idle(self.update_button_states)
         # Hide mini indicator when session stops or completes
-        if new_state in [SessionState.COMPLETED, SessionState.STOPPED, SessionState.READY]:
+        if new_state in [
+            SessionState.COMPLETED,
+            SessionState.STOPPED,
+            SessionState.READY,
+        ]:
             if self.mini_indicator:
                 self.mini_indicator.withdraw()
 
@@ -1840,48 +1638,31 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
             self.show_break_completion_dialog(session_name, duration)
 
     def show_work_completion_dialog(self, session_name: str, duration: int):
-        """Show work session completion dialog with task tracking"""
-        # Get incomplete tasks
-        incomplete_tasks = self.task_manager.get_incomplete_tasks()
+        """Handle work session completion - auto-track to current task if set"""
+        # Auto-track to current task if one is selected
+        if self.current_task_id:
+            self.task_manager.add_pomodoro_to_task(self.current_task_id)
+            self.update_task_display()
 
-        if incomplete_tasks:
-            # Show dialog with task selection
-            dialog = WorkCompletionDialog(self.root, incomplete_tasks, duration)
-            self.root.wait_window(dialog.dialog)
-
-            if dialog.result and dialog.selected_task_id:
-                # Add pomodoro to the selected task
-                self.task_manager.add_pomodoro_to_task(dialog.selected_task_id)
-                self.update_task_display()
-
-        # Suggest next session
-        completed_work = self.session_manager.completed_work_sessions
-        if completed_work % self.config.get("long_break_interval", 4) == 0:
-            next_session = "Long Break"
-            next_type = SessionType.LONG_BREAK
-        else:
-            next_session = "Short Break"
-            next_type = SessionType.SHORT_BREAK
-
-        result = messagebox.askyesno(
-            "Work Session Complete! 🎉",
-            f"Excellent work! You completed a {duration}-minute {session_name}.\n\n"
-            f"Would you like to start a {next_session} now?",
-        )
-
-        if result:
-            self.start_session(next_type)
+        # Auto-start next session based on config
+        if self.config.get("auto_start_break", True):
+            delay_secs = self.config.get("auto_start_delay", 2) * 1000
+            completed_work = self.session_manager.completed_work_sessions
+            if completed_work % self.config.get("long_break_interval", 4) == 0:
+                self.root.after(
+                    delay_secs, lambda: self.start_session(SessionType.LONG_BREAK)
+                )
+            else:
+                self.root.after(
+                    delay_secs, lambda: self.start_session(SessionType.SHORT_BREAK)
+                )
 
     def show_break_completion_dialog(self, session_name: str, duration: int):
-        """Show break session completion dialog"""
-        result = messagebox.askyesno(
-            "Break Complete! 😌",
-            f"Great! You completed a {duration}-minute {session_name}.\n\n"
-            f"Ready to get back to work?",
-        )
-
-        if result:
-            self.start_session(SessionType.WORK)
+        """Handle break session completion - auto-start work if configured"""
+        # Auto-start work session based on config
+        if self.config.get("auto_start_work", False):
+            delay_secs = self.config.get("auto_start_delay", 2) * 1000
+            self.root.after(delay_secs, lambda: self.start_session(SessionType.WORK))
 
     def update_display(self):
         """Update the display with current session info"""
@@ -2018,46 +1799,48 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         self.mini_indicator.withdraw()  # Start hidden
         self.mini_indicator.overrideredirect(True)  # Borderless
         self.mini_indicator.attributes("-topmost", True)  # Always on top
-        self.mini_indicator.configure(bg="#2c3e50")
+        self.mini_indicator.attributes("-alpha", 0.9)  # Transparency
+        self.mini_indicator.configure(bg="#1a1a2e")
 
         # Position in bottom-right corner of screen
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
-        self.mini_indicator.geometry(f"120x40+{screen_width - 130}+{screen_height - 80}")
+        self.mini_indicator.geometry(f"75x30+{screen_width - 85}+{screen_height - 70}")
 
-        # Create indicator content
-        self.mini_frame = tk.Frame(self.mini_indicator, bg="#2c3e50", padx=5, pady=3)
-        self.mini_frame.pack(fill="both", expand=True)
-
-        # Timer label
+        # Timer label - smaller font
         self.mini_time_label = tk.Label(
-            self.mini_frame,
+            self.mini_indicator,
             text="00:00",
-            font=("Arial", 14, "bold"),
-            fg="#ecf0f1",
-            bg="#2c3e50"
+            font=("Arial", 7, "bold"),
+            fg="#ffffff",
+            bg="#1a1a2e",
         )
-        self.mini_time_label.pack()
+        self.mini_time_label.pack(pady=(4, 2))
 
-        # Session type indicator (small colored bar)
-        self.mini_status_bar = tk.Frame(self.mini_frame, height=4, bg="#3498db")
-        self.mini_status_bar.pack(fill="x", pady=(2, 0))
+        # Session type indicator (colored bar using Canvas for reliable color)
+        self.mini_status_bar = tk.Canvas(
+            self.mini_indicator, height=5, bg="#3498db", highlightthickness=0
+        )
+        self.mini_status_bar.pack(fill="x", side="bottom")
 
         # Click to restore
-        for widget in [self.mini_indicator, self.mini_frame, self.mini_time_label, self.mini_status_bar]:
+        for widget in [
+            self.mini_indicator,
+            self.mini_time_label,
+            self.mini_status_bar,
+        ]:
             widget.bind("<Button-1>", self.restore_from_mini)
 
-        # Drag support
-        self.mini_indicator.bind("<Button-3>", self.start_mini_drag)
-        self.mini_indicator.bind("<B3-Motion>", self.do_mini_drag)
+        # Drag support (right-click drag)
+        for widget in [self.mini_indicator, self.mini_time_label, self.mini_status_bar]:
+            widget.bind("<Button-3>", self.start_mini_drag)
+            widget.bind("<B3-Motion>", self.do_mini_drag)
 
     def on_minimize(self, event=None):
         """Handle window minimize - show mini indicator"""
         if event and event.widget == self.root:
-            # Only show if a session is active
-            if self.session_manager.state in [SessionState.RUNNING, SessionState.PAUSED]:
-                self.update_mini_indicator()
-                self.mini_indicator.deiconify()
+            self.update_mini_indicator()
+            self.mini_indicator.deiconify()
 
     def on_restore(self, event=None):
         """Handle window restore - hide mini indicator"""
@@ -2077,23 +1860,27 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         if not self.mini_indicator or not self.mini_indicator.winfo_exists():
             return
 
-        # Update time
-        time_text = self.session_manager.get_time_display()
-        self.mini_time_label.config(text=time_text)
-
-        # Update color based on session type
+        # Update time and color based on session state
         info = self.session_manager.get_session_info()
-        session_type = info.get("session_type", "")
+        session_type = info.get("type", "")
         state = info.get("state", "")
 
-        if state == "paused":
-            color = "#f39c12"  # Orange for paused
-        elif "work" in session_type.lower():
-            color = "#e74c3c"  # Red for work
-        elif "long" in session_type.lower():
-            color = "#2ecc71"  # Green for long break
+        # Show time or ready state
+        if state in ["ready", "stopped", "completed"]:
+            self.mini_time_label.config(text="Ready")
+            color = "#6c757d"  # Gray when idle
         else:
-            color = "#3498db"  # Blue for short break
+            time_text = self.session_manager.get_time_display()
+            self.mini_time_label.config(text=time_text)
+
+            if state == "paused":
+                color = "#f39c12"  # Orange for paused
+            elif "work" in session_type.lower():
+                color = "#e74c3c"  # Red for work
+            elif "long" in session_type.lower():
+                color = "#2ecc71"  # Green for long break
+            else:
+                color = "#3498db"  # Blue for short break
 
         self.mini_status_bar.config(bg=color)
 
@@ -2476,13 +2263,13 @@ class WorkCompletionDialog:
         title_label = ttk.Label(
             main_frame,
             text=f"🎉 Completed {self.duration}-minute work session!",
-            font=("Arial", 12, "bold"),
+            font=("Arial", 8, "bold"),
         )
         title_label.grid(row=0, column=0, pady=(0, 10), sticky=tk.W)
 
         # Instruction
         instruction_label = ttk.Label(
-            main_frame, text="Which task were you working on?", font=("Arial", 10)
+            main_frame, text="Which task were you working on?", font=("Arial", 7)
         )
         instruction_label.grid(row=1, column=0, pady=(0, 15), sticky=tk.W)
 
@@ -2513,7 +2300,7 @@ class WorkCompletionDialog:
             no_tasks_label = ttk.Label(
                 tasks_frame,
                 text="No tasks available. Session recorded without task tracking.",
-                font=("Arial", 9, "italic"),
+                font=("Arial", 7, "italic"),
             )
             no_tasks_label.grid(row=0, column=0, pady=10)
 

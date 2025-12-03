@@ -62,6 +62,12 @@ try {
         # No parameters - show interactive launcher
         python "$MAIN_SCRIPT"
     }
+    elseif ($Mode -eq "bg" -or $Mode -eq "background") {
+        # Launch in background (detached) - use python.exe with window, not pythonw
+        Start-Process -FilePath "python" -ArgumentList "`"$MAIN_SCRIPT`"","--gui" -WorkingDirectory $FOCUS_PATH
+        Write-Host "✅ Focus Timer started in background" -ForegroundColor Green
+        return
+    }
     elseif ($Mode -eq "gui") {
         python "$MAIN_SCRIPT" --gui
     }
