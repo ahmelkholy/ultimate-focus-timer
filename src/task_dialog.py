@@ -136,7 +136,7 @@ class TaskInputDialog:
                 task_label = ttk.Label(
                     task_frame,
                     text=title_text,
-                    font=("Arial", 9),
+                    font=("Arial", 12),
                     foreground="gray" if task.completed else "black",
                 )
                 task_label.grid(row=0, column=1, sticky=tk.W)
@@ -146,7 +146,7 @@ class TaskInputDialog:
                     f"🍅 {task.pomodoros_completed}/{task.pomodoros_planned}"
                 )
                 pomodoro_label = ttk.Label(
-                    task_frame, text=pomodoro_text, font=("Arial", 8)
+                    task_frame, text=pomodoro_text, font=("Arial", 11)
                 )
                 pomodoro_label.grid(row=0, column=2, padx=(5, 0))
 
@@ -286,7 +286,7 @@ class TaskDisplayWidget:
         header_frame.grid_columnconfigure(1, weight=1)
 
         # Stats label
-        self.stats_label = ttk.Label(header_frame, text="", font=("Arial", 8))
+        self.stats_label = ttk.Label(header_frame, text="", font=("Arial", 10))
         self.stats_label.grid(row=0, column=0, sticky=tk.W)
 
         # Manage tasks button
@@ -329,7 +329,7 @@ class TaskDisplayWidget:
             no_tasks_label = ttk.Label(
                 self.tasks_container,
                 text="Click 'Manage' to add your first task! 🎯",
-                font=("Arial", 9, "italic"),
+                font=("Arial", 11, "italic"),
             )
             no_tasks_label.grid(row=0, column=0, pady=10)
         else:
@@ -359,14 +359,14 @@ class TaskDisplayWidget:
         title_label = ttk.Label(
             task_frame,
             text=title_text,
-            font=("Arial", 9),
+            font=("Arial", 12),
             foreground="gray" if task.completed else "black",
         )
         title_label.grid(row=0, column=1, sticky=tk.W)
 
         # Pomodoro progress
         pomodoro_text = f"🍅 {task.pomodoros_completed}/{task.pomodoros_planned}"
-        pomodoro_label = ttk.Label(task_frame, text=pomodoro_text, font=("Arial", 8))
+        pomodoro_label = ttk.Label(task_frame, text=pomodoro_text, font=("Arial", 11))
         pomodoro_label.grid(row=0, column=2, padx=(5, 0))
 
     def toggle_task(self, task: Task, var: tk.BooleanVar):

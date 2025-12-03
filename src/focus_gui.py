@@ -430,6 +430,13 @@ class FocusGUI:
             "frame_pady": 3,
             "main_padding": 4,
         }
+        # Font sizes for the task area (increase to make tasks more readable)
+        self.task_font_sizes = {
+            "task_title": 10,
+            "pomodoro": 10,
+            "task_stats": 9,
+            "entry": 9,
+        }
 
         # Task management frame (minimal, no label frame) with dynamic padding
         self.task_frame = ttk.Frame(
@@ -461,7 +468,7 @@ class FocusGUI:
         self.task_stats_label = tk.Label(
             header_frame,
             text="0/0",
-            font=("Arial", 6),
+            font=("Arial", self.task_font_sizes["task_stats"]),
             fg="#00ff00",
             bg="#2b2b2b",
         )
@@ -483,7 +490,7 @@ class FocusGUI:
         self.task_entry = tk.Entry(
             self.add_task_frame,
             textvariable=self.task_entry_var,
-            font=("Arial", 7),
+            font=("Arial", self.task_font_sizes["entry"]),
             bg="#ffffff",  # White background
             fg="#000000",  # Black text by default
             insertbackground="#000000",  # Black cursor
@@ -745,7 +752,7 @@ class FocusGUI:
         title_label = tk.Label(
             task_row,
             text=title_text,
-            font=("Arial", 7),  # Smaller font
+            font=("Arial", self.task_font_sizes["task_title"]),
             fg=text_color,
             bg="#2b2b2b",
             anchor="w",
@@ -764,7 +771,7 @@ class FocusGUI:
         pomodoro_label = tk.Label(
             task_row,
             text=pomodoro_text,
-            font=("Arial", 6),  # Smaller font
+            font=("Arial", self.task_font_sizes["pomodoro"]),
             fg=pomodoro_color,
             bg="#2b2b2b",
         )
@@ -828,7 +835,9 @@ class FocusGUI:
     def edit_task_title(self, event, task):
         """Handle double-click to edit a task title."""
         # Create an entry widget over the label
-        entry = ttk.Entry(event.widget.master, font=("Arial", 7))
+        entry = ttk.Entry(
+            event.widget.master, font=("Arial", self.task_font_sizes["entry"])
+        )
         entry.insert(0, task.title)
         entry.place(
             x=event.widget.winfo_x(),
@@ -1844,7 +1853,10 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         """Handle window minimize - show mini indicator"""
         if event and event.widget == self.root:
             # Show mini indicator only if a session is active
-            if self.session_manager.state in [SessionState.RUNNING, SessionState.PAUSED]:
+            if self.session_manager.state in [
+                SessionState.RUNNING,
+                SessionState.PAUSED,
+            ]:
                 self.update_mini_indicator()
                 self.mini_indicator.deiconify()
 
@@ -1871,7 +1883,10 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
             # If no widget in the root has focus, consider the app unfocused
             if not self.root.focus_get():
                 # Only show mini indicator if a session is active (running or paused)
-                if self.session_manager.state in [SessionState.RUNNING, SessionState.PAUSED]:
+                if self.session_manager.state in [
+                    SessionState.RUNNING,
+                    SessionState.PAUSED,
+                ]:
                     if self.mini_indicator:
                         self.update_mini_indicator()
                         self.mini_indicator.deiconify()

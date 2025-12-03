@@ -47,7 +47,7 @@ class InlineTaskWidget:
         self.stats_label = tk.Label(
             header_frame,
             text="",
-            font=("Arial", 9),
+            font=("Arial", 10),
             fg="#00ff00",  # Bright green
             bg="#2b2b2b",  # Dark background
         )
@@ -330,7 +330,7 @@ class InlineTaskWidget:
             placeholder_label = tk.Label(
                 placeholder_frame,
                 text="🎯 Add your first task to get started!\nPress 'T' or click 'Add Task' below",
-                font=("Arial", 10, "italic"),
+                font=("Arial", 11, "italic"),
                 fg="#666666",  # Gray text
                 bg="#2b2b2b",  # Dark background
                 justify="center",
@@ -381,7 +381,7 @@ class InlineTaskWidget:
         title_label = tk.Label(
             task_frame,
             text=title_text,
-            font=("Arial", 10),
+            font=("Arial", 12),
             fg=text_color,
             bg="#2b2b2b",  # Dark background
             anchor="w",
@@ -398,7 +398,7 @@ class InlineTaskWidget:
         pomodoro_label = tk.Label(
             task_frame,
             text=pomodoro_text,
-            font=("Arial", 9),
+            font=("Arial", 11),
             fg=pomodoro_color,
             bg="#2b2b2b",
         )
