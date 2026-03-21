@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-Cross-Platform Notification Manager for Enhanced Focus Timer
-Handles desktop notifications across Windows, macOS, and Linux
+Cross-Platform Notification Manager for Ultimate Focus Timer.
 """
 
+import logging
 import platform
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 try:
     from plyer import notification
@@ -14,7 +16,7 @@ try:
 except ImportError:
     PLYER_AVAILABLE = False
     notification = None
-    print("plyer not available - install with: pip install plyer")
+    logger.debug("plyer not installed — desktop notifications may be limited")
 
 # Platform-specific imports
 if platform.system() == "Darwin":  # macOS
@@ -114,7 +116,7 @@ class NotificationManager:
                 return self._show_console(title, message, notification_type)
 
         except Exception as e:
-            print(f"Notification error: {e}")
+            logger.warning("Notification error (%s): %s", self.notification_method, e)
             # Fallback to console
             return self._show_console(title, message, notification_type)
 
@@ -124,55 +126,44 @@ class NotificationManager:
             pync.notify(message, title=title, timeout=duration)
             return True
         except Exception as e:
-            print(f"pync error: {e}")
+            logger.warning("pync error: %s", e)
             return False
 
     def _show_plyer(self, title: str, message: str, duration: int) -> bool:
         """Show notification using plyer (cross-platform)"""
         try:
             if notification is None:
-                print("plyer not available")
+                logger.warning("plyer not available")
                 return False
             notification.notify(title=title, message=message, timeout=duration)
             return True
         except Exception as e:
-            print(f"plyer error: {e}")
+            logger.warning("plyer error: %s", e)
             return False
 
     def _show_osascript(self, title: str, message: str) -> bool:
         """Show notification using osascript (macOS fallback)"""
         try:
             import subprocess
-
-            script = f"""
-            display notification "{message}" with title "{title}"
-            """
-
+            script = f'display notification "{message}" with title "{title}"'
             subprocess.run(["osascript", "-e", script], capture_output=True, timeout=5)
             return True
         except Exception as e:
-            print(f"osascript error: {e}")
+            logger.warning("osascript error: %s", e)
             return False
 
     def _show_notify_send(self, title: str, message: str, duration: int) -> bool:
         """Show notification using notify-send (Linux)"""
         try:
             import subprocess
-
             subprocess.run(
-                [
-                    "notify-send",
-                    "-t",
-                    str(duration * 1000),  # notify-send uses milliseconds
-                    title,
-                    message,
-                ],
+                ["notify-send", "-t", str(duration * 1000), title, message],
                 capture_output=True,
                 timeout=5,
             )
             return True
         except Exception as e:
-            print(f"notify-send error: {e}")
+            logger.warning("notify-send error: %s", e)
             return False
 
     def _show_console(self, title: str, message: str, notification_type: str) -> bool:
@@ -249,13 +240,13 @@ class NotificationManager:
         """Enable notifications"""
         self.notifications_enabled = True
         self.config.set("desktop_notifications", True)
-        print("✅ Notifications enabled")
+        logger.info("Notifications enabled")
 
     def disable_notifications(self) -> None:
         """Disable notifications"""
         self.notifications_enabled = False
         self.config.set("desktop_notifications", False)
-        print("🔇 Notifications disabled")
+        logger.info("Notifications disabled")
 
 
 # Motivational messages for different scenarios

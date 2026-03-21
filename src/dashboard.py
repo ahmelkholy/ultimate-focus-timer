@@ -4,10 +4,9 @@ Focus Productivity Dashboard
 Analyze and visualize your focus session data with advanced analytics
 """
 
-import argparse
 import csv
 import json
-import os
+import logging
 import re
 import signal
 import sys
@@ -23,22 +22,21 @@ import pandas as pd
 import seaborn as sns
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
+
+logger = logging.getLogger(__name__)
+
 # Set style for better visualizations
 try:
-    # Configure matplotlib for better display
     import matplotlib
 
-    # Try TkAgg first, fallback to Agg for headless environments
     try:
-        matplotlib.use("TkAgg")  # For GUI mode
+        matplotlib.use("TkAgg")
     except Exception:
-        matplotlib.use("Agg")  # For headless mode
-
+        matplotlib.use("Agg")
     plt.style.use("seaborn-v0_8")
     sns.set_palette("husl")
 except Exception as e:
-    print(f"Warning: Could not set matplotlib style: {e}")
-    # Use default style if seaborn fails
+    logger.warning("Could not set matplotlib style: %s", e)
 
 
 @dataclass
@@ -55,15 +53,15 @@ class SessionData:
 class SessionAnalyzer:
     """Analyzes session data and generates statistics"""
 
-    def __init__(self, log_path: str = "log/focus.log"):
-        self.log_path = Path(log_path)
+    def __init__(self, log_path: Path = None):
+        self.log_path = Path(log_path) if log_path else SESSION_LOG_FILE
         self.sessions: List[SessionData] = []
         self.load_session_data()
 
     def load_session_data(self) -> None:
         """Load session data from log file"""
         if not self.log_path.exists():
-            print(f"Log file not found: {self.log_path}")
+            logger.warning("Log file not found: %s", self.log_path)
             return
 
         pattern = (
@@ -79,21 +77,17 @@ class SessionAnalyzer:
                         timestamp = datetime.strptime(
                             match.group(1), "%Y-%m-%d %H:%M:%S"
                         )
-                        action = match.group(2)
-                        session_type = match.group(3)
-                        duration = int(match.group(4))
-
                         self.sessions.append(
                             SessionData(
                                 timestamp=timestamp,
-                                action=action,
-                                session_type=session_type,
-                                duration=duration,
+                                action=match.group(2),
+                                session_type=match.group(3),
+                                duration=int(match.group(4)),
                                 date=timestamp.date(),
                             )
                         )
-        except Exception as e:
-            print(f"Error loading session data: {e}")
+        except OSError:
+            logger.exception("Error loading session data")
 
     def filter_sessions(self, period: str) -> List[SessionData]:
         """Filter sessions by time period"""

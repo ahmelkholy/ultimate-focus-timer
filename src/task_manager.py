@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """
-Task Manager for Ultimate Focus Timer
-Manages daily tasks and integrates with Pomodoro sessions
+Task Manager for Ultimate Focus Timer.
+Manages daily tasks and integrates with Pomodoro sessions.
 """
 
 import json
+import logging
+import threading
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
+
+from .app_paths import DATA_DIR, TASKS_FILE
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -53,23 +59,18 @@ class Task:
 
 
 class TaskManager:
-    """Manages daily tasks for the focus timer"""
+    """Manages daily tasks for the focus timer.
 
-    def __init__(self, data_dir: str = None):
-        """Initialize task manager"""
-        if data_dir is None:
-            # Use a consistent absolute path for all sessions
-            # This ensures tasks persist across different working directories
-            script_dir = Path(
-                __file__
-            ).parent.parent  # Go up from src/ to the project root
-            self.data_dir = script_dir / "data"
-        else:
-            self.data_dir = Path(data_dir)
+    File writes are performed in a background thread to avoid blocking
+    the Tkinter main loop.  A threading.Lock serialises concurrent writes.
+    """
 
-        self.data_dir.mkdir(exist_ok=True)
-        self.tasks_file = self.data_dir / "daily_tasks.json"
+    def __init__(self, data_dir: Path = None):
+        self.data_dir = Path(data_dir) if data_dir else DATA_DIR
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.tasks_file = self.data_dir / "daily_tasks.json" if data_dir else TASKS_FILE
         self.tasks: Dict[str, List[Task]] = {}
+        self._lock = threading.Lock()
         self.load_tasks()
 
     def get_today_key(self) -> str:
@@ -82,28 +83,32 @@ class TaskManager:
             try:
                 with open(self.tasks_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
-
-                # Convert dictionaries back to Task objects
                 for date_key, task_list in data.items():
                     self.tasks[date_key] = [
                         Task.from_dict(task_data) for task_data in task_list
                     ]
-            except (json.JSONDecodeError, Exception) as e:
-                print(f"Error loading tasks: {e}")
+            except (json.JSONDecodeError, Exception):
+                logger.exception("Error loading tasks from %s", self.tasks_file)
                 self.tasks = {}
 
     def save_tasks(self):
-        """Save tasks to file"""
-        try:
-            # Convert Task objects to dictionaries
-            data = {}
-            for date_key, task_list in self.tasks.items():
-                data[date_key] = [task.to_dict() for task in task_list]
+        """Persist tasks to disk asynchronously (non-blocking)."""
+        # Snapshot the data while holding the lock so background thread gets
+        # a consistent view even if in-memory state changes concurrently.
+        with self._lock:
+            data = {
+                date_key: [t.to_dict() for t in task_list]
+                for date_key, task_list in self.tasks.items()
+            }
+        threading.Thread(target=self._write_tasks, args=(data,), daemon=True).start()
 
-            with open(self.tasks_file, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            print(f"Error saving tasks: {e}")
+    def _write_tasks(self, data: dict):
+        """Write serialised tasks to disk — runs in background thread."""
+        try:
+            with open(self.tasks_file, "w", encoding="utf-8") as fh:
+                json.dump(data, fh, indent=2, ensure_ascii=False)
+        except OSError:
+            logger.exception("Error saving tasks to %s", self.tasks_file)
 
     def get_today_tasks(self) -> List[Task]:
         """Get tasks for today"""
@@ -116,8 +121,8 @@ class TaskManager:
         """Add a new task for today"""
         today_key = self.get_today_key()
 
-        # Generate unique ID
-        task_id = f"{today_key}_{len(self.get_today_tasks()) + 1}"
+        # Use microsecond timestamp to avoid ID collisions from rapid additions
+        task_id = f"{today_key}_{datetime.now().strftime('%H%M%S%f')}"
 
         task = Task(
             id=task_id,
@@ -129,7 +134,7 @@ class TaskManager:
         if today_key not in self.tasks:
             self.tasks[today_key] = []
 
-        # Insert at the beginning instead of append to show new tasks at top
+        # Insert at the beginning to show new tasks at top
         self.tasks[today_key].insert(0, task)
         self.save_tasks()
         return task
@@ -231,20 +236,17 @@ class TaskManager:
     def cleanup_old_tasks(self, days_to_keep: int = 30):
         """Clean up tasks older than specified days"""
         try:
-            cutoff_date = datetime.now().replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
-            cutoff_date = cutoff_date.replace(day=cutoff_date.day - days_to_keep)
-            cutoff_str = cutoff_date.strftime("%Y-%m-%d")
-
-            # Remove old task entries
-            keys_to_remove = [key for key in self.tasks.keys() if key < cutoff_str]
-
+            cutoff = datetime.now() - timedelta(days=days_to_keep)
+            cutoff_str = cutoff.strftime("%Y-%m-%d")
+            keys_to_remove = [key for key in self.tasks if key < cutoff_str]
             for key in keys_to_remove:
                 del self.tasks[key]
-
             if keys_to_remove:
+                logger.info(
+                    "Removed %d old task day(s) before %s",
+                    len(keys_to_remove),
+                    cutoff_str,
+                )
                 self.save_tasks()
-
-        except Exception as e:
-            print(f"Error cleaning up old tasks: {e}")
+        except Exception:
+            logger.exception("Error cleaning up old tasks")

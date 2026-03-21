@@ -4,34 +4,30 @@ Focus Console Manager
 Command-line interface for the focus timer with advanced session management
 """
 
-import argparse
+import logging
 import os
-import sys
 import threading
 import time
 from datetime import datetime
-from pathlib import Path
 from typing import Optional
 
-# Add current directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent))
+from .config_manager import ConfigManager
+from .music_controller import MusicController
+from .notification_manager import NotificationManager
+from .session_manager import SessionManager
 
-from config_manager import ConfigManager
-from music_controller import MusicController
-from notification_manager import NotificationManager
-from session_manager import SessionManager
+logger = logging.getLogger(__name__)
 
 
 class ConsoleInterface:
     """Enhanced console interface for focus timer"""
 
-    def __init__(self, config_path: Optional[str] = None):
-        self.config = ConfigManager(config_path or "config.yml")
+    def __init__(self, config_path=None):
+        self.config = ConfigManager(config_path)
         self.music_controller = MusicController(self.config)
         self.notification_manager = NotificationManager(self.config)
-        self.session_manager = SessionManager(
-            self.config, self.music_controller, self.notification_manager
-        )
+        # SessionManager is headless — console wires events itself
+        self.session_manager = SessionManager(self.config)
 
         # Console state
         self.running = False
@@ -46,12 +42,41 @@ class ConsoleInterface:
             "start_time": datetime.now(),
         }
 
-        # Setup session callbacks
+        # Wire all session events
         self.session_manager.set_callbacks(
             on_tick=self._on_timer_tick,
             on_complete=self._on_session_completed,
             on_state_change=self._on_state_change,
+            on_session_start=self._on_session_started,
+            on_early_warning=self._on_early_warning,
+            on_pause=self._on_paused,
+            on_resume=self._on_resumed,
+            on_stop=self._on_stopped,
         )
+
+    # ── Session event handlers ────────────────────────────────────────────────
+
+    def _on_session_started(self, session_type, duration_minutes):
+        from .session_manager import SessionType
+        if session_type == SessionType.WORK and self.config.get("classical_music", True):
+            self.music_controller.start_music()
+        self.notification_manager.show_session_start(session_type.value, duration_minutes)
+
+    def _on_early_warning(self, session_type, minutes_remaining):
+        self.notification_manager.show_early_warning(session_type.value, minutes_remaining)
+
+    def _on_paused(self, session_type):
+        from .session_manager import SessionType
+        if session_type == SessionType.WORK:
+            self.music_controller.pause_music()
+
+    def _on_resumed(self, session_type):
+        from .session_manager import SessionType
+        if session_type == SessionType.WORK:
+            self.music_controller.resume_music()
+
+    def _on_stopped(self, session_type, elapsed_minutes):
+        self.music_controller.stop_music()
 
     def run(self):
         """Main entry point for console interface"""

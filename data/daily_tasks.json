@@ -434,5 +434,51 @@
       "created_at": "2025-12-03T15:26:11.601219",
       "completed_at": null
     }
+  ],
+  "2025-12-04": [
+    {
+      "id": "2025-12-04_2",
+      "title": "dep letter",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 4,
+      "created_at": "2025-12-04T00:31:14.785525",
+      "completed_at": null
+    },
+    {
+      "id": "2025-12-04_1",
+      "title": "PhD chapter 1",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2025-12-04T00:31:09.861220",
+      "completed_at": null
+    }
+  ],
+  "2025-12-05": [
+    {
+      "id": "2025-12-05_1",
+      "title": "PhD first ch1",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2025-12-05T20:38:15.122847",
+      "completed_at": null
+    }
+  ],
+  "2026-03-22": [
+    {
+      "id": "2026-03-22_024309554137",
+      "title": "dd",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-03-22T02:43:09.554152",
+      "completed_at": null
+    }
   ]
 }

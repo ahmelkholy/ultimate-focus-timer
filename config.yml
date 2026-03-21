@@ -20,7 +20,9 @@ classical_music_local_mode: true
 classical_music_online_playlists:
 - https://www.youtube.com/watch?v=mdJU5ogrPMY
 classical_music_playlist_dir: C:\Users\ahm_e\mpv\PlayList
+classical_music_repeat: true
 classical_music_selected_playlist: C:\Users\ahm_e\mpv\PlayList\ClassicalMusic.m3u
+classical_music_shuffle: true
 classical_music_volume: 70
 color_scheme: forest
 compact_mode: false
@@ -70,7 +72,7 @@ sound: ''
 sound_on_break: false
 sound_volume: 100
 stats_default_view: week
-task_file: ~/tasks.md
+task_file: C:\Users\ahm_e\tasks.md
 time_blocking: true
 time_format: '15:04'
 todo_integration: false
@@ -78,7 +80,7 @@ track_idle_time: true
 transparency: 0.95
 weekly_goals: 40
 weekly_reports: true
-window_geometry: 250x546+-444+-71
+window_geometry: 250x546+-499+-3
 work_end_cmd: scripts\classical_music.ps1 -Action stop
 work_mins: 20
 work_msg: Focus on your task

@@ -1,26 +1,20 @@
 #!/usr/bin/env python3
 """
-GUI Focus Timer for Enhanced Focus Timer
-Cross-platform GUI using tkinter with modern styling
+GUI Focus Timer for Ultimate Focus Timer.
+Cross-platform GUI using tkinter with modern styling.
 """
 
-import sys
+import logging
 import tkinter as tk
-from pathlib import Path
 from tkinter import messagebox, ttk
 
-# Ensure project root is importable when running as a script
-current_dir = Path(__file__).resolve().parent
-sys.path.insert(0, str(current_dir))
-sys.path.insert(0, str(current_dir.parent))
+from .config_manager import ConfigManager
+from .music_controller import MusicController
+from .notification_manager import NotificationManager
+from .session_manager import SessionManager, SessionState, SessionType
+from .task_manager import TaskManager
 
-from src.config_manager import ConfigManager
-
-# Removed old InlineTaskWidget import - now using native task management
-from src.music_controller import MusicController
-from src.notification_manager import NotificationManager
-from src.session_manager import SessionManager, SessionState, SessionType
-from src.task_manager import TaskManager
+logger = logging.getLogger(__name__)
 
 
 class FocusGUI:
@@ -33,9 +27,7 @@ class FocusGUI:
             self.config = ConfigManager()
             self.music = MusicController(self.config)
             self.notifications = NotificationManager(self.config)
-            self.session_manager = SessionManager(
-                self.config, self.music, self.notifications
-            )
+            self.session_manager = SessionManager(self.config)
 
             # Initialize task manager
             self.task_manager = TaskManager()
@@ -46,11 +38,16 @@ class FocusGUI:
             # Store scheduled callback IDs for proper cleanup
             self.scheduled_callbacks = []
 
-            # Set up session callbacks
+            # Wire all session events — GUI handles music + notifications directly
             self.session_manager.set_callbacks(
                 on_tick=self.on_session_tick,
                 on_complete=self.on_session_complete,
                 on_state_change=self.on_session_state_change,
+                on_session_start=self._on_session_started,
+                on_early_warning=self._on_early_warning,
+                on_pause=self._on_session_paused,
+                on_resume=self._on_session_resumed,
+                on_stop=self._on_session_stopped,
             )
 
             # GUI setup
@@ -64,8 +61,11 @@ class FocusGUI:
             self.mini_indicator = None
             self.setup_mini_indicator()
 
+            # Check for crash-recovery state on startup (runs after GUI is shown)
+            self.schedule_callback(200, self._check_crash_recovery)
+
             # Show task input dialog if no tasks exist for today
-            self.schedule_callback(100, self.check_and_show_task_dialog)
+            self.schedule_callback(400, self.check_and_show_task_dialog)
 
             # Start update loop
             self.schedule_callback(100, self.update_loop)
@@ -1606,15 +1606,19 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
 
     def on_session_complete(self, session_type: SessionType, duration: int):
         """Handle session completion"""
-        # Ensure window is visible and focused
-        self.root.after_idle(self._ensure_window_visible)
-        self.root.after_idle(self.update_display)
-        self.root.after_idle(self.update_button_states)
-
-        # Handle completion (auto-start next session)
-        self.root.after_idle(
-            lambda: self.show_completion_dialog(session_type, duration)
-        )
+        def _do():
+            # Stop music when a work session ends (break is starting)
+            if session_type == SessionType.WORK and self.config.get("pause_music_on_break", True):
+                self.music.stop_music()
+            self.notifications.show_session_complete(session_type.value, duration)
+            self._ensure_window_visible()
+            self.update_display()
+            self.update_button_states()
+            self.show_completion_dialog(session_type, duration)
+        try:
+            self.root.after_idle(_do)
+        except Exception:
+            pass
 
     def _ensure_window_visible(self):
         """Ensure the main window is visible and focused"""
@@ -1628,17 +1632,71 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
             pass
 
     def on_session_state_change(self, old_state: SessionState, new_state: SessionState):
-        """Handle session state changes"""
-        self.root.after_idle(self.update_display)
-        self.root.after_idle(self.update_button_states)
-        # Hide mini indicator when session stops or completes
-        if new_state in [
-            SessionState.COMPLETED,
-            SessionState.STOPPED,
-            SessionState.READY,
-        ]:
-            if self.mini_indicator:
-                self.mini_indicator.withdraw()
+        """Handle session state changes — always marshal back to main thread."""
+        def _do():
+            try:
+                self.update_display()
+                self.update_button_states()
+                if new_state in (SessionState.COMPLETED, SessionState.STOPPED, SessionState.READY):
+                    if self.mini_indicator and self.mini_indicator.winfo_exists():
+                        self.mini_indicator.withdraw()
+            except Exception:
+                pass
+        try:
+            self.root.after_idle(_do)
+        except Exception:
+            pass
+
+    # ── Session event handlers (called from timer thread — marshal to main) ───
+
+    def _on_session_started(self, session_type: SessionType, duration_minutes: int):
+        """Called when a new session begins — start music, show notification."""
+        def _do():
+            if session_type == SessionType.WORK and self.config.get("classical_music", True):
+                self.music.start_music()
+            self.notifications.show_session_start(session_type.value, duration_minutes)
+        try:
+            self.root.after_idle(_do)
+        except Exception:
+            pass
+
+    def _on_early_warning(self, session_type: SessionType, minutes_remaining: int):
+        """Show early-warning notification."""
+        def _do():
+            self.notifications.show_early_warning(session_type.value, minutes_remaining)
+        try:
+            self.root.after_idle(_do)
+        except Exception:
+            pass
+
+    def _on_session_paused(self, session_type: SessionType):
+        """Pause music when session is paused."""
+        def _do():
+            if session_type == SessionType.WORK:
+                self.music.pause_music()
+        try:
+            self.root.after_idle(_do)
+        except Exception:
+            pass
+
+    def _on_session_resumed(self, session_type: SessionType):
+        """Resume music when session resumes."""
+        def _do():
+            if session_type == SessionType.WORK:
+                self.music.resume_music()
+        try:
+            self.root.after_idle(_do)
+        except Exception:
+            pass
+
+    def _on_session_stopped(self, session_type: SessionType, elapsed_minutes: float):
+        """Stop music on explicit stop."""
+        def _do():
+            self.music.stop_music()
+        try:
+            self.root.after_idle(_do)
+        except Exception:
+            pass
 
     def show_completion_dialog(self, session_type: SessionType, duration: int):
         """Show session completion dialog"""
@@ -1752,27 +1810,55 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         except Exception:
             pass  # Ignore errors if window is being destroyed
 
+    def _check_crash_recovery(self):
+        """Check for a crash-recovery state file and offer to resume."""
+        saved = self.session_manager.load_saved_state()
+        if not saved:
+            return
+
+        saved_at = saved.get("saved_at", "unknown time")
+        elapsed = saved.get("elapsed_seconds", 0)
+        session_type = saved.get("session_type", "work").replace("_", " ")
+        elapsed_mins = elapsed // 60
+        elapsed_secs = elapsed % 60
+
+        answer = messagebox.askyesno(
+            "Resume Session?",
+            f"A session was interrupted on {saved_at[:16]}.\n\n"
+            f"  Type     : {session_type.title()}\n"
+            f"  Elapsed  : {elapsed_mins:02d}:{elapsed_secs:02d}\n\n"
+            "Would you like to resume from where you left off?",
+        )
+
+        if answer:
+            # Restore state: adjust session so remaining = saved remaining
+            type_map = {v.value: v for v in SessionType}
+            s_type = type_map.get(saved.get("session_type", "work"), SessionType.WORK)
+            total = saved.get("session_duration", 0)
+            elapsed_s = saved.get("elapsed_seconds", 0)
+            remaining = max(1, total - elapsed_s)
+            # Restart with remaining seconds as a fractional-minute session
+            remaining_mins = max(1, round(remaining / 60))
+            self.session_manager.start_session(s_type, remaining_mins)
+            logger.info("Session resumed from crash-recovery state")
+        else:
+            self.session_manager.clear_saved_state()
+            logger.info("Crash-recovery state discarded by user")
+
     def on_closing(self):
         """Handle application closing"""
-        # Hide and destroy mini indicator
         if self.mini_indicator:
             try:
                 self.mini_indicator.destroy()
             except Exception:
                 pass
+            self.mini_indicator = None  # prevent stale ref in callbacks
 
-        if self.session_manager.state in [SessionState.RUNNING, SessionState.PAUSED]:
-            self.cleanup_callbacks()
-            self.save_window_dimensions()
-            self.session_manager.cleanup()
-            self.music.cleanup()
-            self.root.destroy()
-        else:
-            self.cleanup_callbacks()
-            self.save_window_dimensions()
-            self.session_manager.cleanup()
-            self.music.cleanup()
-            self.root.destroy()
+        self.cleanup_callbacks()
+        self.save_window_dimensions()
+        self.session_manager.cleanup()
+        self.music.cleanup()
+        self.root.destroy()
 
     def run(self):
         """Start the GUI application"""
@@ -1820,7 +1906,9 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         # Use small margins from the left and bottom edges for consistency
         left_margin = 10
         bottom_margin = 70
-        self.mini_indicator.geometry(f"75x30+{left_margin}+{screen_height - bottom_margin}")
+        self.mini_indicator.geometry(
+            f"75x30+{left_margin}+{screen_height - bottom_margin}"
+        )
 
         # Timer label - smaller font
         self.mini_time_label = tk.Label(
