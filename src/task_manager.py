@@ -104,11 +104,12 @@ class TaskManager:
 
     def _write_tasks(self, data: dict):
         """Write serialised tasks to disk — runs in background thread."""
-        try:
-            with open(self.tasks_file, "w", encoding="utf-8") as fh:
-                json.dump(data, fh, indent=2, ensure_ascii=False)
-        except OSError:
-            logger.exception("Error saving tasks to %s", self.tasks_file)
+        with self._lock:
+            try:
+                with open(self.tasks_file, "w", encoding="utf-8") as fh:
+                    json.dump(data, fh, indent=2, ensure_ascii=False)
+            except OSError:
+                logger.exception("Error saving tasks to %s", self.tasks_file)
 
     def get_today_tasks(self) -> List[Task]:
         """Get tasks for today"""

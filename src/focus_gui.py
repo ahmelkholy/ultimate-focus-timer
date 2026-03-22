@@ -1615,10 +1615,7 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
             self.update_display()
             self.update_button_states()
             self.show_completion_dialog(session_type, duration)
-        try:
-            self.root.after_idle(_do)
-        except Exception:
-            pass
+        self._marshal(_do)
 
     def _ensure_window_visible(self):
         """Ensure the main window is visible and focused"""
@@ -1642,10 +1639,7 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
                         self.mini_indicator.withdraw()
             except Exception:
                 pass
-        try:
-            self.root.after_idle(_do)
-        except Exception:
-            pass
+        self._marshal(_do)
 
     # ── Session event handlers (called from timer thread — marshal to main) ───
 
@@ -1655,48 +1649,33 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
             if session_type == SessionType.WORK and self.config.get("classical_music", True):
                 self.music.start_music()
             self.notifications.show_session_start(session_type.value, duration_minutes)
-        try:
-            self.root.after_idle(_do)
-        except Exception:
-            pass
+        self._marshal(_do)
 
     def _on_early_warning(self, session_type: SessionType, minutes_remaining: int):
         """Show early-warning notification."""
         def _do():
             self.notifications.show_early_warning(session_type.value, minutes_remaining)
-        try:
-            self.root.after_idle(_do)
-        except Exception:
-            pass
+        self._marshal(_do)
 
     def _on_session_paused(self, session_type: SessionType):
         """Pause music when session is paused."""
         def _do():
             if session_type == SessionType.WORK:
                 self.music.pause_music()
-        try:
-            self.root.after_idle(_do)
-        except Exception:
-            pass
+        self._marshal(_do)
 
     def _on_session_resumed(self, session_type: SessionType):
         """Resume music when session resumes."""
         def _do():
             if session_type == SessionType.WORK:
                 self.music.resume_music()
-        try:
-            self.root.after_idle(_do)
-        except Exception:
-            pass
+        self._marshal(_do)
 
     def _on_session_stopped(self, session_type: SessionType, elapsed_minutes: float):
         """Stop music on explicit stop."""
         def _do():
             self.music.stop_music()
-        try:
-            self.root.after_idle(_do)
-        except Exception:
-            pass
+        self._marshal(_do)
 
     def show_completion_dialog(self, session_type: SessionType, duration: int):
         """Show session completion dialog"""
@@ -1875,11 +1854,28 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
     def schedule_callback(self, delay, callback):
         """Schedule a callback and store its ID for proper cleanup"""
         try:
-            callback_id = self.root.after(delay, callback)
+            cb_id_ref = [None]
+
+            def _wrapper():
+                try:
+                    self.scheduled_callbacks.remove(cb_id_ref[0])
+                except ValueError:
+                    pass
+                callback()
+
+            callback_id = self.root.after(delay, _wrapper)
+            cb_id_ref[0] = callback_id
             self.scheduled_callbacks.append(callback_id)
             return callback_id
         except Exception:
             return None
+
+    def _marshal(self, fn):
+        """Schedule fn on the Tkinter event loop from any thread (fire-and-forget)."""
+        try:
+            self.root.after_idle(fn)
+        except Exception:
+            pass
 
     def cleanup_callbacks(self):
         """Cancel all scheduled callbacks to prevent threading errors"""

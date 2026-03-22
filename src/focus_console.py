@@ -4,6 +4,7 @@ Focus Console Manager
 Command-line interface for the focus timer with advanced session management
 """
 
+import argparse
 import logging
 import os
 import threading
@@ -14,7 +15,7 @@ from typing import Optional
 from .config_manager import ConfigManager
 from .music_controller import MusicController
 from .notification_manager import NotificationManager
-from .session_manager import SessionManager
+from .session_manager import SessionManager, SessionType
 
 logger = logging.getLogger(__name__)
 
@@ -57,21 +58,26 @@ class ConsoleInterface:
     # ── Session event handlers ────────────────────────────────────────────────
 
     def _on_session_started(self, session_type, duration_minutes):
-        from .session_manager import SessionType
         if session_type == SessionType.WORK and self.config.get("classical_music", True):
             self.music_controller.start_music()
         self.notification_manager.show_session_start(session_type.value, duration_minutes)
+
+    def _on_session_completed(self, session_type, duration_minutes):
+        self.session_stats["sessions_completed"] += 1
+        if session_type == SessionType.WORK:
+            self.session_stats["total_work_time"] += duration_minutes
+        else:
+            self.session_stats["total_break_time"] += duration_minutes
+        self.music_controller.stop_music()
 
     def _on_early_warning(self, session_type, minutes_remaining):
         self.notification_manager.show_early_warning(session_type.value, minutes_remaining)
 
     def _on_paused(self, session_type):
-        from .session_manager import SessionType
         if session_type == SessionType.WORK:
             self.music_controller.pause_music()
 
     def _on_resumed(self, session_type):
-        from .session_manager import SessionType
         if session_type == SessionType.WORK:
             self.music_controller.resume_music()
 
@@ -272,71 +278,6 @@ class ConsoleInterface:
             self.last_status_lines = lines_count
             time.sleep(1)
 
-    def _on_session_started(self, session_type: str, duration: int):
-        """Handle session started callback"""
-        self.notification_manager.show_notification(
-            "Session Started",
-            f"{session_type.replace('_', ' ').title()} session started ({duration} min)",
-        )
-
-        # Start music if enabled and it's a work session
-        music_config = self.config.get_music_config()
-        if music_config["enabled"] and session_type == "work":
-            self.music_controller.start_music()
-
-    def _on_session_completed(self, session_type: str, duration: int):
-        """Handle session completed callback"""
-        self.session_stats["sessions_completed"] += 1
-
-        if session_type == "work":
-            self.session_stats["total_work_time"] += duration
-        else:
-            self.session_stats["total_break_time"] += duration
-
-        self.notification_manager.show_notification(
-            "Session Completed! 🎉",
-            f"{session_type.replace('_', ' ').title()} session completed!",
-        )
-
-        # Stop music
-        if self.music_controller.is_playing:
-            self.music_controller.stop_music()
-
-    def _on_session_paused(self, session_type: str, elapsed: int):
-        """Handle session paused callback"""
-        self.notification_manager.show_notification(
-            "Session Paused", f"{session_type.replace('_', ' ').title()} session paused"
-        )
-
-        # Pause music
-        if self.music_controller.is_playing:
-            self.music_controller.pause_music()
-
-    def _on_session_resumed(self, session_type: str, remaining: int):
-        """Handle session resumed callback"""
-        self.notification_manager.show_notification(
-            "Session Resumed",
-            f"{session_type.replace('_', ' ').title()} session resumed",
-        )
-
-        # Resume music if it was playing
-        music_config = self.config.get_music_config()
-        if music_config["enabled"] and session_type == "work":
-            self.music_controller.resume_music()
-
-    def _on_break_started(self, break_type: str, duration: int):
-        """Handle break started callback"""
-        self.notification_manager.show_notification(
-            "Break Time! ☕",
-            f"Time for a {break_type.replace('_', ' ')} ({duration} min)",
-        )
-
-    def _on_break_completed(self, break_type: str, duration: int):
-        """Handle break completed callback"""
-        self.notification_manager.show_notification(
-            "Break Over! 💼", "Ready to get back to work?"
-        )
-
     def _on_timer_tick(self, elapsed: int, remaining: int):
         """Handle timer tick callback"""
         # Optionally update display more frequently
@@ -355,8 +296,6 @@ class ConsoleInterface:
             return False
         elif command == "s":
             # Start a work session by default, or next appropriate session
-            from session_manager import SessionType
-
             self.session_manager.start_session(SessionType.WORK)
         elif command == "p":
             self.session_manager.pause_session()
@@ -426,8 +365,6 @@ class ConsoleInterface:
         """Run a single command non-interactively"""
         if action == "start":
             # Convert session type string to SessionType enum
-            from session_manager import SessionType
-
             session_type_map = {
                 "work": SessionType.WORK,
                 "short_break": SessionType.SHORT_BREAK,
@@ -470,7 +407,7 @@ class ConsoleInterface:
                 print(f"Remaining: {status['remaining_seconds']}s")
 
         elif action == "stats":
-            from dashboard import console_dashboard
+            from .dashboard import console_dashboard
 
             console_dashboard("all")
 

@@ -31,6 +31,7 @@ class MusicController:
         self.pid_file: Path = MPV_PID_FILE
 
         self.mpv_executable: str = self._find_mpv_executable()
+        self._mpv_available: bool = self._test_mpv_executable(self.mpv_executable)
         self.current_playlist: Optional[str] = None
         self._paused_playlist: Optional[str] = None  # saved across pause/stop
         self.is_playing: bool = False
@@ -97,7 +98,7 @@ class MusicController:
             return False
 
     def is_mpv_available(self) -> bool:
-        return self._test_mpv_executable(self.mpv_executable)
+        return self._mpv_available
 
     # ── Playlist selection ────────────────────────────────────────────────────
 
@@ -261,7 +262,7 @@ class MusicController:
         return {
             "is_playing": self.is_playing,
             "current_playlist": self.current_playlist,
-            "mpv_available": self.is_mpv_available(),
+            "mpv_available": self._mpv_available,
             "volume": self.config.get("classical_music_volume", 30),
         }
 
