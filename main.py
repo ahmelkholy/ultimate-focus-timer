@@ -7,6 +7,7 @@ import argparse
 import logging
 import os
 import platform
+import subprocess
 import sys
 import time
 import traceback
@@ -246,6 +247,34 @@ class UltimateFocusLauncher:
 # ── CLI entry point ───────────────────────────────────────────────────────────
 
 
+def _detach_gui_on_windows() -> None:
+    """Re-launch under pythonw.exe so the terminal window disappears immediately.
+
+    Only runs on Windows and only when we are currently attached to a console
+    (i.e. sys.executable is python.exe, not pythonw.exe).  The child inherits
+    no standard handles, so the parent terminal is free the moment this returns.
+    """
+    if platform.system() != "Windows":
+        return
+    exe = Path(sys.executable)
+    if exe.name.lower() == "pythonw.exe":
+        return  # already detached
+
+    pythonw = exe.parent / "pythonw.exe"
+    if not pythonw.exists():
+        return  # pythonw not found — fall back to attached mode
+
+    subprocess.Popen(
+        [str(pythonw)] + sys.argv,
+        creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS,
+        close_fds=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    sys.exit(0)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Ultimate Focus Timer")
     parser.add_argument("--gui", action="store_true", help="Launch GUI mode")
@@ -265,6 +294,11 @@ def main():
 
     if args.verbose:
         setup_logging(verbose=True)
+
+    # Detach from the terminal console on Windows as early as possible so the
+    # command prompt is not blocked for the entire GUI session.
+    if args.gui:
+        _detach_gui_on_windows()
 
     launcher = UltimateFocusLauncher()
 
