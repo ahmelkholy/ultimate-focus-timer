@@ -40,6 +40,28 @@ class FocusGUI:
             # Store scheduled callback IDs for proper cleanup
             self.scheduled_callbacks = []
 
+            # ── System tray ────────────────────────────────────────────────────
+            self.tray = TrayManager(
+                on_show=self._show_window,
+                on_start_work=lambda: self._marshal(
+                    lambda: self.start_session(SessionType.WORK)
+                ),
+                on_start_break=lambda: self._marshal(
+                    lambda: self.start_session(SessionType.SHORT_BREAK)
+                ),
+                on_pause_resume=lambda: self._marshal(self.toggle_pause),
+                on_stop=lambda: self._marshal(self.stop_session),
+                on_quit=lambda: self._marshal(self.on_closing),
+            )
+            self.tray.start()
+
+            # ── Global hotkeys ─────────────────────────────────────────────────
+            self.hotkeys = HotkeyManager(
+                on_show=self._show_window,
+                on_pause_resume=lambda: self._marshal(self.toggle_pause),
+            )
+            self.hotkeys.start()
+
             # Wire all session events — GUI handles music + notifications directly
             self.session_manager.set_callbacks(
                 on_tick=self.on_session_tick,
@@ -1613,6 +1635,7 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
             if session_type == SessionType.WORK and self.config.get("pause_music_on_break", True):
                 self.music.stop_music()
             self.notifications.show_session_complete(session_type.value, duration)
+            self.tray.set_state("idle", "Focus Timer — Session complete")
             self._ensure_window_visible()
             self.update_display()
             self.update_button_states()
@@ -1646,11 +1669,13 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
     # ── Session event handlers (called from timer thread — marshal to main) ───
 
     def _on_session_started(self, session_type: SessionType, duration_minutes: int):
-        """Called when a new session begins — start music, show notification."""
+        """Called when a new session begins — start music, show notification, update tray."""
         def _do():
             if session_type == SessionType.WORK and self.config.get("classical_music", True):
                 self.music.start_music()
             self.notifications.show_session_start(session_type.value, duration_minutes)
+            tray_state = "work" if session_type == SessionType.WORK else "break"
+            self.tray.set_state(tray_state, f"Focus Timer — {session_type.value.replace('_', ' ').title()} ({duration_minutes}m)")
         self._marshal(_do)
 
     def _on_early_warning(self, session_type: SessionType, minutes_remaining: int):
@@ -1664,6 +1689,7 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         def _do():
             if session_type == SessionType.WORK:
                 self.music.pause_music()
+            self.tray.set_state("paused", "Focus Timer — Paused")
         self._marshal(_do)
 
     def _on_session_resumed(self, session_type: SessionType):
@@ -1671,12 +1697,15 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         def _do():
             if session_type == SessionType.WORK:
                 self.music.resume_music()
+            tray_state = "work" if session_type == SessionType.WORK else "break"
+            self.tray.set_state(tray_state, f"Focus Timer — {session_type.value.replace('_', ' ').title()}")
         self._marshal(_do)
 
     def _on_session_stopped(self, session_type: SessionType, elapsed_minutes: float):
         """Stop music on explicit stop."""
         def _do():
             self.music.stop_music()
+            self.tray.set_state("idle", "Focus Timer — Idle")
         self._marshal(_do)
 
     def show_completion_dialog(self, session_type: SessionType, duration: int):
@@ -1839,6 +1868,8 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         self.save_window_dimensions()
         self.session_manager.cleanup()
         self.music.cleanup()
+        self.hotkeys.stop()
+        self.tray.stop()
         self.root.destroy()
 
     def run(self):
@@ -1878,6 +1909,17 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
             self.root.after_idle(fn)
         except Exception:
             pass
+
+    def _show_window(self) -> None:
+        """Bring the main window to the foreground (safe to call from any thread)."""
+        def _do():
+            try:
+                self.root.deiconify()
+                self.root.lift()
+                self.root.focus_force()
+            except Exception:
+                pass
+        self._marshal(_do)
 
     def cleanup_callbacks(self):
         """Cancel all scheduled callbacks to prevent threading errors"""

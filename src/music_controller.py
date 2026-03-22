@@ -21,6 +21,12 @@ from .app_paths import MPV_PID_FILE
 
 logger = logging.getLogger(__name__)
 
+# On Windows, suppress the brief CMD window that would otherwise appear
+# whenever a subprocess is spawned from a GUI (pythonw.exe) process.
+_SUBPROCESS_FLAGS: int = (
+    subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0
+)
+
 
 class MusicController:
     """Cross-platform music controller using MPV."""
@@ -92,7 +98,12 @@ class MusicController:
 
     def _test_mpv_executable(self, path: str) -> bool:
         try:
-            result = subprocess.run([path, "--version"], capture_output=True, timeout=5)
+            result = subprocess.run(
+                [path, "--version"],
+                capture_output=True,
+                timeout=5,
+                creationflags=_SUBPROCESS_FLAGS,
+            )
             return result.returncode == 0
         except (subprocess.SubprocessError, FileNotFoundError, OSError):
             return False
@@ -174,6 +185,7 @@ class MusicController:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 stdin=subprocess.DEVNULL,
+                creationflags=_SUBPROCESS_FLAGS,
             )
             self.pid_file.write_text(str(self.mpv_process.pid))
             self.current_playlist = playlist_path
@@ -216,7 +228,9 @@ class MusicController:
                 pid = int(self.pid_file.read_text().strip())
                 if platform.system() == "Windows":
                     subprocess.run(
-                        ["taskkill", "/F", "/PID", str(pid)], capture_output=True
+                        ["taskkill", "/F", "/PID", str(pid)],
+                        capture_output=True,
+                        creationflags=_SUBPROCESS_FLAGS,
                     )
                 else:
                     os.kill(pid, signal.SIGTERM)

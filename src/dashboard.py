@@ -19,7 +19,13 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Dict, List
 
-from .app_paths import EXPORTS_DIR, SESSION_LOG_FILE
+try:
+    from .app_paths import EXPORTS_DIR, SESSION_LOG_FILE
+except ImportError:
+    # Fallback for running as a standalone script
+    _here = Path(__file__).resolve().parent.parent
+    SESSION_LOG_FILE = _here / "log" / "focus.log"  # type: ignore[assignment]
+    EXPORTS_DIR = _here / "exports"  # type: ignore[assignment]
 
 import matplotlib.pyplot as plt
 import pandas as pd

@@ -20,6 +20,9 @@ try:
 
     _PYSTRAY_AVAILABLE = True
 except ImportError:
+    pystray = None  # type: ignore[assignment]
+    Image = None    # type: ignore[assignment]
+    ImageDraw = None  # type: ignore[assignment]
     _PYSTRAY_AVAILABLE = False
     logger.warning("pystray/Pillow not installed — system tray disabled")
 
