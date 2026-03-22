@@ -4,9 +4,11 @@ Focus Productivity Dashboard
 Analyze and visualize your focus session data with advanced analytics
 """
 
+import argparse
 import csv
 import json
 import logging
+import os
 import re
 import signal
 import sys
@@ -16,6 +18,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Dict, List
+
+from .app_paths import EXPORTS_DIR, SESSION_LOG_FILE
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -285,8 +289,8 @@ class SessionAnalyzer:
     ) -> str:
         """Export data to CSV files"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        export_dir = Path("exports")
-        export_dir.mkdir(exist_ok=True)
+        export_dir = EXPORTS_DIR
+        export_dir.mkdir(parents=True, exist_ok=True)
 
         # Export raw sessions
         sessions_file = export_dir / f"focus_sessions_{timestamp}.csv"
@@ -321,12 +325,12 @@ class DashboardGUI:
 
     def __init__(self, analyzer: SessionAnalyzer):
         try:
-            print("Initializing dashboard...")
+            logger.debug("Initializing dashboard")
             self.analyzer = analyzer
             self.is_running = True
             self.check_running_id = None  # Track the scheduled callback
 
-            print("Creating root window...")
+            logger.debug("Creating root window")
             self.root = tk.Tk()
             self.root.title("🎯 Focus Productivity Dashboard")
             self.root.geometry("1200x800")
@@ -340,22 +344,19 @@ class DashboardGUI:
             signal.signal(signal.SIGTERM, self.signal_handler)
 
             # Configure style
-            print("Configuring styles...")
+            logger.debug("Configuring styles")
             self.style = ttk.Style()
             self.style.theme_use("clam")
             self.configure_styles()
 
             self.current_period = "week"
-            print("Creating widgets...")
+            logger.debug("Creating widgets")
             self.create_widgets()
-            print("Updating dashboard...")
+            logger.debug("Updating dashboard")
             self.update_dashboard()
-            print("Dashboard initialization complete.")
+            logger.debug("Dashboard initialization complete")
         except Exception as e:
-            print(f"Error during dashboard initialization: {e}")
-            import traceback
-
-            traceback.print_exc()
+            logger.exception("Error during dashboard initialization")
             self.cleanup()
             raise
 
@@ -375,13 +376,13 @@ class DashboardGUI:
 
     def signal_handler(self, signum, frame):
         """Handle system signals for clean shutdown"""
-        print(f"\nReceived signal {signum}, shutting down dashboard...")
+        logger.info("Received signal %s, shutting down dashboard", signum)
         self.cleanup()
         sys.exit(0)
 
     def on_closing(self):
         """Handle window close event"""
-        print("Dashboard window closing...")
+        logger.debug("Dashboard window closing")
         self.cleanup()
 
     def cleanup(self):
@@ -398,7 +399,7 @@ class DashboardGUI:
                     pass  # Ignore errors if already cancelled or invalid
 
             if hasattr(self, "root") and self.root:
-                print("Destroying tkinter root window...")
+                logger.debug("Destroying tkinter root window")
                 try:
                     self.root.quit()  # Exit the mainloop
                 except Exception:
@@ -411,9 +412,9 @@ class DashboardGUI:
             # Close any matplotlib figures
             plt.close("all")
 
-            print("Dashboard cleanup complete.")
-        except Exception as e:
-            print(f"Error during cleanup: {e}")
+            logger.debug("Dashboard cleanup complete")
+        except Exception:
+            logger.exception("Error during cleanup")
         finally:
             # Force exit if still running
             if hasattr(self, "is_running") and self.is_running:
@@ -889,14 +890,114 @@ class DashboardGUI:
 
                 # Create a comprehensive report figure
                 fig, axes = plt.subplots(3, 2, figsize=(15, 12))
+                fig.patch.set_facecolor("white")
                 fig.suptitle(
-                    f"Focus Productivity Report - {self.current_period.title()} View",
+                    f"Focus Productivity Report — {self.current_period.title()} View",
                     fontsize=16,
                     fontweight="bold",
+                    color="#2c3e50",
                 )
 
-                # Add various charts to the report
-                # (Implementation would include all the chart generation logic)
+                # ── Chart 1: Daily productivity trend ─────────────────────────
+                ax1 = axes[0, 0]
+                daily_df = self.analyzer.get_daily_breakdown(sessions)
+                if not daily_df.empty:
+                    ax1.plot(
+                        daily_df["Date"],
+                        daily_df["Work Hours"],
+                        marker="o",
+                        color="#2ecc71",
+                        linewidth=2,
+                    )
+                    ax1.fill_between(
+                        daily_df["Date"], daily_df["Work Hours"],
+                        alpha=0.15, color="#2ecc71",
+                    )
+                ax1.set_title("Daily Productivity Trend", fontsize=12, fontweight="bold")
+                ax1.set_ylabel("Work Hours")
+                ax1.grid(True, alpha=0.3)
+
+                # ── Chart 2: Session type pie ──────────────────────────────────
+                ax2 = axes[0, 1]
+                session_types_cnt: dict = {}
+                for s in sessions:
+                    if s.action == "Completed":
+                        session_types_cnt[s.session_type] = session_types_cnt.get(s.session_type, 0) + 1
+                if session_types_cnt:
+                    pie_labels = list(session_types_cnt.keys())
+                    pie_values = list(session_types_cnt.values())
+                    pie_colors = ["#2ecc71", "#3498db", "#e74c3c"][: len(pie_labels)]
+                    ax2.pie(pie_values, labels=pie_labels, colors=pie_colors,
+                            autopct="%1.1f%%", startangle=90)
+                ax2.set_title("Session Type Distribution", fontsize=12, fontweight="bold")
+
+                # ── Chart 3: Hourly productivity pattern ──────────────────────
+                ax3 = axes[1, 0]
+                hourly_data = self.analyzer.get_hourly_pattern(sessions)
+                ax3.bar(list(hourly_data.keys()), list(hourly_data.values()),
+                        color="#9b59b6", alpha=0.7)
+                ax3.set_title("Productivity by Hour", fontsize=12, fontweight="bold")
+                ax3.set_xlabel("Hour of Day")
+                ax3.set_ylabel("Work Minutes")
+                ax3.grid(True, alpha=0.3)
+
+                # ── Chart 4: Weekly focus pattern ──────────────────────────────
+                ax4 = axes[1, 1]
+                recent = [s for s in sessions
+                          if s.timestamp >= datetime.now() - timedelta(days=7)]
+                weekly: dict = {}
+                for i in range(7):
+                    weekly[(datetime.now() - timedelta(days=i)).strftime("%a")] = 0
+                for s in recent:
+                    if s.action == "Completed" and s.session_type == "work":
+                        dn = s.timestamp.strftime("%a")
+                        if dn in weekly:
+                            weekly[dn] += s.duration
+                ax4.bar(list(weekly.keys()), list(weekly.values()),
+                        color="#e67e22", alpha=0.7)
+                ax4.set_title("Weekly Focus Pattern (Last 7 Days)", fontsize=12, fontweight="bold")
+                ax4.set_ylabel("Work Minutes")
+                ax4.grid(True, alpha=0.3)
+
+                # ── Panel 5: Key statistics ────────────────────────────────────
+                ax5 = axes[2, 0]
+                ax5.axis("off")
+                stats = self.analyzer.calculate_stats(sessions)
+                stats_text = (
+                    "KEY STATISTICS\n\n"
+                    f"  Total Sessions:    {stats['total_sessions']}\n"
+                    f"  Work Sessions:     {stats['work_sessions']}\n"
+                    f"  Productive Hours:  {stats['productive_hours']} h\n"
+                    f"  Days Active:       {stats['days_active']}\n"
+                    f"  Avg Work Session:  {stats['avg_work_session']} min\n"
+                    f"  Avg Break Session: {stats['avg_break_session']} min\n"
+                    f"  Work Ratio:        {stats['work_ratio']} %\n"
+                    f"  Current Streak:    {stats['streak_days']} days"
+                )
+                ax5.text(0.05, 0.95, stats_text, transform=ax5.transAxes,
+                         fontsize=11, verticalalignment="top",
+                         fontfamily="monospace", color="#2c3e50")
+
+                # ── Panel 6: Insights ──────────────────────────────────────────
+                ax6 = axes[2, 1]
+                ax6.axis("off")
+                if stats["productive_hours"] >= 8:
+                    insight = "Outstanding! You are a productivity champion."
+                elif stats["productive_hours"] >= 4:
+                    insight = "Excellent focus! You are in the productivity zone."
+                elif stats["productive_hours"] >= 2:
+                    insight = "Good progress! Keep building your focus habit."
+                else:
+                    insight = "Building momentum — aim for 2+ hours daily."
+                streak_note = (
+                    f"  {stats['streak_days']}-day active streak!"
+                    if stats["streak_days"] >= 3
+                    else "  Start a streak — consistency builds habits."
+                )
+                ax6.text(0.05, 0.95, f"INSIGHTS\n\n  {insight}\n\n{streak_note}",
+                         transform=ax6.transAxes, fontsize=11,
+                         verticalalignment="top", fontfamily="monospace",
+                         color="#2c3e50")
 
                 plt.tight_layout()
                 plt.savefig(filename, dpi=300, bbox_inches="tight", facecolor="white")
@@ -913,22 +1014,19 @@ class DashboardGUI:
     def run(self):
         """Start the dashboard GUI"""
         try:
-            print("Starting dashboard GUI mainloop...")
+            logger.debug("Starting dashboard GUI mainloop")
             # Make the window interruptible by checking periodically
             self.check_running_id = self.root.after(100, self.check_running)
             self.root.mainloop()
-            print("Dashboard GUI mainloop ended.")
+            logger.debug("Dashboard GUI mainloop ended")
         except KeyboardInterrupt:
-            print("Keyboard interrupt received...")
+            logger.info("Keyboard interrupt received")
             self.cleanup()
-        except Exception as e:
-            print(f"Error in dashboard mainloop: {e}")
-            import traceback
-
-            traceback.print_exc()
+        except Exception:
+            logger.exception("Error in dashboard mainloop")
             self.cleanup()
         finally:
-            print("Dashboard run method completed.")
+            logger.debug("Dashboard run method completed")
             self.cleanup()
 
     def check_running(self):

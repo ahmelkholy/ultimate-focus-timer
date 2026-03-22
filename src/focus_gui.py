@@ -9,10 +9,12 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from .config_manager import ConfigManager
+from .hotkey_manager import HotkeyManager
 from .music_controller import MusicController
 from .notification_manager import NotificationManager
 from .session_manager import SessionManager, SessionState, SessionType
 from .task_manager import TaskManager
+from .tray_manager import TrayManager
 
 logger = logging.getLogger(__name__)
 

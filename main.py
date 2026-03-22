@@ -275,6 +275,58 @@ def _detach_gui_on_windows() -> None:
     sys.exit(0)
 
 
+def _create_desktop_shortcut() -> None:
+    """Create a Desktop shortcut pointing to focus.pyw (Windows only)."""
+    if platform.system() != "Windows":
+        print("[!] --install is only supported on Windows.")
+        return
+
+    from src.app_paths import PROJECT_ROOT  # noqa: E402
+
+    target = PROJECT_ROOT / "focus.pyw"
+    if not target.exists():
+        print(f"[X] Launcher not found: {target}")
+        return
+
+    desktop = Path.home() / "Desktop"
+    shortcut = desktop / "Focus Timer.lnk"
+
+    # Use Windows Script Host via a temporary VBScript
+    vbs_content = f"""\
+Set WshShell = WScript.CreateObject("WScript.Shell")
+Set oLink = WshShell.CreateShortcut("{shortcut}")
+oLink.TargetPath = "{target}"
+oLink.WorkingDirectory = "{PROJECT_ROOT}"
+oLink.Description = "Ultimate Focus Timer"
+oLink.Save
+"""
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(
+        suffix=".vbs", delete=False, mode="w", encoding="utf-8"
+    ) as fh:
+        fh.write(vbs_content)
+        vbs_path = fh.name
+
+    try:
+        result = subprocess.run(
+            ["cscript", "//NoLogo", vbs_path],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            print(f"[OK] Desktop shortcut created: {shortcut}")
+        else:
+            print(f"[X] Failed to create shortcut: {result.stderr.strip()}")
+    except FileNotFoundError:
+        print("[X] cscript not found — cannot create shortcut.")
+    except Exception as exc:
+        print(f"[X] Error creating shortcut: {exc}")
+    finally:
+        Path(vbs_path).unlink(missing_ok=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Ultimate Focus Timer")
     parser.add_argument("--gui", action="store_true", help="Launch GUI mode")
@@ -288,6 +340,11 @@ def main():
     parser.add_argument("--check-deps", action="store_true")
     parser.add_argument("--sys-info", action="store_true")
     parser.add_argument(
+        "--install",
+        action="store_true",
+        help="Create a Desktop shortcut to the app (Windows)",
+    )
+    parser.add_argument(
         "--verbose", action="store_true", help="Enable DEBUG logging to console"
     )
     args = parser.parse_args()
@@ -299,6 +356,10 @@ def main():
     # command prompt is not blocked for the entire GUI session.
     if args.gui:
         _detach_gui_on_windows()
+
+    if args.install:
+        _create_desktop_shortcut()
+        return
 
     launcher = UltimateFocusLauncher()
 

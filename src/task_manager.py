@@ -149,6 +149,19 @@ class TaskManager:
             return True
         return False
 
+    def toggle_task_completion(self, task_id: str) -> bool:
+        """Toggle the completed state of a task."""
+        task = self.get_task_by_id(task_id)
+        if task:
+            if task.completed:
+                task.completed = False
+                task.completed_at = None
+            else:
+                task.mark_complete()
+            self.save_tasks()
+            return True
+        return False
+
     def add_pomodoro_to_task(self, task_id: str) -> bool:
         """Add a completed pomodoro to a task"""
         task = self.get_task_by_id(task_id)

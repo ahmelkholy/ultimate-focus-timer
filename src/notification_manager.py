@@ -10,6 +10,14 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 try:
+    import winsound as _winsound
+
+    _WINSOUND_AVAILABLE = True
+except ImportError:
+    _winsound = None
+    _WINSOUND_AVAILABLE = False
+
+try:
     from plyer import notification
 
     PLYER_AVAILABLE = True
@@ -214,6 +222,28 @@ class NotificationManager:
 
         title = "💪 Stay Focused!"
         return self.show_notification(title, message, "info")
+
+    def play_completion_sound(self) -> None:
+        """Play a short audio cue when a session completes (Windows only)."""
+        if not _WINSOUND_AVAILABLE:
+            return
+        try:
+            # Three ascending beeps: pleasant "done" signal
+            for freq, duration in [(600, 150), (750, 150), (900, 300)]:
+                _winsound.Beep(freq, duration)
+        except Exception:
+            logger.debug("winsound.Beep failed (may not be supported)")
+
+    def play_start_sound(self) -> None:
+        """Play a short audio cue when a session starts (Windows only)."""
+        if not _WINSOUND_AVAILABLE:
+            return
+        try:
+            # Two quick descending beeps: "starting" cue
+            for freq, duration in [(900, 120), (700, 120)]:
+                _winsound.Beep(freq, duration)
+        except Exception:
+            logger.debug("winsound.Beep failed (may not be supported)")
 
     def test_notifications(self) -> bool:
         """Test notification system"""
