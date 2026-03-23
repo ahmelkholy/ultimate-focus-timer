@@ -1,3 +1,45 @@
 {
-  "2026-03-22": []
+  "2026-03-22": [],
+  "2026-03-23": [
+    {
+      "id": "2026-03-23_095532358982",
+      "title": "read ch 2 and other ch",
+      "description": "",
+      "completed": true,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 1,
+      "created_at": "2026-03-23T09:55:32.358993",
+      "completed_at": "2026-03-23T11:42:40.389604"
+    },
+    {
+      "id": "2026-03-23_095519273135",
+      "title": "read all plans",
+      "description": "",
+      "completed": true,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-03-23T09:55:19.273145",
+      "completed_at": "2026-03-23T12:24:49.945926"
+    },
+    {
+      "id": "2026-03-23_095514207790",
+      "title": "read ch1",
+      "description": "",
+      "completed": true,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-03-23T09:55:14.207801",
+      "completed_at": "2026-03-23T12:24:51.469996"
+    },
+    {
+      "id": "2026-03-23_095507405043",
+      "title": "write all thesis and send it to dimitry ivano",
+      "description": "",
+      "completed": true,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-03-23T09:55:07.405060",
+      "completed_at": "2026-03-23T12:58:52.060730"
+    }
+  ]
 }

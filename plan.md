@@ -50,17 +50,16 @@ We will compress the scattered `src/` directory into three primary domain files,
 
 ### Phase 4: Entry Point & CLI Cleanup (`main.py`)
 
-**Goal:** Simplify the application bootstrap and remove dead weight.
+**Objective:** Since the app isn't tracking you, starting a session must be instantaneous from your primary work environments.
 
-* **Action:** Update `main.py`.
-* **Refactor:**
-  * Update imports to strictly pull from `core`, `ui`, and `system`.
-  * If `cli.py` and `focus_console.py` are rarely used or overly complex, consider merging them into a single `cli.py` or entirely dropping them if the primary product is the GUI.
-  * Ensure `main.py` simply initializes `system` paths/loggers, instantiates `core` managers, and passes them into the `ui.FocusApp` loop.
+1. **VS Code Extension:**
+   * Build a minimal VS Code extension that adds a button to the Status Bar.
+   * Clicking the button (or using the Command Palette) sends the `POST /start` payload to the local daemon.
+2. **Global CLI Aliases:**
+   * Ensure you can type `focus start` in your terminal to instantly trigger the daemon.
 
 ---
 
-## Instructions to Give to Claude
+## AI Execution Instructions (Prompting Guide)
 
-
-excute this plan till the end without asking fro pemission
+start excuting this plan and run the app and make sure every thing is working as expected run this app after every phase and test the functionality before moving to the next phase. excute without asking me any apporval.
