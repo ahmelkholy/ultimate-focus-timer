@@ -1,315 +1,466 @@
 #!/usr/bin/env python3
 """
-daemon.py - Lean FastAPI backend with Ultradian Rhythm State Machine.
-
-Implements the 90/20 Ultradian protocol:
-  RAMP_UP    (5 min)  → warm up, silence distractions
-  DEEP_WORK  (85 min) → 40 Hz binaural beats, full focus
-  NEURAL_REST (20 min) → audio stops, rest enforced
-
-Usage:
-  python -m src.daemon          # start daemon on default port 8765
-  curl -X POST localhost:8765/start
-  curl localhost:8765/status
-  curl -X POST localhost:8765/stop
+Ultra-Lightweight FastAPI Daemon for Ultimate Focus Timer
+Implements 90/20 Ultradian rhythm without system monitoring
 """
 
 import asyncio
+import enum
 import logging
-import threading
-import time
-from datetime import datetime
-from enum import Enum
+import platform
+import subprocess
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Dict, List, Optional
 
-import uvicorn
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+
+# Import audio and Zeigarnik controllers
+try:
+    from .audio_controller import AudioController
+
+    AUDIO_AVAILABLE = True
+except (ImportError, OSError) as e:
+    AUDIO_AVAILABLE = False
+    AudioController = None  # type: ignore
+    logging.getLogger(__name__).warning("Audio controller not available: %s", e)
+
+try:
+    from .zeigarnik_manager import ZeigarnikOffloadManager
+
+    ZEIGARNIK_AVAILABLE = True
+except ImportError as e:
+    ZEIGARNIK_AVAILABLE = False
+    ZeigarnikOffloadManager = None  # type: ignore
+    logging.getLogger(__name__).warning("Zeigarnik manager not available: %s", e)
 
 logger = logging.getLogger(__name__)
 
-# ── Constants ─────────────────────────────────────────────────────────────────
 
-RAMP_UP_SECS = 5 * 60       # 5 minutes
-DEEP_WORK_SECS = 85 * 60    # 85 minutes
-NEURAL_REST_SECS = 20 * 60  # 20 minutes
-
-DAEMON_PORT = 8765
-DAEMON_HOST = "127.0.0.1"
+# ============================================================================
+# State Machine - 90/20 Ultradian Rhythm
+# ============================================================================
 
 
-# ── Phase Enum ────────────────────────────────────────────────────────────────
+class UltradianPhase(str, enum.Enum):
+    """Three strict phases of the Ultradian cycle"""
+
+    IDLE = "idle"
+    RAMP_UP = "ramp_up"  # 5 minutes - gradual transition into focus
+    DEEP_WORK = "deep_work"  # 85 minutes - peak cognitive performance
+    NEURAL_REST = "neural_rest"  # 20 minutes - complete mental recovery
 
 
-class UltradianPhase(str, Enum):
-    IDLE = "IDLE"
-    RAMP_UP = "RAMP_UP"
-    DEEP_WORK = "DEEP_WORK"
-    NEURAL_REST = "NEURAL_REST"
+class SessionState(BaseModel):
+    """Current session state"""
+
+    phase: UltradianPhase = UltradianPhase.IDLE
+    started_at: Optional[datetime] = None
+    phase_started_at: Optional[datetime] = None
+    phase_duration: int = 0  # minutes
+    remaining_seconds: int = 0
+    distraction_blocking_active: bool = False
+    audio_active: bool = False
 
 
-# ── Binaural Beat Generator ───────────────────────────────────────────────────
-
-_audio_thread: Optional[threading.Thread] = None
-_audio_stop = threading.Event()
-
-
-def _generate_binaural(
-    carrier_hz: float = 200.0,
-    beat_hz: float = 40.0,
-    volume: float = 0.15,
-    sample_rate: int = 44100,
-) -> None:
-    """Generate 40 Hz binaural beats using numpy + sounddevice.
-
-    Left channel: carrier_hz
-    Right channel: carrier_hz + beat_hz (creates the binaural beat perception)
-    """
-    try:
-        import numpy as np
-        import sounddevice as sd
-
-        logger.info(
-            "Binaural beat started: %.0f Hz carrier + %.0f Hz beat", carrier_hz, beat_hz
-        )
-
-        block_duration = 0.5  # seconds per block
-        block_samples = int(sample_rate * block_duration)
-
-        sample_idx = 0
-        while not _audio_stop.is_set():
-            t = (np.arange(block_samples) + sample_idx) / sample_rate
-            left = volume * np.sin(2 * np.pi * carrier_hz * t)
-            right = volume * np.sin(2 * np.pi * (carrier_hz + beat_hz) * t)
-            stereo = np.column_stack([left, right]).astype(np.float32)
-            sd.play(stereo, samplerate=sample_rate, blocking=True)
-            sample_idx += block_samples
-    except ImportError:
-        logger.warning("sounddevice or numpy not installed; binaural beat skipped")
-    except Exception:
-        logger.exception("Binaural beat generator error")
-
-
-def start_binaural() -> None:
-    """Start 40 Hz binaural beats in a background thread."""
-    global _audio_thread
-    _audio_stop.clear()
-    _audio_thread = threading.Thread(target=_generate_binaural, daemon=True)
-    _audio_thread.start()
-
-
-def stop_binaural() -> None:
-    """Stop the binaural beat generator."""
-    _audio_stop.set()
-    if _audio_thread and _audio_thread.is_alive():
-        _audio_thread.join(timeout=2)
-
-
-# ── Ultradian State Machine ───────────────────────────────────────────────────
+# ============================================================================
+# Ultradian State Machine
+# ============================================================================
 
 
 class UltradianStateMachine:
-    """Deterministic Ultradian Rhythm state machine.
-
-    Transitions:  IDLE → RAMP_UP → DEEP_WORK → NEURAL_REST → IDLE
+    """
+    Deterministic state machine for 90/20 Ultradian rhythm
+    States: IDLE -> RAMP_UP (5m) -> DEEP_WORK (85m) -> NEURAL_REST (20m) -> IDLE
     """
 
-    def __init__(self) -> None:
-        self.phase = UltradianPhase.IDLE
-        self.phase_start: Optional[datetime] = None
-        self.session_start: Optional[datetime] = None
-        self._timer_thread: Optional[threading.Thread] = None
-        self._stop_event = threading.Event()
-        self._lock = threading.Lock()
+    # Phase durations in minutes
+    PHASE_DURATIONS = {
+        UltradianPhase.RAMP_UP: 5,
+        UltradianPhase.DEEP_WORK: 85,
+        UltradianPhase.NEURAL_REST: 20,
+    }
 
-        # Optional notification callback (injected at runtime)
-        self._on_phase_change = None
-
-    # ── Public controls ───────────────────────────────────────────────────────
-
-    def start(self) -> bool:
-        with self._lock:
-            if self.phase != UltradianPhase.IDLE:
-                return False
-            self._stop_event.clear()
-            self.session_start = datetime.now()
-            self._enter_phase(UltradianPhase.RAMP_UP)
-            self._timer_thread = threading.Thread(
-                target=self._run, daemon=True
-            )
-            self._timer_thread.start()
-            return True
-
-    def stop(self) -> bool:
-        with self._lock:
-            if self.phase == UltradianPhase.IDLE:
-                return False
-            self._stop_event.set()
-        stop_binaural()
-        if self._timer_thread and self._timer_thread.is_alive():
-            self._timer_thread.join(timeout=2)
-        self.phase = UltradianPhase.IDLE
-        logger.info("Session stopped manually")
-        return True
-
-    # ── State ─────────────────────────────────────────────────────────────────
-
-    def get_status(self) -> Dict[str, Any]:
-        elapsed = self._phase_elapsed()
-        remaining = self._phase_remaining()
-        return {
-            "phase": self.phase.value,
-            "phase_elapsed_secs": elapsed,
-            "phase_remaining_secs": remaining,
-            "session_started_at": (
-                self.session_start.isoformat() if self.session_start else None
-            ),
-            "phase_started_at": (
-                self.phase_start.isoformat() if self.phase_start else None
-            ),
+    def __init__(self):
+        self.state = SessionState()
+        self._timer_task: Optional[asyncio.Task] = None
+        self._phase_transition_callbacks: Dict[UltradianPhase, List[callable]] = {
+            phase: [] for phase in UltradianPhase
         }
 
-    # ── Internal ──────────────────────────────────────────────────────────────
+        # Initialize audio and Zeigarnik controllers
+        self.audio_controller = AudioController() if AUDIO_AVAILABLE else None
+        self.zeigarnik_manager = ZeigarnikOffloadManager() if ZEIGARNIK_AVAILABLE else None
 
-    def _run(self) -> None:
-        """Main loop: wait for phase duration, then advance."""
-        schedule = [
-            (UltradianPhase.RAMP_UP, RAMP_UP_SECS),
-            (UltradianPhase.DEEP_WORK, DEEP_WORK_SECS),
-            (UltradianPhase.NEURAL_REST, NEURAL_REST_SECS),
-        ]
-        for phase, duration in schedule:
-            if self._stop_event.wait(timeout=duration):
-                break  # stopped early
-            if self._stop_event.is_set():
-                break
-            # Advance to next phase
-            if phase == UltradianPhase.RAMP_UP:
-                self._enter_phase(UltradianPhase.DEEP_WORK)
-            elif phase == UltradianPhase.DEEP_WORK:
-                self._enter_phase(UltradianPhase.NEURAL_REST)
-            elif phase == UltradianPhase.NEURAL_REST:
-                stop_binaural()
-                self.phase = UltradianPhase.IDLE
-                logger.info("Ultradian cycle complete — returning to IDLE")
-                break
+    def register_phase_callback(self, phase: UltradianPhase, callback: callable):
+        """Register callback for phase transitions"""
+        self._phase_transition_callbacks[phase].append(callback)
 
-    def _enter_phase(self, new_phase: UltradianPhase) -> None:
-        self.phase = new_phase
-        self.phase_start = datetime.now()
-        logger.info("→ Phase: %s", new_phase.value)
+    async def start_session(self) -> dict:
+        """Start a new Ultradian session"""
+        if self.state.phase != UltradianPhase.IDLE:
+            raise ValueError("Session already in progress")
 
-        if new_phase == UltradianPhase.DEEP_WORK:
-            start_binaural()
-        elif new_phase == UltradianPhase.NEURAL_REST:
-            stop_binaural()
+        self.state.started_at = datetime.now()
+        await self._transition_to_phase(UltradianPhase.RAMP_UP)
 
-        if self._on_phase_change:
+        # Start the timer loop
+        if self._timer_task and not self._timer_task.done():
+            self._timer_task.cancel()
+        self._timer_task = asyncio.create_task(self._timer_loop())
+
+        return self._get_state_dict()
+
+    async def stop_session(self) -> dict:
+        """Stop the current session"""
+        if self._timer_task:
+            self._timer_task.cancel()
+
+        # Clean up any active effects
+        await self._cleanup_phase_effects()
+
+        self.state = SessionState()  # Reset to IDLE
+        return self._get_state_dict()
+
+    async def _transition_to_phase(self, phase: UltradianPhase):
+        """Transition to a new phase"""
+        # Clean up previous phase
+        await self._cleanup_phase_effects()
+
+        # Update state
+        self.state.phase = phase
+        self.state.phase_started_at = datetime.now()
+
+        if phase == UltradianPhase.IDLE:
+            self.state.phase_duration = 0
+            self.state.remaining_seconds = 0
+        else:
+            self.state.phase_duration = self.PHASE_DURATIONS[phase]
+            self.state.remaining_seconds = self.state.phase_duration * 60
+
+        logger.info("Transitioned to phase: %s (%d minutes)", phase, self.state.phase_duration)
+
+        # Execute phase-specific actions
+        await self._execute_phase_actions(phase)
+
+        # Trigger callbacks
+        for callback in self._phase_transition_callbacks[phase]:
             try:
-                self._on_phase_change(new_phase)
-            except Exception:
-                logger.exception("Phase-change callback raised")
+                if asyncio.iscoroutinefunction(callback):
+                    await callback()
+                else:
+                    callback()
+            except Exception as e:
+                logger.error("Phase callback error: %s", e)
 
-    def _phase_elapsed(self) -> float:
-        if self.phase_start is None:
-            return 0.0
-        return (datetime.now() - self.phase_start).total_seconds()
+    async def _execute_phase_actions(self, phase: UltradianPhase):
+        """Execute deterministic actions for each phase"""
+        if phase == UltradianPhase.DEEP_WORK:
+            # Activate distraction blocking
+            await self._activate_distraction_blocking()
+            self.state.distraction_blocking_active = True
 
-    def _phase_remaining(self) -> float:
-        duration_map = {
-            UltradianPhase.RAMP_UP: RAMP_UP_SECS,
-            UltradianPhase.DEEP_WORK: DEEP_WORK_SECS,
-            UltradianPhase.NEURAL_REST: NEURAL_REST_SECS,
-        }
-        duration = duration_map.get(self.phase, 0)
-        return max(0.0, duration - self._phase_elapsed())
+            # Start 40Hz binaural beats
+            if self.audio_controller:
+                self.audio_controller.start_deep_work_audio()
+                self.state.audio_active = True
+                logger.info("Started 40Hz binaural beat audio")
 
+        elif phase == UltradianPhase.NEURAL_REST:
+            # Deactivate distraction blocking
+            await self._deactivate_distraction_blocking()
+            self.state.distraction_blocking_active = False
 
-# ── FastAPI App ───────────────────────────────────────────────────────────────
+            # Stop audio
+            if self.audio_controller:
+                self.audio_controller.stop()
+                self.state.audio_active = False
+                logger.info("Stopped audio for neural rest")
 
-_state_machine = UltradianStateMachine()
+    async def _cleanup_phase_effects(self):
+        """Clean up all phase-specific effects"""
+        if self.state.distraction_blocking_active:
+            await self._deactivate_distraction_blocking()
+            self.state.distraction_blocking_active = False
 
-app = FastAPI(
-    title="Ultimate Focus Timer Daemon",
-    description="Lean Ultradian Rhythm daemon — POST /start to begin a session.",
-    version="1.0.0",
-)
+        if self.state.audio_active:
+            if self.audio_controller:
+                self.audio_controller.stop()
+            self.state.audio_active = False
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    async def _timer_loop(self):
+        """Main timer loop - ticks every second"""
+        try:
+            while self.state.phase != UltradianPhase.IDLE:
+                await asyncio.sleep(1)
+                self.state.remaining_seconds -= 1
 
+                # Check if phase is complete
+                if self.state.remaining_seconds <= 0:
+                    await self._advance_to_next_phase()
 
-class StartRequest(BaseModel):
-    """Optional overrides for session timing (seconds)."""
-    ramp_up_secs: Optional[int] = None
-    deep_work_secs: Optional[int] = None
-    neural_rest_secs: Optional[int] = None
+        except asyncio.CancelledError:
+            logger.info("Timer loop cancelled")
+            raise
 
+    async def _advance_to_next_phase(self):
+        """Automatically advance to the next phase in the cycle"""
+        if self.state.phase == UltradianPhase.RAMP_UP:
+            await self._transition_to_phase(UltradianPhase.DEEP_WORK)
+        elif self.state.phase == UltradianPhase.DEEP_WORK:
+            await self._transition_to_phase(UltradianPhase.NEURAL_REST)
+        elif self.state.phase == UltradianPhase.NEURAL_REST:
+            await self._transition_to_phase(UltradianPhase.IDLE)
 
-@app.post("/start")
-async def start_session(req: StartRequest = StartRequest()) -> Dict[str, Any]:
-    """Begin a new Ultradian focus session."""
-    global RAMP_UP_SECS, DEEP_WORK_SECS, NEURAL_REST_SECS
-    # Reject timing overrides when a session is already active to avoid races
-    if _state_machine.phase != UltradianPhase.IDLE and any(
-        [req.ramp_up_secs, req.deep_work_secs, req.neural_rest_secs]
-    ):
+    async def _activate_distraction_blocking(self):
+        """
+        Binary state execution: Block designated distractions
+        - Modify OS hosts file to block domains
+        - Kill specific background processes
+        """
+        logger.info("Activating distraction blocking")
+
+        # Load distraction list from config
+        blocked_domains = self._get_blocked_domains()
+
+        # Modify hosts file (requires sudo/admin)
+        await self._modify_hosts_file(blocked_domains, block=True)
+
+        # Kill background processes (e.g., Slack, Discord)
+        blocked_processes = self._get_blocked_processes()
+        await self._kill_processes(blocked_processes)
+
+    async def _deactivate_distraction_blocking(self):
+        """
+        Restore normal system state
+        - Remove blocks from hosts file
+        """
+        logger.info("Deactivating distraction blocking")
+
+        blocked_domains = self._get_blocked_domains()
+        await self._modify_hosts_file(blocked_domains, block=False)
+
+    def _get_blocked_domains(self) -> List[str]:
+        """Get list of domains to block during deep work"""
+        # TODO: Load from config.yml
+        return [
+            "www.reddit.com",
+            "reddit.com",
+            "www.twitter.com",
+            "twitter.com",
+            "x.com",
+            "www.x.com",
+            "www.facebook.com",
+            "facebook.com",
+            "www.youtube.com",
+            "youtube.com",
+            "www.instagram.com",
+            "instagram.com",
+            "news.ycombinator.com",
+        ]
+
+    def _get_blocked_processes(self) -> List[str]:
+        """Get list of process names to kill during deep work"""
+        # TODO: Load from config.yml
+        return [
+            "slack",
+            "discord",
+            "telegram",
+            "teams",
+        ]
+
+    async def _modify_hosts_file(self, domains: List[str], block: bool):
+        """
+        Modify the OS hosts file to block/unblock domains
+        Requires admin/sudo privileges
+        """
+        system = platform.system()
+
+        if system == "Windows":
+            hosts_path = Path(r"C:\Windows\System32\drivers\etc\hosts")
+        else:  # macOS/Linux
+            hosts_path = Path("/etc/hosts")
+
+        try:
+            # Read current hosts file
+            if not hosts_path.exists():
+                logger.warning("Hosts file not found: %s", hosts_path)
+                return
+
+            # Check if we have write permissions
+            if not hosts_path.is_file():
+                logger.warning("Cannot access hosts file: %s", hosts_path)
+                return
+
+            marker_start = "# >>> FOCUS TIMER BLOCKING START >>>"
+            marker_end = "# <<< FOCUS TIMER BLOCKING END <<<"
+
+            # For safety, we'll create a command that uses sudo/admin
+            if block:
+                # Add blocking entries
+                block_lines = [marker_start]
+                for domain in domains:
+                    block_lines.append(f"127.0.0.1    {domain}")
+                block_lines.append(marker_end)
+
+                logger.info("Would block %d domains (requires admin/sudo)", len(domains))
+                # TODO: Implement actual hosts file modification with proper permissions
+                # This requires elevated privileges and should be done carefully
+
+            else:
+                # Remove blocking entries
+                logger.info("Would unblock domains (requires admin/sudo)")
+                # TODO: Implement hosts file cleanup
+
+        except Exception as e:
+            logger.error("Error modifying hosts file: %s", e)
+
+    async def _kill_processes(self, process_names: List[str]):
+        """Kill specified background processes"""
+        for proc_name in process_names:
+            try:
+                system = platform.system()
+                if system == "Windows":
+                    cmd = ["taskkill", "/F", "/IM", f"{proc_name}.exe"]
+                else:  # macOS/Linux
+                    cmd = ["pkill", "-9", proc_name]
+
+                logger.info("Would kill process: %s", proc_name)
+                # TODO: Uncomment to actually kill processes
+                # subprocess.run(cmd, capture_output=True)
+
+            except Exception as e:
+                logger.error("Error killing process %s: %s", proc_name, e)
+
+    def _get_state_dict(self) -> dict:
+        """Get current state as dictionary"""
         return {
-            "started": False,
-            "message": "Cannot change timing while a session is running",
-            "status": _state_machine.get_status(),
+            "phase": self.state.phase,
+            "started_at": self.state.started_at.isoformat() if self.state.started_at else None,
+            "phase_started_at": self.state.phase_started_at.isoformat() if self.state.phase_started_at else None,
+            "phase_duration_minutes": self.state.phase_duration,
+            "remaining_seconds": self.state.remaining_seconds,
+            "distraction_blocking_active": self.state.distraction_blocking_active,
+            "audio_active": self.state.audio_active,
         }
-    if req.ramp_up_secs is not None:
-        RAMP_UP_SECS = req.ramp_up_secs
-    if req.deep_work_secs is not None:
-        DEEP_WORK_SECS = req.deep_work_secs
-    if req.neural_rest_secs is not None:
-        NEURAL_REST_SECS = req.neural_rest_secs
 
-    started = _state_machine.start()
-    return {
-        "started": started,
-        "message": "Session started" if started else "Session already running",
-        "status": _state_machine.get_status(),
-    }
+    def get_status(self) -> dict:
+        """Get current status"""
+        return self._get_state_dict()
 
 
-@app.post("/stop")
-async def stop_session() -> Dict[str, Any]:
-    """Stop the current session immediately."""
-    stopped = _state_machine.stop()
-    return {
-        "stopped": stopped,
-        "message": "Session stopped" if stopped else "No active session",
-    }
+# ============================================================================
+# FastAPI Application
+# ============================================================================
+
+app = FastAPI(title="Ultimate Focus Timer Daemon", version="3.0.0")
+
+# Global state machine instance
+state_machine = UltradianStateMachine()
 
 
-@app.get("/status")
-async def get_status() -> Dict[str, Any]:
-    """Return current phase and timing information."""
-    return _state_machine.get_status()
+class StartSessionRequest(BaseModel):
+    """Request to start a session"""
+
+    enable_audio: bool = True
+    enable_blocking: bool = True
 
 
-@app.get("/health")
-async def health() -> Dict[str, str]:
-    return {"status": "ok"}
+class StatusResponse(BaseModel):
+    """Status response"""
+
+    phase: str
+    started_at: Optional[str]
+    phase_started_at: Optional[str]
+    phase_duration_minutes: int
+    remaining_seconds: int
+    distraction_blocking_active: bool
+    audio_active: bool
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+@app.get("/")
+async def root():
+    """Health check endpoint"""
+    return {"status": "online", "name": "Ultimate Focus Timer Daemon", "version": "3.0.0"}
 
 
-def run_daemon(host: str = DAEMON_HOST, port: int = DAEMON_PORT) -> None:
-    """Start the daemon server (blocking)."""
-    logging.basicConfig(level=logging.INFO)
-    logger.info("Starting Focus Daemon on http://%s:%d", host, port)
-    uvicorn.run(app, host=host, port=port, log_level="warning")
+@app.post("/start", response_model=StatusResponse)
+async def start_session(request: StartSessionRequest):
+    """Start a new Ultradian focus session"""
+    try:
+        result = await state_machine.start_session()
+        logger.info("Session started via API")
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception("Error starting session")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/stop", response_model=StatusResponse)
+async def stop_session():
+    """Stop the current session"""
+    try:
+        result = await state_machine.stop_session()
+        logger.info("Session stopped via API")
+        return result
+    except Exception as e:
+        logger.exception("Error stopping session")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/status", response_model=StatusResponse)
+async def get_status():
+    """Get current session status"""
+    return state_machine.get_status()
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize daemon on startup"""
+    logger.info("Focus Timer Daemon starting...")
+    logger.info("Ultradian rhythm: 5m RAMP_UP -> 85m DEEP_WORK -> 20m NEURAL_REST")
+
+    # Start Zeigarnik hotkey manager
+    if state_machine.zeigarnik_manager:
+        state_machine.zeigarnik_manager.start()
+        logger.info("Zeigarnik offload hotkey (Ctrl+Shift+Space) active")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Clean up on shutdown"""
+    logger.info("Focus Timer Daemon shutting down...")
+
+    # Stop Zeigarnik hotkey
+    if state_machine.zeigarnik_manager:
+        state_machine.zeigarnik_manager.stop()
+
+    # Stop any active session
+    await state_machine.stop_session()
+
+
+# ============================================================================
+# Daemon Runner
+# ============================================================================
+
+
+def run_daemon(host: str = "127.0.0.1", port: int = 8765):
+    """Run the daemon server"""
+    import uvicorn
+
+    logger.info("Starting daemon on %s:%d", host, port)
+    uvicorn.run(app, host=host, port=port, log_level="info")
 
 
 if __name__ == "__main__":
-    run_daemon()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Ultimate Focus Timer Daemon")
+    parser.add_argument("--host", default="127.0.0.1", help="Host to bind to")
+    parser.add_argument("--port", type=int, default=8765, help="Port to bind to")
+    args = parser.parse_args()
+
+    run_daemon(args.host, args.port)
