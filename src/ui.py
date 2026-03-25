@@ -21,8 +21,22 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Callable, Dict, List, Optional
 
-from .core import ConfigManager, SessionManager, SessionState, SessionType, TaskManager, Task
-from .system import MusicController, NotificationManager, HotkeyManager, TrayManager, EXPORTS_DIR, SESSION_LOG_FILE
+from .core import (
+    ConfigManager,
+    SessionManager,
+    SessionState,
+    SessionType,
+    TaskManager,
+    Task,
+)
+from .system import (
+    MusicController,
+    NotificationManager,
+    HotkeyManager,
+    TrayManager,
+    EXPORTS_DIR,
+)
+from .daemon_manager import DaemonManager
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -48,7 +62,6 @@ try:
     from .focus_console import ConsoleInterface
 except ImportError:
     ConsoleInterface = None  # type: ignore[assignment,misc]
-
 
 
 class TaskInputDialog:
@@ -1878,10 +1891,14 @@ class DashboardGUI:
                         linewidth=2,
                     )
                     ax1.fill_between(
-                        daily_df["Date"], daily_df["Work Hours"],
-                        alpha=0.15, color="#2ecc71",
+                        daily_df["Date"],
+                        daily_df["Work Hours"],
+                        alpha=0.15,
+                        color="#2ecc71",
                     )
-                ax1.set_title("Daily Productivity Trend", fontsize=12, fontweight="bold")
+                ax1.set_title(
+                    "Daily Productivity Trend", fontsize=12, fontweight="bold"
+                )
                 ax1.set_ylabel("Work Hours")
                 ax1.grid(True, alpha=0.3)
 
@@ -1890,20 +1907,33 @@ class DashboardGUI:
                 session_types_cnt: dict = {}
                 for s in sessions:
                     if s.action == "Completed":
-                        session_types_cnt[s.session_type] = session_types_cnt.get(s.session_type, 0) + 1
+                        session_types_cnt[s.session_type] = (
+                            session_types_cnt.get(s.session_type, 0) + 1
+                        )
                 if session_types_cnt:
                     pie_labels = list(session_types_cnt.keys())
                     pie_values = list(session_types_cnt.values())
                     pie_colors = ["#2ecc71", "#3498db", "#e74c3c"][: len(pie_labels)]
-                    ax2.pie(pie_values, labels=pie_labels, colors=pie_colors,
-                            autopct="%1.1f%%", startangle=90)
-                ax2.set_title("Session Type Distribution", fontsize=12, fontweight="bold")
+                    ax2.pie(
+                        pie_values,
+                        labels=pie_labels,
+                        colors=pie_colors,
+                        autopct="%1.1f%%",
+                        startangle=90,
+                    )
+                ax2.set_title(
+                    "Session Type Distribution", fontsize=12, fontweight="bold"
+                )
 
                 # ── Chart 3: Hourly productivity pattern ──────────────────────
                 ax3 = axes[1, 0]
                 hourly_data = self.analyzer.get_hourly_pattern(sessions)
-                ax3.bar(list(hourly_data.keys()), list(hourly_data.values()),
-                        color="#9b59b6", alpha=0.7)
+                ax3.bar(
+                    list(hourly_data.keys()),
+                    list(hourly_data.values()),
+                    color="#9b59b6",
+                    alpha=0.7,
+                )
                 ax3.set_title("Productivity by Hour", fontsize=12, fontweight="bold")
                 ax3.set_xlabel("Hour of Day")
                 ax3.set_ylabel("Work Minutes")
@@ -1911,8 +1941,11 @@ class DashboardGUI:
 
                 # ── Chart 4: Weekly focus pattern ──────────────────────────────
                 ax4 = axes[1, 1]
-                recent = [s for s in sessions
-                          if s.timestamp >= datetime.now() - timedelta(days=7)]
+                recent = [
+                    s
+                    for s in sessions
+                    if s.timestamp >= datetime.now() - timedelta(days=7)
+                ]
                 weekly: dict = {}
                 for i in range(7):
                     weekly[(datetime.now() - timedelta(days=i)).strftime("%a")] = 0
@@ -1921,9 +1954,15 @@ class DashboardGUI:
                         dn = s.timestamp.strftime("%a")
                         if dn in weekly:
                             weekly[dn] += s.duration
-                ax4.bar(list(weekly.keys()), list(weekly.values()),
-                        color="#e67e22", alpha=0.7)
-                ax4.set_title("Weekly Focus Pattern (Last 7 Days)", fontsize=12, fontweight="bold")
+                ax4.bar(
+                    list(weekly.keys()),
+                    list(weekly.values()),
+                    color="#e67e22",
+                    alpha=0.7,
+                )
+                ax4.set_title(
+                    "Weekly Focus Pattern (Last 7 Days)", fontsize=12, fontweight="bold"
+                )
                 ax4.set_ylabel("Work Minutes")
                 ax4.grid(True, alpha=0.3)
 
@@ -1942,9 +1981,16 @@ class DashboardGUI:
                     f"  Work Ratio:        {stats['work_ratio']} %\n"
                     f"  Current Streak:    {stats['streak_days']} days"
                 )
-                ax5.text(0.05, 0.95, stats_text, transform=ax5.transAxes,
-                         fontsize=11, verticalalignment="top",
-                         fontfamily="monospace", color="#2c3e50")
+                ax5.text(
+                    0.05,
+                    0.95,
+                    stats_text,
+                    transform=ax5.transAxes,
+                    fontsize=11,
+                    verticalalignment="top",
+                    fontfamily="monospace",
+                    color="#2c3e50",
+                )
 
                 # ── Panel 6: Insights ──────────────────────────────────────────
                 ax6 = axes[2, 1]
@@ -1962,10 +2008,16 @@ class DashboardGUI:
                     if stats["streak_days"] >= 3
                     else "  Start a streak — consistency builds habits."
                 )
-                ax6.text(0.05, 0.95, f"INSIGHTS\n\n  {insight}\n\n{streak_note}",
-                         transform=ax6.transAxes, fontsize=11,
-                         verticalalignment="top", fontfamily="monospace",
-                         color="#2c3e50")
+                ax6.text(
+                    0.05,
+                    0.95,
+                    f"INSIGHTS\n\n  {insight}\n\n{streak_note}",
+                    transform=ax6.transAxes,
+                    fontsize=11,
+                    verticalalignment="top",
+                    fontfamily="monospace",
+                    color="#2c3e50",
+                )
 
                 plt.tight_layout()
                 plt.savefig(filename, dpi=300, bbox_inches="tight", facecolor="white")
@@ -2003,8 +2055,6 @@ class DashboardGUI:
             self.check_running_id = self.root.after(100, self.check_running)
         else:
             self.cleanup()
-
-
 
 
 class LauncherGUI:
@@ -2499,8 +2549,6 @@ For more help, visit the configuration file or check the documentation.
         self.root.mainloop()
 
 
-
-
 class CustomSessionDialog:
     """Dialog for creating custom duration sessions"""
 
@@ -2966,7 +3014,13 @@ class FocusGUI:
             # Store scheduled callback IDs for proper cleanup
             self.scheduled_callbacks = []
 
-            # ── System tray ────────────────────────────────────────────────────
+            # ── Daemon manager ─────────────────────────────────────────────────
+            self.daemon_manager = DaemonManager(
+                on_status_changed=self._on_daemon_status_changed
+            )
+            self.daemon_status_label = None  # Will be set in create_widgets
+            self.daemon_start_button = None
+            self.daemon_stop_button = None
             self.tray = TrayManager(
                 on_show=self._show_window,
                 on_start_work=lambda: self._marshal(
@@ -3016,6 +3070,9 @@ class FocusGUI:
 
             # Show task input dialog if no tasks exist for today
             self.schedule_callback(400, self.check_and_show_task_dialog)
+
+            # Start daemon background status checking
+            self.daemon_manager.check_status_background(interval=2.0)
 
             # Start update loop
             self.schedule_callback(100, self.update_loop)
@@ -3358,6 +3415,49 @@ class FocusGUI:
 
         # Load playlists into the dropdown
         self.load_playlists()
+
+        # Daemon Control Section
+        self.daemon_frame = ttk.Frame(self.additional_frame)
+        self.daemon_frame.grid(
+            row=2, column=0, columnspan=3, pady=(initial_scaling["button_pady"], 0)
+        )
+
+        # Configure daemon frame for scaling
+        self.daemon_frame.grid_columnconfigure(0, weight=1)
+        self.daemon_frame.grid_columnconfigure(1, weight=1)
+        self.daemon_frame.grid_columnconfigure(2, weight=1)
+
+        # Daemon status label
+        self.daemon_status_label = ttk.Label(
+            self.daemon_frame,
+            text="❓ Daemon: Unknown",
+            font=("Arial", initial_sizes["small"]),
+        )
+        self.daemon_status_label.grid(
+            row=0, column=0, columnspan=3, pady=(0, initial_scaling["button_pady"])
+        )
+
+        # Daemon control buttons
+        self.daemon_start_button = ttk.Button(
+            self.daemon_frame,
+            text="▶ Start Daemon",
+            command=self._start_daemon_clicked,
+            style="Modern.TButton",
+        )
+        self.daemon_start_button.grid(
+            row=1, column=0, padx=initial_scaling["button_padx"], sticky=(tk.W, tk.E)
+        )
+
+        self.daemon_stop_button = ttk.Button(
+            self.daemon_frame,
+            text="⏹ Stop Daemon",
+            command=self._stop_daemon_clicked,
+            state="disabled",
+            style="Modern.TButton",
+        )
+        self.daemon_stop_button.grid(
+            row=1, column=1, padx=initial_scaling["button_padx"], sticky=(tk.W, tk.E)
+        )
 
         # Task Management Section (Native Integration)
         self.create_task_section()
@@ -4556,9 +4656,12 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
 
     def on_session_complete(self, session_type: SessionType, duration: int):
         """Handle session completion"""
+
         def _do():
             # Stop music when a work session ends (break is starting)
-            if session_type == SessionType.WORK and self.config.get("pause_music_on_break", True):
+            if session_type == SessionType.WORK and self.config.get(
+                "pause_music_on_break", True
+            ):
                 self.music.stop_music()
             self.notifications.show_session_complete(session_type.value, duration)
             self.tray.set_state("idle", "Focus Timer — Session complete")
@@ -4566,6 +4669,7 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
             self.update_display()
             self.update_button_states()
             self.show_completion_dialog(session_type, duration)
+
         self._marshal(_do)
 
     def _ensure_window_visible(self):
@@ -4581,57 +4685,81 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
 
     def on_session_state_change(self, old_state: SessionState, new_state: SessionState):
         """Handle session state changes — always marshal back to main thread."""
+
         def _do():
             try:
                 self.update_display()
                 self.update_button_states()
-                if new_state in (SessionState.COMPLETED, SessionState.STOPPED, SessionState.READY):
+                if new_state in (
+                    SessionState.COMPLETED,
+                    SessionState.STOPPED,
+                    SessionState.READY,
+                ):
                     if self.mini_indicator and self.mini_indicator.winfo_exists():
                         self.mini_indicator.withdraw()
             except Exception:
                 pass
+
         self._marshal(_do)
 
     # ── Session event handlers (called from timer thread — marshal to main) ───
 
     def _on_session_started(self, session_type: SessionType, duration_minutes: int):
         """Called when a new session begins — start music, show notification, update tray."""
+
         def _do():
-            if session_type == SessionType.WORK and self.config.get("classical_music", True):
+            if session_type == SessionType.WORK and self.config.get(
+                "classical_music", True
+            ):
                 self.music.start_music()
             self.notifications.show_session_start(session_type.value, duration_minutes)
             tray_state = "work" if session_type == SessionType.WORK else "break"
-            self.tray.set_state(tray_state, f"Focus Timer — {session_type.value.replace('_', ' ').title()} ({duration_minutes}m)")
+            self.tray.set_state(
+                tray_state,
+                f"Focus Timer — {session_type.value.replace('_', ' ').title()} ({duration_minutes}m)",
+            )
+
         self._marshal(_do)
 
     def _on_early_warning(self, session_type: SessionType, minutes_remaining: int):
         """Show early-warning notification."""
+
         def _do():
             self.notifications.show_early_warning(session_type.value, minutes_remaining)
+
         self._marshal(_do)
 
     def _on_session_paused(self, session_type: SessionType):
         """Pause music when session is paused."""
+
         def _do():
             if session_type == SessionType.WORK:
                 self.music.pause_music()
             self.tray.set_state("paused", "Focus Timer — Paused")
+
         self._marshal(_do)
 
     def _on_session_resumed(self, session_type: SessionType):
         """Resume music when session resumes."""
+
         def _do():
             if session_type == SessionType.WORK:
                 self.music.resume_music()
             tray_state = "work" if session_type == SessionType.WORK else "break"
-            self.tray.set_state(tray_state, f"Focus Timer — {session_type.value.replace('_', ' ').title()}")
+            self.tray.set_state(
+                tray_state,
+                f"Focus Timer — {session_type.value.replace('_', ' ').title()}",
+            )
+
         self._marshal(_do)
 
     def _on_session_stopped(self, session_type: SessionType, elapsed_minutes: float):
         """Stop music on explicit stop."""
+
         def _do():
             self.music.stop_music()
             self.tray.set_state("idle", "Focus Timer — Idle")
+
         self._marshal(_do)
 
     def show_completion_dialog(self, session_type: SessionType, duration: int):
@@ -4790,6 +4918,10 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
                 pass
             self.mini_indicator = None  # prevent stale ref in callbacks
 
+        # Stop daemon background checking
+        if self.daemon_manager:
+            self.daemon_manager.stop_background_check()
+
         self.cleanup_callbacks()
         self.save_window_dimensions()
         self.session_manager.cleanup()
@@ -4829,6 +4961,42 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         except Exception:
             return None
 
+    def _on_daemon_status_changed(self, status: str):
+        """Handle daemon status changes"""
+        def _do():
+            if self.daemon_status_label:
+                self.daemon_status_label.config(text=self.daemon_manager.get_status_display())
+
+            # Update button states
+            is_running = status == "running"
+            if self.daemon_start_button:
+                self.daemon_start_button.config(state="disabled" if is_running else "normal")
+            if self.daemon_stop_button:
+                self.daemon_stop_button.config(state="normal" if is_running else "disabled")
+        self._marshal(_do)
+
+    def _start_daemon_clicked(self):
+        """Handle start daemon button click"""
+        def _do():
+            self.daemon_start_button.config(state="disabled", text="Starting...")
+            if self.daemon_manager.start():
+                messagebox.showinfo("Success", "Daemon started successfully!\n\nYou can now use daemon features.")
+            else:
+                messagebox.showerror("Error", "Failed to start daemon")
+            self.daemon_start_button.config(state="normal", text="Start Daemon")
+        self.schedule_callback(100, _do)
+
+    def _stop_daemon_clicked(self):
+        """Handle stop daemon button click"""
+        def _do():
+            self.daemon_stop_button.config(state="disabled", text="Stopping...")
+            if self.daemon_manager.stop():
+                messagebox.showinfo("Success", "Daemon stopped")
+            else:
+                messagebox.showerror("Error", "Failed to stop daemon")
+            self.daemon_stop_button.config(state="normal", text="Stop Daemon")
+        self.schedule_callback(100, _do)
+
     def _marshal(self, fn):
         """Schedule fn on the Tkinter event loop from any thread (fire-and-forget)."""
         try:
@@ -4838,6 +5006,7 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
 
     def _show_window(self) -> None:
         """Bring the main window to the foreground (safe to call from any thread)."""
+
         def _do():
             try:
                 self.root.deiconify()
@@ -4845,6 +5014,7 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
                 self.root.focus_force()
             except Exception:
                 pass
+
         self._marshal(_do)
 
     def cleanup_callbacks(self):
@@ -5014,7 +5184,6 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
         self.mini_indicator.geometry(f"+{x}+{y}")
 
 
-
 def console_dashboard(period: str = "week", export: bool = False):
     """Run console version of the dashboard"""
     analyzer = SessionAnalyzer()
@@ -5085,7 +5254,6 @@ def console_dashboard(period: str = "week", export: bool = False):
         print(f"📁 Data exported to: {export_path}")
 
     return analyzer, sessions, stats, daily_df
-
 
 
 def check_dependencies():
@@ -5212,7 +5380,6 @@ def main():
     except Exception as e:
         print(f"❌ Error: {e}")
         sys.exit(1)
-
 
 
 if __name__ == "__main__":

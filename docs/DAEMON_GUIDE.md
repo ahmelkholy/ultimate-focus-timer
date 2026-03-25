@@ -23,6 +23,7 @@ cd C:\Users\ahm_e\AppData\Local\focus
 ```
 
 The daemon prints:
+
 ```
 INFO:     Uvicorn running on http://127.0.0.1:8765
 ```
@@ -56,6 +57,7 @@ bash scripts/focus-daemon.sh stop
 ### Method 4: Background Jobs (Terminal-Specific)
 
 #### PowerShell
+
 ```powershell
 $job = Start-Job { cd C:\Users\ahm_e\AppData\Local\focus; .\.venv\Scripts\python.exe -m src.daemon }
 # Check if running
@@ -65,6 +67,7 @@ Stop-Job $job; Remove-Job $job
 ```
 
 #### Bash/Linux/Mac
+
 ```bash
 nohup python -m src.daemon > daemon.log 2>&1 &
 # Or
@@ -72,6 +75,7 @@ screen -S focus-daemon python -m src.daemon
 ```
 
 #### Windows CMD
+
 ```cmd
 start "Focus Daemon" python -m src.daemon
 ```
@@ -79,6 +83,7 @@ start "Focus Daemon" python -m src.daemon
 ## Using the Daemon
 
 ### Endpoint 1: GET /status
+
 Check current session status
 
 ```bash
@@ -90,6 +95,7 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8765/status" -Method Get
 ```
 
 Response:
+
 ```json
 {
   "phase": "idle",
@@ -102,6 +108,7 @@ Response:
 ```
 
 ### Endpoint 2: POST /start
+
 Start a new 90-minute Ultradian session
 
 ```bash
@@ -117,6 +124,7 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8765/start" `
 ```
 
 Response:
+
 ```json
 {
   "phase": "ramp_up",
@@ -128,6 +136,7 @@ Response:
 ```
 
 ### Endpoint 3: POST /stop
+
 Stop the current session
 
 ```bash
@@ -143,11 +152,13 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8765/stop" -Method Post
 The VS Code extension connects to the daemon automatically:
 
 1. **Install the extension** (done):
+
    ```
    ultimate-focus-timer-1.0.0.vsix
    ```
 
 2. **Start the daemon**:
+
    ```bash
    python -m src.daemon
    ```
@@ -204,6 +215,7 @@ If port 8765 is in use, kill the process or change the port in `src/daemon.py`.
 ### Connection refused error
 
 Make sure the daemon is running:
+
 ```bash
 curl http://127.0.0.1:8765/status
 # If "Connection refused" → start daemon first
@@ -212,6 +224,7 @@ curl http://127.0.0.1:8765/status
 ### Dependencies missing
 
 Reinstall FastAPI/Uvicorn:
+
 ```bash
 pip install fastapi uvicorn pydantic
 ```
