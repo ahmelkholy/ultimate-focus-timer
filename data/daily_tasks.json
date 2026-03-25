@@ -2,6 +2,16 @@
   "2026-03-22": [],
   "2026-03-23": [
     {
+      "id": "2026-03-23_175015490979",
+      "title": "ch 4 optimizing",
+      "description": "",
+      "completed": true,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 3,
+      "created_at": "2026-03-23T17:50:15.491010",
+      "completed_at": "2026-03-23T20:05:43.361576"
+    },
+    {
       "id": "2026-03-23_095532358982",
       "title": "read ch 2 and other ch",
       "description": "",
@@ -9,7 +19,7 @@
       "pomodoros_planned": 1,
       "pomodoros_completed": 1,
       "created_at": "2026-03-23T09:55:32.358993",
-      "completed_at": "2026-03-23T11:42:40.389604"
+      "completed_at": "2026-03-23T17:50:04.403810"
     },
     {
       "id": "2026-03-23_095519273135",
@@ -19,7 +29,7 @@
       "pomodoros_planned": 1,
       "pomodoros_completed": 0,
       "created_at": "2026-03-23T09:55:19.273145",
-      "completed_at": "2026-03-23T12:24:49.945926"
+      "completed_at": "2026-03-23T17:50:07.351120"
     },
     {
       "id": "2026-03-23_095514207790",
@@ -29,7 +39,7 @@
       "pomodoros_planned": 1,
       "pomodoros_completed": 0,
       "created_at": "2026-03-23T09:55:14.207801",
-      "completed_at": "2026-03-23T12:24:51.469996"
+      "completed_at": "2026-03-23T17:50:08.027922"
     },
     {
       "id": "2026-03-23_095507405043",

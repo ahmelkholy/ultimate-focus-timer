@@ -13,6 +13,8 @@ import platform
 import signal
 import subprocess
 import sys
+import threading
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -734,3 +736,187 @@ class HotkeyManager:
                 self._on_pause_resume()
             except Exception:
                 logger.exception("Error in hotkey pause/resume handler")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# BRAIN DUMP HOTKEY  (Zeigarnik Offload — Ctrl+Shift+Space)
+# ══════════════════════════════════════════════════════════════════════════════
+
+_BRAIN_DUMP_FILE = Path.home() / "brain_dump.md"
+_BRAIN_DUMP_HOTKEY = "ctrl+shift+space"
+
+logger_bd = logging.getLogger(__name__)
+
+
+class BrainDumpHotkey:
+    """Registers Ctrl+Shift+Space to instantly capture thoughts to ~/brain_dump.md.
+
+    Pressing the hotkey opens a minimal Tkinter input box.  Whatever the user
+    types is appended to ~/brain_dump.md with an ISO timestamp.  The box
+    disappears on Enter or Escape so the user can return to work in under two
+    seconds.
+    """
+
+    def __init__(self, dump_file: Optional[Path] = None) -> None:
+        self.dump_file = dump_file or _BRAIN_DUMP_FILE
+        self._registered = False
+
+    def start(self) -> None:
+        """Register the global hotkey.  Safe to call if keyboard lib is missing."""
+        if not _KEYBOARD_AVAILABLE:
+            logger_bd.warning("keyboard library not installed — BrainDumpHotkey disabled")
+            return
+        try:
+            keyboard.add_hotkey(_BRAIN_DUMP_HOTKEY, self._open_capture_box)
+            self._registered = True
+            logger_bd.info("BrainDumpHotkey registered: %s", _BRAIN_DUMP_HOTKEY)
+        except Exception:
+            logger_bd.exception("Failed to register BrainDumpHotkey")
+
+    def stop(self) -> None:
+        if not _KEYBOARD_AVAILABLE or not self._registered:
+            return
+        try:
+            keyboard.remove_hotkey(_BRAIN_DUMP_HOTKEY)
+            self._registered = False
+        except Exception:
+            logger_bd.exception("Failed to unregister BrainDumpHotkey")
+
+    def _open_capture_box(self) -> None:
+        """Open a tiny input window in a separate thread to avoid blocking."""
+        threading.Thread(target=self._capture_ui, daemon=True).start()
+
+    def _capture_ui(self) -> None:
+        """Minimal Tkinter capture window — runs in its own thread."""
+        try:
+            import tkinter as tk
+
+            root = tk.Tk()
+            root.title("Brain Dump")
+            root.geometry("500x60+200+200")
+            root.attributes("-topmost", True)
+            root.configure(bg="#1e1e2e")
+
+            var = tk.StringVar()
+            entry = tk.Entry(
+                root,
+                textvariable=var,
+                font=("Courier", 14),
+                bg="#313244",
+                fg="#cdd6f4",
+                insertbackground="#cdd6f4",
+                relief="flat",
+                bd=8,
+            )
+            entry.pack(fill="both", expand=True)
+            entry.focus_force()
+
+            def _commit(event=None):
+                text = var.get().strip()
+                if text:
+                    self._append_to_file(text)
+                root.destroy()
+
+            def _cancel(event=None):
+                root.destroy()
+
+            entry.bind("<Return>", _commit)
+            entry.bind("<Escape>", _cancel)
+            root.mainloop()
+        except Exception:
+            logger_bd.exception("BrainDumpHotkey capture UI error")
+
+    def _append_to_file(self, text: str) -> None:
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        line = f"- [{ts}] {text}\n"
+        try:
+            with open(self.dump_file, "a", encoding="utf-8") as fh:
+                fh.write(line)
+            logger_bd.debug("Brain dump appended: %s", self.dump_file)
+        except OSError:
+            logger_bd.exception("Failed to write brain dump")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# BINAURAL BEAT GENERATOR  (40 Hz via numpy + sounddevice)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class BinauralBeatGenerator:
+    """Generates 40 Hz binaural beats using numpy + sounddevice.
+
+    Left channel: carrier_hz
+    Right channel: carrier_hz + beat_hz
+
+    The 40 Hz beat frequency is associated with gamma-band neural activity
+    and is used as an acoustic neuromodulation tool.
+    """
+
+    def __init__(
+        self,
+        carrier_hz: float = 200.0,
+        beat_hz: float = 40.0,
+        volume: float = 0.15,
+        sample_rate: int = 44100,
+    ) -> None:
+        self.carrier_hz = carrier_hz
+        self.beat_hz = beat_hz
+        self.volume = volume
+        self.sample_rate = sample_rate
+
+        self._thread: Optional[threading.Thread] = None
+        self._stop = threading.Event()
+        self.is_playing = False
+
+    def start(self) -> bool:
+        """Start binaural beat generation.  Returns False if dependencies missing."""
+        try:
+            import numpy  # noqa: F401
+            import sounddevice  # noqa: F401
+        except ImportError:
+            logger_bd.warning("numpy or sounddevice missing — binaural beats disabled")
+            return False
+
+        if self.is_playing:
+            return True
+
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self._thread.start()
+        self.is_playing = True
+        logger_bd.info(
+            "Binaural beat started: %.0f Hz carrier + %.0f Hz beat",
+            self.carrier_hz,
+            self.beat_hz,
+        )
+        return True
+
+    def stop(self) -> None:
+        """Stop the binaural beat generator."""
+        self._stop.set()
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=2)
+        self.is_playing = False
+        logger_bd.info("Binaural beat stopped")
+
+    def _loop(self) -> None:
+        import numpy as np
+        import sounddevice as sd
+
+        block_duration = 0.5
+        block_samples = int(self.sample_rate * block_duration)
+        sample_idx = 0
+
+        while not self._stop.is_set():
+            t = (np.arange(block_samples) + sample_idx) / self.sample_rate
+            left = self.volume * np.sin(2 * np.pi * self.carrier_hz * t)
+            right = self.volume * np.sin(
+                2 * np.pi * (self.carrier_hz + self.beat_hz) * t
+            )
+            stereo = np.column_stack([left, right]).astype(np.float32)
+            try:
+                sd.play(stereo, samplerate=self.sample_rate, blocking=True)
+            except Exception:
+                logger_bd.exception("sounddevice playback error — stopping binaural")
+                break
+            sample_idx += block_samples
