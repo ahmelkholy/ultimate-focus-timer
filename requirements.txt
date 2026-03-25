@@ -27,6 +27,26 @@ aiofiles>=23.2.0
 rich>=13.5.0
 colorama>=0.4.6
 
+# Zero-Bloat Scientific Upgrade - NEW DEPENDENCIES
+# FastAPI daemon for ultra-lightweight background operation
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.4.0
+
+# 40Hz Binaural Beat Generation
+sounddevice>=0.4.6   # Real-time audio I/O
+# numpy already included above
+
+# Zeigarnik Offload Hotkey
+keyboard>=0.13.5     # Global hotkey support
+
+# Global hotkeys and system tray (existing)
+pystray>=0.19.5      # System tray icon
+# keyboard already included above
+
+# HTTP client for CLI
+requests>=2.31.0
+
 # Development and testing (optional)
 pytest>=7.4.0
 black>=24.0.0
