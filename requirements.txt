@@ -32,3 +32,8 @@ pytest>=7.4.0
 black>=24.0.0
 flake8>=6.1.0
 pyinstaller>=6.8.0
+
+# Lean daemon & scientific upgrades
+fastapi>=0.110.0
+uvicorn>=0.27.0
+sounddevice>=0.4.6

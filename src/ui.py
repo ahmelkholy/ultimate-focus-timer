@@ -2868,13 +2868,13 @@ class WorkCompletionDialog:
         title_label = ttk.Label(
             main_frame,
             text=f"🎉 Completed {self.duration}-minute work session!",
-            font=("Arial", 8, "bold"),
+            font=("Arial", 13, "bold"),
         )
         title_label.grid(row=0, column=0, pady=(0, 10), sticky=tk.W)
 
         # Instruction
         instruction_label = ttk.Label(
-            main_frame, text="Which task were you working on?", font=("Arial", 5)
+            main_frame, text="Which task were you working on?", font=("Arial", 11)
         )
         instruction_label.grid(row=1, column=0, pady=(0, 15), sticky=tk.W)
 
@@ -2905,7 +2905,7 @@ class WorkCompletionDialog:
             no_tasks_label = ttk.Label(
                 tasks_frame,
                 text="No tasks available. Session recorded without task tracking.",
-                font=("Arial", 7, "italic"),
+                font=("Arial", 10, "italic"),
             )
             no_tasks_label.grid(row=0, column=0, pady=10)
 
@@ -3932,7 +3932,7 @@ class FocusGUI:
         instruction_label = tk.Label(
             empty_container,
             text="'T' key to add task",
-            font=("Arial", 7, "italic"),
+            font=("Arial", 10, "italic"),
             fg="#888888",
             bg="#2b2b2b",
             justify="center",
@@ -4121,7 +4121,7 @@ class FocusGUI:
 
         # Title
         title_label = ttk.Label(
-            main_frame, text="📝 Task Manager", font=("Arial", 8, "bold")
+            main_frame, text="📝 Task Manager", font=("Arial", 13, "bold")
         )
         title_label.grid(row=0, column=0, pady=(0, 10))
 
@@ -4278,7 +4278,7 @@ class FocusGUI:
             placeholder = tk.Label(
                 self.separate_tasks_display,
                 text="🎯 No tasks yet!\nAdd your first task above",
-                font=("Arial", 7, "italic"),
+                font=("Arial", 10, "italic"),
                 fg="#666666",
                 bg="#2b2b2b",
                 justify="center",
