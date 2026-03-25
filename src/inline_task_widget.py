@@ -14,7 +14,7 @@ current_dir = Path(__file__).resolve().parent
 sys.path.insert(0, str(current_dir))
 sys.path.insert(0, str(current_dir.parent))
 
-from src.task_manager import Task, TaskManager
+from src.core import Task, TaskManager
 
 
 class InlineTaskWidget:

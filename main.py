@@ -21,18 +21,15 @@ if str(_project_root) not in sys.path:
 
 # ── Logging must be set up before any src imports so every module gets
 #    the configured handlers rather than the default NullHandler. ─────────────
-from src.system import setup_logging  # noqa: E402
+from src.system import setup_logging, ERROR_LOG_FILE, ensure_dirs  # noqa: E402
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
 # ── Remaining src imports ─────────────────────────────────────────────────────
-from src.system import ERROR_LOG_FILE, ensure_dirs  # noqa: E402
-from src.system import MusicController  # noqa: E402
-from src.system import NotificationManager  # noqa: E402
-from src.core import ConfigManager  # noqa: E402
-from src.core import SessionManager  # noqa: E402
+from src.core import ConfigManager, SessionManager  # noqa: E402
 from src.focus_console import ConsoleInterface  # noqa: E402
+from src.system import MusicController, NotificationManager  # noqa: E402
 
 # Ensure runtime directories exist
 ensure_dirs()

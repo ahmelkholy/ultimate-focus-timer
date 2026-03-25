@@ -19,7 +19,7 @@ sys.path.insert(0, str(current_dir))
 sys.path.insert(0, str(current_dir.parent))
 
 try:
-    from src.config_manager import ConfigManager
+    from src.core import ConfigManager
     from src.dashboard import DashboardGUI, SessionAnalyzer
     from src.focus_console import ConsoleInterface
     from src.focus_gui import FocusGUI

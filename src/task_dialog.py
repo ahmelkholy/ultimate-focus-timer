@@ -8,7 +8,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Callable, Optional
 
-from task_manager import Task, TaskManager
+from .core import Task, TaskManager
 
 
 class TaskInputDialog:

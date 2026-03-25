@@ -20,7 +20,7 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Any, Dict, List
 
 try:
-    from .app_paths import EXPORTS_DIR, SESSION_LOG_FILE
+    from .system import EXPORTS_DIR, SESSION_LOG_FILE
 except ImportError:
     # Fallback for running as a standalone script
     _here = Path(__file__).resolve().parent.parent

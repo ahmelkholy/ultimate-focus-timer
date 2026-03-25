@@ -17,10 +17,8 @@ __all__ = [
 
 # Lazy imports — failures are logged, not silently swallowed
 try:
-    from .config_manager import ConfigManager
-    from .music_controller import MusicController
-    from .notification_manager import NotificationManager
-    from .session_manager import SessionManager
+    from .core import ConfigManager, SessionManager, TaskManager
+    from .system import MusicController, NotificationManager
 except ImportError as _exc:
     import logging
 
