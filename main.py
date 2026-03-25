@@ -21,18 +21,18 @@ if str(_project_root) not in sys.path:
 
 # ── Logging must be set up before any src imports so every module gets
 #    the configured handlers rather than the default NullHandler. ─────────────
-from src.logger import setup_logging  # noqa: E402
+from src.system import setup_logging  # noqa: E402
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
 # ── Remaining src imports ─────────────────────────────────────────────────────
-from src.app_paths import ERROR_LOG_FILE, ensure_dirs  # noqa: E402
-from src.config_manager import ConfigManager  # noqa: E402
+from src.system import ERROR_LOG_FILE, ensure_dirs  # noqa: E402
+from src.system import MusicController  # noqa: E402
+from src.system import NotificationManager  # noqa: E402
+from src.core import ConfigManager  # noqa: E402
+from src.core import SessionManager  # noqa: E402
 from src.focus_console import ConsoleInterface  # noqa: E402
-from src.music_controller import MusicController  # noqa: E402
-from src.notification_manager import NotificationManager  # noqa: E402
-from src.session_manager import SessionManager  # noqa: E402
 
 # Ensure runtime directories exist
 ensure_dirs()
@@ -139,7 +139,7 @@ class UltimateFocusLauncher:
             logger.error("No GUI display available; try --console")
             return False
         try:
-            from src.focus_gui import FocusGUI
+            from src.ui import FocusGUI
 
             app = FocusGUI()
             app.run()
@@ -159,7 +159,7 @@ class UltimateFocusLauncher:
     def launch_dashboard(self):
         logger.info("Launching analytics dashboard")
         try:
-            from src.dashboard import DashboardGUI, SessionAnalyzer
+            from src.ui import DashboardGUI, SessionAnalyzer
 
             analyzer = SessionAnalyzer()
             DashboardGUI(analyzer).run()
@@ -195,7 +195,7 @@ class UltimateFocusLauncher:
 
     def show_stats(self):
         try:
-            from src.dashboard import SessionAnalyzer
+            from src.ui import SessionAnalyzer
 
             stats = SessionAnalyzer().get_quick_stats()
             print(f"Today   : {stats.get('today_sessions', 0)} sessions")
@@ -281,7 +281,7 @@ def _create_desktop_shortcut() -> None:
         print("[!] --install is only supported on Windows.")
         return
 
-    from src.app_paths import PROJECT_ROOT  # noqa: E402
+    from src.system import PROJECT_ROOT  # noqa: E402
 
     target = PROJECT_ROOT / "focus.pyw"
     if not target.exists():

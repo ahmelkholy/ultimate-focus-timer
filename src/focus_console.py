@@ -12,10 +12,10 @@ import time
 from datetime import datetime
 from typing import Optional
 
-from .config_manager import ConfigManager
-from .music_controller import MusicController
-from .notification_manager import NotificationManager
-from .session_manager import SessionManager, SessionType
+from .core import ConfigManager
+from .core import SessionManager, SessionType
+from .system import MusicController
+from .system import NotificationManager
 
 logger = logging.getLogger(__name__)
 
