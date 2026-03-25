@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+"""
+Global CLI Wrapper for Ultimate Focus Timer
+Provides instant access via 'focus' command
+"""
+
+import argparse
+import sys
+from pathlib import Path
+
+try:
+    import requests
+except ImportError:
+    print("❌ requests library required: pip install requests")
+    sys.exit(1)
+
+DAEMON_URL = "http://127.0.0.1:8765"
+
+
+def start_session():
+    """Start a new Ultradian focus session"""
+    try:
+        response = requests.post(
+            f"{DAEMON_URL}/start", json={"enable_audio": True, "enable_blocking": True}, timeout=5
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        print("🎯 Ultradian Focus Session Started!")
+        print("=" * 50)
+        print(f"Phase: {data['phase'].upper()}")
+        print(f"Duration: {data['phase_duration_minutes']} minutes")
+        print(f"Audio: {'✅ Active' if data['audio_active'] else '❌ Inactive'}")
+        print(f"Blocking: {'✅ Active' if data['distraction_blocking_active'] else '❌ Inactive'}")
+        print("")
+        print("Cycle: RAMP_UP (5m) → DEEP_WORK (85m) → NEURAL_REST (20m)")
+        print("Use 'focus status' to check progress")
+        print("Use 'focus stop' to end session")
+
+    except requests.ConnectionError:
+        print("❌ Daemon not running!")
+        print("Start it with: python -m src.daemon")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        sys.exit(1)
+
+
+def stop_session():
+    """Stop the current session"""
+    try:
+        response = requests.post(f"{DAEMON_URL}/stop", timeout=5)
+        response.raise_for_status()
+
+        print("🛑 Session Stopped")
+
+    except requests.ConnectionError:
+        print("❌ Daemon not running!")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        sys.exit(1)
+
+
+def show_status():
+    """Show current session status"""
+    try:
+        response = requests.get(f"{DAEMON_URL}/status", timeout=5)
+        response.raise_for_status()
+        data = response.json()
+
+        if data["phase"] == "idle":
+            print("💤 No active session")
+            print("Start one with: focus start")
+        else:
+            minutes = data["remaining_seconds"] // 60
+            seconds = data["remaining_seconds"] % 60
+
+            phase_emoji = {
+                "ramp_up": "🔥",
+                "deep_work": "🎯",
+                "neural_rest": "🧘",
+            }.get(data["phase"], "⏱️")
+
+            print(f"{phase_emoji} {data['phase'].upper()}")
+            print(f"Time remaining: {minutes}:{seconds:02d}")
+            print(f"Audio: {'✅' if data['audio_active'] else '❌'}")
+            print(f"Blocking: {'✅' if data['distraction_blocking_active'] else '❌'}")
+
+    except requests.ConnectionError:
+        print("❌ Daemon not running!")
+        print("Start it with: python -m src.daemon")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        sys.exit(1)
+
+
+def start_daemon():
+    """Start the daemon in the background"""
+    import subprocess
+
+    print("🚀 Starting Focus Timer Daemon...")
+
+    try:
+        # Find the project root
+        script_dir = Path(__file__).resolve().parent
+        project_root = script_dir.parent if script_dir.name == "scripts" else script_dir
+
+        # Start daemon in background
+        if sys.platform == "win32":
+            # Windows
+            subprocess.Popen(
+                [sys.executable, "-m", "src.daemon"],
+                cwd=project_root,
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+            )
+        else:
+            # macOS/Linux
+            subprocess.Popen(
+                [sys.executable, "-m", "src.daemon"],
+                cwd=project_root,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+        print("✅ Daemon started at http://127.0.0.1:8765")
+        print("Use 'focus start' to begin a session")
+
+    except Exception as e:
+        print(f"❌ Error starting daemon: {e}")
+        sys.exit(1)
+
+
+def main():
+    """Main CLI entry point"""
+    parser = argparse.ArgumentParser(
+        description="Ultimate Focus Timer - Global CLI",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  focus start         Start a new Ultradian session (90 min cycle)
+  focus stop          Stop the current session
+  focus status        Show current session status
+  focus daemon        Start the daemon in the background
+
+Ultradian Cycle:
+  5 min  → Ramp Up (transition)
+  85 min → Deep Work (peak performance, 40Hz audio, blocking active)
+  20 min → Neural Rest (complete recovery)
+
+Hotkey:
+  Ctrl+Shift+Space → Quick brain dump (Zeigarnik offload)
+        """,
+    )
+
+    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+
+    subparsers.add_parser("start", help="Start a new Ultradian session")
+    subparsers.add_parser("stop", help="Stop the current session")
+    subparsers.add_parser("status", help="Show current session status")
+    subparsers.add_parser("daemon", help="Start the daemon")
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(0)
+
+    if args.command == "start":
+        start_session()
+    elif args.command == "stop":
+        stop_session()
+    elif args.command == "status":
+        show_status()
+    elif args.command == "daemon":
+        start_daemon()
+
+
+if __name__ == "__main__":
+    main()
