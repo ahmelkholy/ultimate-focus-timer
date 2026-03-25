@@ -405,7 +405,7 @@ class ConsoleInterface:
                 print(f"Remaining: {status['remaining_seconds']}s")
 
         elif action == "stats":
-            from .dashboard import console_dashboard
+            from .ui import console_dashboard
 
             console_dashboard("all")
 

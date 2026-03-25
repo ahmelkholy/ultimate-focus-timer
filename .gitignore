@@ -198,3 +198,4 @@ cython_debug/
 mpv_classical.pid
 .vscode
 exports/
+/vscode-extension/node_modules
