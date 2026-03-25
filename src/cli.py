@@ -34,12 +34,9 @@ sys.path.insert(0, str(current_dir))
 sys.path.insert(0, str(current_dir.parent))
 
 try:
-    from src.config_manager import ConfigManager
+    from src.core import ConfigManager, SessionManager, TaskManager
     from src.dashboard import SessionAnalyzer
-    from src.music_controller import MusicController
-    from src.notification_manager import NotificationManager
-    from src.session_manager import SessionManager
-    from src.task_manager import TaskManager
+    from src.system import MusicController, NotificationManager
 except ImportError as e:
     print(f"❌ Error importing modules: {e}")
     sys.exit(1)

@@ -1,0 +1,50 @@
+{
+  "name": "ultimate-focus-timer",
+  "displayName": "Ultimate Focus Timer",
+  "description": "One-click Ultradian focus sessions from VS Code",
+  "version": "1.0.0",
+  "publisher": "ultimate-focus-timer",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "ultimateFocusTimer.startSession",
+        "title": "Focus: Start Ultradian Session"
+      },
+      {
+        "command": "ultimateFocusTimer.stopSession",
+        "title": "Focus: Stop Session"
+      },
+      {
+        "command": "ultimateFocusTimer.showStatus",
+        "title": "Focus: Show Status"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^18.x",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.40.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.4.0"
+  }
+}

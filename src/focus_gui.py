@@ -8,13 +8,8 @@ import logging
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from .config_manager import ConfigManager
-from .hotkey_manager import HotkeyManager
-from .music_controller import MusicController
-from .notification_manager import NotificationManager
-from .session_manager import SessionManager, SessionState, SessionType
-from .task_manager import TaskManager
-from .tray_manager import TrayManager
+from .core import ConfigManager, SessionManager, SessionState, SessionType, TaskManager
+from .system import HotkeyManager, MusicController, NotificationManager, TrayManager
 
 logger = logging.getLogger(__name__)
 

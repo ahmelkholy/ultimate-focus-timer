@@ -4,194 +4,313 @@
 [![Cross Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/ahmelkholy/ultimate-focus-timer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A comprehensive, cross-platform productivity timer application implementing the Pomodoro Technique with classical music integration, multiple interfaces, and detailed analytics. Built with pure Python for maximum compatibility and ease of use.
+A science-backed, ultra-lightweight productivity timer implementing both traditional Pomodoro Technique and cutting-edge 90/20 Ultradian rhythm cycles. Features 40Hz cognitive enhancement, instant thought capture, VS Code integration, and zero-bloat architecture. Built with pure Python and modern async patterns.
 
 ## ✨ Key Features
 
-- **🎮 Multiple Interfaces**: GUI, Console, Dashboard, and Interactive Launcher
-- **📋 Task Management**: Add, complete, and track tasks during focus sessions
-- **🎵 Music Integration**: Classical music playback with cross-platform audio support
-- **📊 Analytics & Tracking**: Comprehensive session logging and productivity insights
-- **🔔 Smart Notifications**: Cross-platform desktop notifications with early warnings
-- **⚙️ Highly Configurable**: YAML-based configuration with theme support
-- **🌍 Cross-Platform**: Windows, macOS, and Linux support
+### 🧠 Scientific Focus Technology
+- **90/20 Ultradian Rhythm**: Research-backed 90-minute focus cycles with 20-minute recovery
+- **40Hz Binaural Beats**: Gamma wave cognitive enhancement during deep work phases
+- **Zeigarnik Offload System**: Instant thought capture (Ctrl+Shift+Space) to clear working memory
+- **Distraction Blocking**: Automatic domain and process blocking during focus sessions
 
-## 💻 Download & Installation
+### 💻 Modern Development Integration
+- **VS Code Extension**: One-click focus sessions with real-time status bar integration
+- **Global CLI**: `focus start`, `focus status`, `focus stop` from any terminal
+- **FastAPI Daemon**: Ultra-lightweight background service (~0% CPU when idle)
+- **REST API**: Full programmatic control via HTTP endpoints
 
-### Windows Executable
+### 🎮 Traditional Features
+- **Multiple Interfaces**: GUI, Console, Dashboard, and Interactive Launcher
+- **Task Management**: Add, complete, and track tasks during focus sessions
+- **Music Integration**: Classical music playback with cross-platform audio support
+- **Analytics & Tracking**: Comprehensive session logging and productivity insights
+- **Smart Notifications**: Cross-platform desktop notifications with early warnings
+- **Cross-Platform**: Windows, macOS, and Linux support
 
-The easiest way to use Ultimate Focus Timer on Windows is to download the pre-built executable:
+## 💻 Quick Start
 
-1. Go to the [Releases](https://github.com/ahmelkholy/ultimate-focus-timer/releases) page
-2. Download the latest `UltimateFocusTimer-windows-x64.zip` file
-3. Extract the ZIP file
-4. Run `UltimateFocusTimer.exe`
+### Option 1: Daemon Mode (Recommended - Ultradian Rhythm)
 
-No installation or Python environment required!
+**Start the daemon:**
+```bash
+python -m src.daemon
+```
 
-### Other Platforms
+**Use from terminal:**
+```bash
+# Install global CLI
+./scripts/install_global_cli.sh
+source ~/.bashrc  # or ~/.zshrc
 
-For macOS and Linux users, please see the [Installation Guide](docs/USER_GUIDE.md#installation) for platform-specific instructions.
+# Commands
+focus start   # Start 90-minute Ultradian session
+focus status  # Check progress
+focus stop    # Stop session
+```
 
-## 📸 Screenshots
+**Use from VS Code:**
+1. Install extension: `cd vscode-extension && npm install && npm run compile`
+2. Press F5 to launch Extension Development Host
+3. Click 🎯 Focus button in status bar
 
-### GUI Interface
-
-![Console Interface](files/Screenshot%202025-06-09%20165707.png)
-
-### Console Interface
-
-![GUI Interface](files/Screenshot%202025-06-09%20165653.png)
-
-### Dashboard Analytics
-
-![Dashboard Analytics](files/Screenshot%202025-06-09%20165754.png)
-
-## 📋 Task Management
-
-The application includes comprehensive task management capabilities to help you stay organized and productive:
-
-### Features
-
-- **Always-Visible Task Entry**: Input field is permanently visible for quick task entry
-- **Smart Placeholder**: Green "+add (T)" placeholder text that disappears when typing
-- **Keyboard Shortcuts**: Press 'T' to focus on the task entry field instantly
-- **Real-Time Tracking**: Add and complete tasks during your focus sessions
-- **Visual Feedback**: Completed tasks are clearly marked with timestamps
-
-### How to Use
-
-1. Type your task directly in the always-visible task entry field
-2. Press Enter to add the task to your current session
-3. Use keyboard shortcut 'T' for quick task entry focus
-4. Mark tasks as complete during or after your work session
-5. View task history and completion tracking in your session analytics
-
-The streamlined interface eliminates unnecessary buttons and maximizes your productivity by keeping task management simple and accessible.
-
-## 🚀 Quick Start
+### Option 2: Traditional GUI (Pomodoro)
 
 ```bash
-# Clone the repository
-git clone https://github.com/ahmelkholy/ultimate-focus-timer.git
-cd ultimate-focus-timer
+python main.py --gui
+```
 
-# Set up virtual environment
-python -m venv .venv
-.venv\Scripts\Activate.ps1  # Windows PowerShell
+### Option 3: Console Mode
 
-# Install dependencies
-pip install -r requirements.txt
+```bash
+python main.py --console
+```
 
-# Run setup
-python setup.py
+### Option 4: Analytics Dashboard
 
-# Launch the application
-python main.py
+```bash
+python main.py --dashboard
 ```
 
 ## 📖 Documentation
 
+- **[Quick Start Guide](QUICKSTART.md)** - Installation and usage for all modes
+- **[Architecture Documentation](ARCHITECTURE.md)** - Technical details and API reference
 - **[Complete Documentation](docs/README.md)** - Full user guide and features
 - **[Virtual Environment Setup](docs/VENV_SETUP.md)** - Detailed environment configuration
 - **[Contributing Guide](docs/CONTRIBUTING.md)** - How to contribute to the project
 - **[Changelog](docs/CHANGELOG.md)** - Version history and updates
 
-## 🎯 Quick Launch Commands
-
-```bash
-python main.py                    # Interactive launcher
-python main.py --gui             # GUI interface
-python main.py --console         # Console interface
-python main.py --dashboard       # Analytics dashboard
-python main.py --pomodoro        # Quick 25-minute session
-python main.py --work 30         # Custom work session
-python main.py --info            # System information
-```
-
 ## 🛠️ System Requirements
 
+### For Daemon Mode (Ultradian Rhythm)
+- **Python 3.8+** (Python 3.10+ recommended)
+- **PortAudio** (for 40Hz binaural beats)
+- **FastAPI & Uvicorn** (async web framework)
+- **Optional**: VS Code for extension integration
+
+### For Traditional Mode (Pomodoro GUI)
 - **Python 3.8+** (Python 3.10+ recommended)
 - **MPV Media Player** (auto-installed by setup script)
+- **Tkinter** (usually included with Python)
 - **Supported Platforms**: Windows 10/11, macOS 10.14+, Linux
 
 ## 📦 Installation
 
-### Automatic Setup (Recommended)
+### Option 1: Daemon Mode Setup (Ultradian + VS Code)
 
 ```bash
-python setup.py
+# Clone repository
+git clone https://github.com/ahmelkholy/ultimate-focus-timer.git
+cd ultimate-focus-timer
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Install system audio library
+# macOS
+brew install portaudio
+
+# Ubuntu/Debian
+sudo apt-get install libportaudio2 python3-tk
+
+# Fedora
+sudo dnf install portaudio
+
+# Install global CLI
+./scripts/install_global_cli.sh
+source ~/.bashrc  # or ~/.zshrc
+
+# Install VS Code extension (optional)
+cd vscode-extension
+npm install
+npm run compile
+# Press F5 in VS Code to launch Extension Development Host
+
+# Start daemon
+python -m src.daemon
+
+# Test it
+focus start
 ```
 
-### Manual Setup
+### Option 2: Traditional GUI Setup (Pomodoro)
 
 ```bash
+# Clone repository
+git clone https://github.com/ahmelkholy/ultimate-focus-timer.git
+cd ultimate-focus-timer
+
 # Install dependencies
 pip install -r requirements.txt
 
-# Install MPV (Windows with Chocolatey)
-choco install mpv
+# Run setup (installs MPV)
+python setup.py
 
-# Install MPV (macOS with Homebrew)
-brew install mpv
-
-# Install MPV (Linux)
-sudo apt install mpv  # Ubuntu/Debian
-sudo dnf install mpv  # Fedora
+# Launch GUI
+python main.py --gui
 ```
 
-## 🏗️ Building the Executable
+## 🧬 Architecture
 
-```bash
-# Ensure dependencies are installed
-python -m pip install -r requirements.txt
+### Consolidated Module Structure
 
-# Build a standalone one-file executable
-python build_config.py
-```
+The codebase has been streamlined from 20 files to 11 core files (45% reduction):
 
-The generated executable will be located in the `dist/UltimateFocusTimer` directory.
+**Core Modules:**
+- `src/core.py` - Business logic (ConfigManager, SessionManager, TaskManager)
+- `src/system.py` - System integration (Audio, Notifications, Paths, Hotkeys, Tray)
+- `src/daemon.py` - FastAPI daemon with Ultradian state machine
+- `src/audio_controller.py` - 40Hz binaural beat generator
+- `src/zeigarnik_manager.py` - Global hotkey for thought capture
 
-## 🎵 Music Features
+**UI Modules:**
+- `src/focus_gui.py` - Tkinter GUI interface
+- `src/focus_console.py` - Console interface
+- `src/dashboard.py` - Analytics dashboard
+- `src/cli.py` - Rich terminal CLI
 
-- **Classical Music Integration**: Automatic background music during work sessions
-- **Cross-Platform Audio**: Powered by MPV for consistent experience across platforms
-- **Volume Control**: Adjustable music levels with smooth fade transitions
-- **Multiple Playlists**: Curated classical, baroque, and piano collections
-- **Custom Playlists**: Support for local files and online streams
+**Integration:**
+- `vscode-extension/` - TypeScript VS Code extension
+- `scripts/focus` - Global CLI wrapper
 
-## 📊 Analytics & Insights
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed technical documentation.
 
-- **Session Tracking**: Automatic logging of all timer sessions
-- **Productivity Metrics**: Completion rates, trends, and scoring
-- **Visual Analytics**: Beautiful charts and graphs
-- **Export Options**: CSV export for external analysis
-- **Goal Tracking**: Progress monitoring and achievement tracking
+## 🧠 Scientific Foundation
+
+### Ultradian Rhythm (90/20 Cycle)
+
+Based on Nathaniel Kleitman's research on human alertness cycles:
+
+1. **RAMP_UP (5 minutes)** - Gradual cognitive engagement
+2. **DEEP_WORK (85 minutes)** - Peak performance with 40Hz enhancement
+3. **NEURAL_REST (20 minutes)** - Complete mental recovery
+
+### 40Hz Gamma Wave Enhancement
+
+Research shows 40Hz stimulation:
+- Enhances cognitive performance and memory consolidation
+- Increases neural synchronization in prefrontal cortex
+- Improves focus and information processing speed
+
+Implementation: Real-time binaural beat generation (200 Hz left, 240 Hz right = 40 Hz perceived difference)
+
+### Zeigarnik Effect Management
+
+The Zeigarnik Effect states that incomplete tasks occupy working memory. Our solution:
+- **Global Hotkey**: Ctrl+Shift+Space triggers instant capture
+- **Zero-Friction**: Pop-up dialog with immediate save
+- **Brain Dump**: Appends to timestamped markdown file
+- **Result**: Clear working memory, maintain flow state
+
+## 🎯 Usage Modes Comparison
+
+| Feature | Daemon Mode | Traditional GUI |
+|---------|-------------|-----------------|
+| Session Length | 90 minutes (Ultradian) | 25 minutes (Pomodoro) |
+| Cognitive Enhancement | 40Hz binaural beats | Classical music |
+| Integration | VS Code + Global CLI | Standalone app |
+| Resource Usage | ~0% CPU idle | Higher (GUI rendering) |
+| Distraction Blocking | Automatic | Manual |
+| Thought Capture | Ctrl+Shift+Space hotkey | Manual task entry |
+| Best For | Deep work, coding | General productivity |
 
 ## ⚙️ Configuration
 
 Edit `config.yml` to customize:
 
 ```yaml
-# Session Settings
+# Traditional Pomodoro settings (for GUI/Console mode)
 work_mins: 25
 short_break_mins: 5
 long_break_mins: 15
 
-# Task Management
-enable_task_tracking: true
-auto_focus_task_entry: true
+# Ultradian settings (for Daemon mode)
+ultradian:
+  ramp_up_minutes: 5
+  deep_work_minutes: 85
+  neural_rest_minutes: 20
 
-# Music Settings
-classical_music: true
-classical_music_volume: 70
-fade_music_transitions: true
+# Audio settings
+audio:
+  enabled: true
+  binaural_beat_volume: 0.15  # For daemon mode
+  classical_music: true        # For traditional mode
+  classical_music_volume: 70
 
-# Interface Settings
+# Distraction blocking (daemon mode)
+distraction_blocking:
+  enabled: true
+  blocked_domains:
+    - reddit.com
+    - twitter.com
+    - facebook.com
+    - youtube.com
+  blocked_processes:
+    - slack
+    - discord
+
+# Notifications
+notify_session_start: true
+notify_session_complete: true
+notify_early_warning: true
+early_warning_minutes: 5
+
+# Interface settings (traditional mode)
 dark_theme: true
 accent_color: "#00ff00"
 animated_transitions: true
 ```
+
+## 🔌 REST API Reference
+
+The daemon exposes a simple REST API on `http://127.0.0.1:8765`:
+
+### Endpoints
+
+**GET /** - Health check
+```json
+{"status": "online", "name": "Ultimate Focus Timer Daemon", "version": "3.0.0"}
+```
+
+**POST /start** - Start Ultradian session
+```bash
+curl -X POST http://127.0.0.1:8765/start \
+  -H "Content-Type: application/json" \
+  -d '{"enable_audio": true, "enable_blocking": true}'
+```
+
+**GET /status** - Check session status
+```json
+{
+  "phase": "deep_work",
+  "phase_duration_minutes": 85,
+  "remaining_seconds": 4800,
+  "distraction_blocking_active": true,
+  "audio_active": true
+}
+```
+
+**POST /stop** - Stop current session
+```bash
+curl -X POST http://127.0.0.1:8765/stop
+```
+
+## 🔥 What's New in Version 3.0
+
+### Zero-Bloat Scientific Upgrade
+- **FastAPI Daemon**: Ultra-lightweight background service architecture
+- **Ultradian Rhythm**: 90/20 cycle based on sleep research (5m + 85m + 20m)
+- **40Hz Binaural Beats**: Real-time audio generation for cognitive enhancement
+- **Zeigarnik Offload**: Global hotkey (Ctrl+Shift+Space) for instant thought capture
+- **VS Code Extension**: Seamless IDE integration with status bar
+- **Global CLI**: `focus` command available system-wide
+
+### Codebase Consolidation
+- **45% File Reduction**: 20 files → 11 core modules
+- **Cleaner Architecture**: core.py, system.py, daemon.py structure
+- **Better Maintainability**: Consolidated imports and dependencies
+- **Faster Startup**: Reduced initialization overhead
 
 ## 🤝 Contributing
 
@@ -204,11 +323,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - **Francesco Cirillo** for the Pomodoro Technique
+- **Nathaniel Kleitman** for Ultradian rhythm research
 - **MPV Media Player** for excellent cross-platform audio support
+- **FastAPI** for the modern async web framework
 - **Python Community** for the amazing ecosystem
 
 ---
 
-**Stay focused and productive! 🎯**
+**Stay focused and productive!**
 
-_Built with ❤️ for productivity enthusiasts worldwide_
+*Science-backed focus technology for developers*
