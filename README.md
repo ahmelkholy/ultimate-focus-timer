@@ -333,3 +333,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Stay focused and productive!**
 
 *Science-backed focus technology for developers*
+
+feature to be added
+drag and drp taks to reorder in the task list
+use vim keybindings in the task list (j/k to navigate, dd to delete, etc.)
+dlegete taskes for tomorrow or next weak
+connect the task list with a googel tasks and calender in specific list
+
+i want the worksession to start auto after the break time is over twic but in the long break it manually start the work session after the long break is over
+
+add next back and change the music and i want to show the name of the playing track in gui in very small font or first 3 or four letters
+
+and when i change the playlist name it must change the music to this playlist but in this case the defualt music is always on the music is the same

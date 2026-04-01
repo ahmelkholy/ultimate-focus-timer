@@ -51,5 +51,121 @@
       "created_at": "2026-03-23T09:55:07.405060",
       "completed_at": "2026-03-23T12:58:52.060730"
     }
+  ],
+  "2026-03-25": [
+    {
+      "id": "2026-03-25_144920524643",
+      "title": "modify the code",
+      "description": "",
+      "completed": true,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 1,
+      "created_at": "2026-03-25T14:49:20.524652",
+      "completed_at": "2026-03-25T16:13:31.000862"
+    },
+    {
+      "id": "2026-03-25_144914824489",
+      "title": "write the plan",
+      "description": "",
+      "completed": true,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-03-25T14:49:14.824499",
+      "completed_at": "2026-03-25T16:13:31.360498"
+    }
+  ],
+  "2026-03-26": [
+    {
+      "id": "2026-03-26_133317650599",
+      "title": "complete the thesis requiremnets",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 4,
+      "created_at": "2026-03-26T13:33:17.650609",
+      "completed_at": null
+    },
+    {
+      "id": "2026-03-26_133306362688",
+      "title": "submit the ev ch plan",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-03-26T13:33:06.362698",
+      "completed_at": null
+    }
+  ],
+  "2026-04-01": [
+    {
+      "id": "2026-04-01_121324208109",
+      "title": "fix ev repo",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-04-01T12:13:24.208120",
+      "completed_at": null
+    },
+    {
+      "id": "2026-04-01_121316081689",
+      "title": "fix the mah master",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-04-01T12:13:16.081699",
+      "completed_at": null
+    },
+    {
+      "id": "2026-04-01_121126536475",
+      "title": "fix mahoumoud rep system",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-04-01T12:11:26.536485",
+      "completed_at": null
+    },
+    {
+      "id": "2026-04-01_121113349891",
+      "title": "make agent to judge",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-04-01T12:11:13.349902",
+      "completed_at": null
+    },
+    {
+      "id": "2026-04-01_112843809030",
+      "title": "read all conclustions",
+      "description": "",
+      "completed": true,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 1,
+      "created_at": "2026-04-01T11:28:43.809041",
+      "completed_at": "2026-04-01T12:11:04.763305"
+    },
+    {
+      "id": "2026-04-01_112837729677",
+      "title": "sending it to prof",
+      "description": "",
+      "completed": true,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-04-01T11:28:37.729687",
+      "completed_at": "2026-04-01T12:11:05.790052"
+    },
+    {
+      "id": "2026-04-01_112752514845",
+      "title": "thesisi finishing",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-04-01T11:27:52.514857",
+      "completed_at": null
+    }
   ]
 }
