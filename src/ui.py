@@ -1172,6 +1172,7 @@ class InlineTaskWidget:
 
     def _reorder_tasks(self, source_task, target_index):
         """Reorder tasks by moving source_task to target_index"""
+        today_key = self.task_manager.get_today_key()
         tasks = self.task_manager.get_today_tasks()
 
         # Find source index
@@ -1185,7 +1186,7 @@ class InlineTaskWidget:
             tasks.insert(target_index, task_to_move)
 
             # Update task manager's tasks list
-            self.task_manager.tasks = tasks
+            self.task_manager.tasks[today_key] = tasks
             self.task_manager.save_tasks()
 
             # Refresh display
