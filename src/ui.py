@@ -456,10 +456,17 @@ class InlineTaskWidget:
         self.adding_task = False
         self.typing_active = False
 
+        # Drag and drop state
+        self.drag_source = None
+        self.drag_start_y = 0
+        self.task_rows = []  # List of (task, frame) tuples for vim navigation
+        self.selected_row_index = -1  # Currently selected row for vim navigation
+
         # Create main frame with dark styling
         self.frame = ttk.LabelFrame(parent, text="📝 Today's Tasks", padding="8")
         self.create_widgets()
         self.apply_dark_theme()
+        self.setup_vim_keybindings()
         self.update_display()
 
     def create_widgets(self):
@@ -591,6 +598,170 @@ class InlineTaskWidget:
         self.task_entry.bind("<Return>", lambda e: self.save_new_task())
         self.task_entry.bind("<Escape>", lambda e: self.cancel_add_task())
 
+    def setup_vim_keybindings(self):
+        """Setup vim-style keybindings for task navigation"""
+        # Bind to the frame and canvas for vim navigation
+        self.frame.bind("<j>", lambda e: self.vim_navigate_down() if not self.typing_active else None)
+        self.frame.bind("<k>", lambda e: self.vim_navigate_up() if not self.typing_active else None)
+        self.frame.bind("<d>", lambda e: self.vim_delete_selected() if not self.typing_active else None)
+        self.frame.bind("<g>", lambda e: self.vim_goto_first() if not self.typing_active else None)
+        self.frame.bind("<G>", lambda e: self.vim_goto_last() if not self.typing_active else None)
+        self.frame.bind("<i>", lambda e: self.show_add_task_entry() if not self.typing_active else None)
+        self.frame.bind("<a>", lambda e: self.show_add_task_entry() if not self.typing_active else None)
+        self.frame.bind("<space>", lambda e: self.vim_toggle_selected() if not self.typing_active else None)
+        self.frame.bind("<t>", lambda e: self.vim_delegate_tomorrow() if not self.typing_active else None)
+        self.frame.bind("<w>", lambda e: self.vim_delegate_next_week() if not self.typing_active else None)
+
+        # Make frame focusable
+        self.frame.config(takefocus=1)
+        self.tasks_canvas.config(takefocus=1)
+
+    def vim_navigate_down(self):
+        """Navigate down in task list (vim j key)"""
+        if not self.task_rows:
+            return
+
+        # Clear previous selection
+        if 0 <= self.selected_row_index < len(self.task_rows):
+            _, frame = self.task_rows[self.selected_row_index]
+            frame.configure(style="TFrame")
+
+        # Move to next row
+        self.selected_row_index = (self.selected_row_index + 1) % len(self.task_rows)
+
+        # Highlight new selection
+        _, frame = self.task_rows[self.selected_row_index]
+        frame.configure(style="Selected.TFrame")
+
+        # Scroll to make visible
+        self._scroll_to_selected()
+
+    def vim_navigate_up(self):
+        """Navigate up in task list (vim k key)"""
+        if not self.task_rows:
+            return
+
+        # Clear previous selection
+        if 0 <= self.selected_row_index < len(self.task_rows):
+            _, frame = self.task_rows[self.selected_row_index]
+            frame.configure(style="TFrame")
+
+        # Move to previous row
+        self.selected_row_index = (self.selected_row_index - 1) % len(self.task_rows)
+
+        # Highlight new selection
+        _, frame = self.task_rows[self.selected_row_index]
+        frame.configure(style="Selected.TFrame")
+
+        # Scroll to make visible
+        self._scroll_to_selected()
+
+    def vim_delete_selected(self):
+        """Delete selected task (vim dd keys)"""
+        if 0 <= self.selected_row_index < len(self.task_rows):
+            task, _ = self.task_rows[self.selected_row_index]
+            self.delete_task(task)
+
+    def vim_goto_first(self):
+        """Go to first task (vim g key)"""
+        if not self.task_rows:
+            return
+
+        # Clear previous selection
+        if 0 <= self.selected_row_index < len(self.task_rows):
+            _, frame = self.task_rows[self.selected_row_index]
+            frame.configure(style="TFrame")
+
+        # Go to first
+        self.selected_row_index = 0
+
+        # Highlight new selection
+        _, frame = self.task_rows[self.selected_row_index]
+        frame.configure(style="Selected.TFrame")
+
+        # Scroll to make visible
+        self._scroll_to_selected()
+
+    def vim_goto_last(self):
+        """Go to last task (vim G key)"""
+        if not self.task_rows:
+            return
+
+        # Clear previous selection
+        if 0 <= self.selected_row_index < len(self.task_rows):
+            _, frame = self.task_rows[self.selected_row_index]
+            frame.configure(style="TFrame")
+
+        # Go to last
+        self.selected_row_index = len(self.task_rows) - 1
+
+        # Highlight new selection
+        _, frame = self.task_rows[self.selected_row_index]
+        frame.configure(style="Selected.TFrame")
+
+        # Scroll to make visible
+        self._scroll_to_selected()
+
+    def vim_toggle_selected(self):
+        """Toggle completion of selected task (vim space key)"""
+        if 0 <= self.selected_row_index < len(self.task_rows):
+            task, _ = self.task_rows[self.selected_row_index]
+            if task.completed:
+                task.completed = False
+                task.completed_at = None
+            else:
+                self.task_manager.complete_task(task.id)
+            self.task_manager.save_tasks()
+            self.update_display()
+
+    def vim_delegate_tomorrow(self):
+        """Delegate selected task to tomorrow (vim t key)"""
+        if 0 <= self.selected_row_index < len(self.task_rows):
+            task, _ = self.task_rows[self.selected_row_index]
+            from datetime import datetime, timedelta
+            tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+            task.description = f"[Delegated to {tomorrow}] {task.description}"
+            self.task_manager.save_tasks()
+            logger.info(f"Task '{task.title}' delegated to tomorrow")
+            self.update_display()
+
+    def vim_delegate_next_week(self):
+        """Delegate selected task to next week (vim w key)"""
+        if 0 <= self.selected_row_index < len(self.task_rows):
+            task, _ = self.task_rows[self.selected_row_index]
+            from datetime import datetime, timedelta
+            next_week = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+            task.description = f"[Delegated to {next_week}] {task.description}"
+            self.task_manager.save_tasks()
+            logger.info(f"Task '{task.title}' delegated to next week")
+            self.update_display()
+
+    def _scroll_to_selected(self):
+        """Scroll canvas to make selected task visible"""
+        if 0 <= self.selected_row_index < len(self.task_rows):
+            _, frame = self.task_rows[self.selected_row_index]
+            # Get frame position
+            self.tasks_canvas.update_idletasks()
+            bbox = self.tasks_canvas.bbox("all")
+            if bbox:
+                frame_y = frame.winfo_y()
+                frame_height = frame.winfo_height()
+                canvas_height = self.tasks_canvas.winfo_height()
+
+                # Calculate scroll position
+                scroll_top = frame_y / bbox[3] if bbox[3] > 0 else 0
+                scroll_bottom = (frame_y + frame_height) / bbox[3] if bbox[3] > 0 else 0
+
+                # Scroll if not fully visible
+                current_top = self.tasks_canvas.yview()[0]
+                current_bottom = self.tasks_canvas.yview()[1]
+
+                if scroll_top < current_top:
+                    self.tasks_canvas.yview_moveto(scroll_top)
+                elif scroll_bottom > current_bottom:
+                    self.tasks_canvas.yview_moveto(scroll_bottom - (canvas_height / bbox[3]))
+
+
     def apply_dark_theme(self):
         """Apply dark theme to the task widget"""
         try:
@@ -655,6 +826,14 @@ class InlineTaskWidget:
                 foreground=fg_color,
                 indicatorcolor=button_color,
                 focuscolor=accent_color,
+            )
+
+            # Configure selected row style for vim navigation
+            style.configure(
+                "Selected.TFrame",
+                background="#4a4a4a",
+                relief="solid",
+                borderwidth=2,
             )
 
             # Configure the frame
@@ -733,6 +912,9 @@ class InlineTaskWidget:
         for widget in self.tasks_container.winfo_children():
             widget.destroy()
 
+        # Clear task rows list
+        self.task_rows = []
+
         # Get tasks and stats
         tasks = self.task_manager.get_today_tasks()
         stats = self.task_manager.get_task_stats()
@@ -766,9 +948,10 @@ class InlineTaskWidget:
             )
             placeholder_label.pack()
         elif tasks:
-            # Show tasks
+            # Show tasks and populate task_rows
             for i, task in enumerate(tasks):
-                self.create_task_row(self.tasks_container, task, i)
+                task_frame = self.create_task_row(self.tasks_container, task, i)
+                self.task_rows.append((task, task_frame))
 
     def on_canvas_configure(self, event):
         """Handle canvas resize to update task container width"""
@@ -778,7 +961,7 @@ class InlineTaskWidget:
             self.tasks_canvas.itemconfig(self.canvas_window_id, width=canvas_width)
 
     def create_task_row(self, parent, task: Task, row: int):
-        """Create a row for displaying a task"""
+        """Create a row for displaying a task with drag-and-drop support"""
         task_frame = ttk.Frame(parent)
         task_frame.grid(
             row=row, column=0, sticky=(tk.W, tk.E), pady=1, padx=0
@@ -789,6 +972,11 @@ class InlineTaskWidget:
         task_frame.grid_columnconfigure(
             1, weight=1
         )  # Make title column expand to fill space
+
+        # Add drag-and-drop bindings
+        task_frame.bind("<ButtonPress-1>", lambda e: self.on_drag_start(e, task_frame, task))
+        task_frame.bind("<B1-Motion>", lambda e: self.on_drag_motion(e, task_frame))
+        task_frame.bind("<ButtonRelease-1>", lambda e: self.on_drag_release(e, task_frame, task))
 
         # Completion checkbox
         completed_var = tk.BooleanVar(value=task.completed)
@@ -819,6 +1007,11 @@ class InlineTaskWidget:
         title_label.grid(
             row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 1)
         )  # Minimal padding for maximum width
+
+        # Bind drag to title label as well
+        title_label.bind("<ButtonPress-1>", lambda e: self.on_drag_start(e, task_frame, task))
+        title_label.bind("<B1-Motion>", lambda e: self.on_drag_motion(e, task_frame))
+        title_label.bind("<ButtonRelease-1>", lambda e: self.on_drag_release(e, task_frame, task))
 
         # Pomodoro progress with green color
         pomodoro_text = f"🍅 {task.pomodoros_completed}/{task.pomodoros_planned}"
@@ -864,6 +1057,8 @@ class InlineTaskWidget:
             task_frame, text="🗑️", command=lambda: self.delete_task(task), width=3
         )
         delete_button.grid(row=0, column=delete_column, padx=(1, 0))
+
+        return task_frame  # Return the frame for task_rows list
 
     def toggle_task(self, task: Task, var: tk.BooleanVar):
         """Toggle task completion"""
@@ -922,6 +1117,82 @@ class InlineTaskWidget:
     def show_task_ready_message(self, task: Task):
         """Show message when task reaches planned pomodoros"""
         print(f"🍅 Great! Task '{task.title}' has reached its planned Pomodoros!")
+
+    def on_drag_start(self, event, frame, task):
+        """Handle drag start event"""
+        self.drag_source = (frame, task)
+        self.drag_start_y = event.y_root
+        frame.configure(style="Selected.TFrame")
+
+    def on_drag_motion(self, event, frame):
+        """Handle drag motion event"""
+        if not self.drag_source:
+            return
+
+        # Visual feedback: change cursor or frame appearance
+        current_y = event.y_root
+        delta_y = current_y - self.drag_start_y
+
+        # Could add visual dragging effect here if desired
+        if abs(delta_y) > 5:  # Minimum drag distance
+            frame.configure(style="Selected.TFrame")
+
+    def on_drag_release(self, event, frame, task):
+        """Handle drag release event - reorder tasks"""
+        if not self.drag_source:
+            return
+
+        source_frame, source_task = self.drag_source
+        self.drag_source = None
+
+        # Reset frame style
+        source_frame.configure(style="TFrame")
+
+        # Find target position based on mouse position
+        target_index = self._find_drop_target(event.y_root)
+
+        if target_index is not None:
+            # Reorder tasks
+            self._reorder_tasks(source_task, target_index)
+
+    def _find_drop_target(self, y_position):
+        """Find the target index for dropping based on Y position"""
+        # Get all task frames and their positions
+        for i, (task, frame) in enumerate(self.task_rows):
+            frame_y = frame.winfo_rooty()
+            frame_height = frame.winfo_height()
+            frame_mid = frame_y + (frame_height / 2)
+
+            # Check if drop position is above or below this frame's midpoint
+            if y_position < frame_mid:
+                return i
+
+        # If we're below all frames, return last position
+        return len(self.task_rows) - 1 if self.task_rows else 0
+
+    def _reorder_tasks(self, source_task, target_index):
+        """Reorder tasks by moving source_task to target_index"""
+        today_key = self.task_manager.get_today_key()
+        tasks = self.task_manager.get_today_tasks()
+
+        # Find source index
+        source_index = next((i for i, t in enumerate(tasks) if t.id == source_task.id), None)
+
+        if source_index is not None and source_index != target_index:
+            # Remove from old position
+            task_to_move = tasks.pop(source_index)
+
+            # Insert at new position
+            tasks.insert(target_index, task_to_move)
+
+            # Update task manager's tasks list
+            self.task_manager.tasks[today_key] = tasks
+            self.task_manager.save_tasks()
+
+            # Refresh display
+            self.update_display()
+
+            logger.info(f"Reordered task '{source_task.title}' from position {source_index} to {target_index}")
 
     def get_frame(self):
         """Get the main frame widget"""

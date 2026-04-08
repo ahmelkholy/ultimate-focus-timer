@@ -112,12 +112,14 @@ class MusicController:
         self.config = config_manager
         self.mpv_process: Optional[subprocess.Popen] = None
         self.pid_file: Path = MPV_PID_FILE
+        self.ipc_socket: Optional[Path] = None
 
         self.mpv_executable: str = self._find_mpv_executable()
         self._mpv_available: bool = self._test_mpv_executable(self.mpv_executable)
         self.current_playlist: Optional[str] = None
         self._paused_playlist: Optional[str] = None
         self.is_playing: bool = False
+        self.current_track_name: str = ""
 
         logger.debug("MusicController ready (mpv=%s)", self.mpv_executable)
 
@@ -214,6 +216,13 @@ class MusicController:
         if volume is None:
             volume = int(self.config.get("classical_music_volume", 30))
 
+        # Create IPC socket path for control
+        import tempfile
+        if platform.system() == "Windows":
+            self.ipc_socket = Path(tempfile.gettempdir()) / "mpv_focus_timer.sock"
+        else:
+            self.ipc_socket = Path(tempfile.gettempdir()) / "mpv_focus_timer.sock"
+
         mpv_args = [
             self.mpv_executable,
             "--no-video",
@@ -221,6 +230,7 @@ class MusicController:
             "--loop-playlist",
             "--really-quiet",
             f"--volume={volume}",
+            f"--input-ipc-server={self.ipc_socket}",
         ]
 
         extra = str(self.config.get("mpv_extra_args", "")).strip()
@@ -242,6 +252,8 @@ class MusicController:
             self._paused_playlist = playlist_path
             self.is_playing = True
             logger.info("Music started (pid=%d, playlist=%s)", self.mpv_process.pid, playlist_path)
+            # Start track info update thread
+            threading.Thread(target=self._update_track_info_loop, daemon=True).start()
             return True
         except OSError:
             logger.exception("Failed to launch MPV")
@@ -252,6 +264,13 @@ class MusicController:
         self.current_playlist = None
         self._paused_playlist = None
         self.is_playing = False
+        self.current_track_name = ""
+        # Clean up IPC socket
+        if self.ipc_socket and self.ipc_socket.exists():
+            try:
+                self.ipc_socket.unlink()
+            except Exception:
+                pass
         return True
 
     def _stop_process_only(self) -> None:
@@ -321,7 +340,121 @@ class MusicController:
             "current_playlist": self.current_playlist,
             "mpv_available": self._mpv_available,
             "volume": self.config.get("classical_music_volume", 30),
+            "current_track": self.current_track_name,
         }
+
+    def _send_mpv_command(self, command: List[Any]) -> Optional[Dict]:
+        """Send a command to MPV via IPC socket"""
+        if not self.ipc_socket or not self.is_playing:
+            return None
+
+        try:
+            import socket
+            import json
+
+            # Wait a bit for socket to be ready
+            import time
+            time.sleep(0.1)
+
+            if platform.system() == "Windows":
+                # Windows uses named pipes
+                import win32file
+                import win32pipe
+                import pywintypes
+
+                try:
+                    handle = win32file.CreateFile(
+                        f"\\\\.\\pipe\\{self.ipc_socket.name}",
+                        win32file.GENERIC_READ | win32file.GENERIC_WRITE,
+                        0,
+                        None,
+                        win32file.OPEN_EXISTING,
+                        0,
+                        None
+                    )
+                    cmd_str = json.dumps({"command": command}) + "\n"
+                    win32file.WriteFile(handle, cmd_str.encode())
+                    result, data = win32file.ReadFile(handle, 4096)
+                    win32file.CloseHandle(handle)
+                    return json.loads(data.decode()) if data else None
+                except (pywintypes.error, Exception) as e:
+                    logger.debug(f"MPV command failed (Windows): {e}")
+                    return None
+            else:
+                # Unix uses Unix domain sockets
+                sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                sock.settimeout(1.0)
+                sock.connect(str(self.ipc_socket))
+                cmd_str = json.dumps({"command": command}) + "\n"
+                sock.sendall(cmd_str.encode())
+                response = sock.recv(4096).decode()
+                sock.close()
+                return json.loads(response) if response else None
+        except Exception as e:
+            logger.debug(f"MPV command failed: {e}")
+            return None
+
+    def next_track(self) -> bool:
+        """Skip to next track"""
+        result = self._send_mpv_command(["playlist-next"])
+        if result:
+            logger.info("Skipped to next track")
+            return True
+        return False
+
+    def previous_track(self) -> bool:
+        """Go to previous track"""
+        result = self._send_mpv_command(["playlist-prev"])
+        if result:
+            logger.info("Went to previous track")
+            return True
+        return False
+
+    def get_current_track_info(self) -> Optional[str]:
+        """Get current track information"""
+        result = self._send_mpv_command(["get_property", "media-title"])
+        if result and "data" in result:
+            track_name = result["data"]
+            # Extract just filename without path and extension
+            if isinstance(track_name, str):
+                from pathlib import Path
+                track_name = Path(track_name).stem
+                return track_name
+        return None
+
+    def _update_track_info_loop(self):
+        """Background thread to update track info"""
+        import time
+        while self.is_playing:
+            try:
+                track_info = self.get_current_track_info()
+                if track_info:
+                    self.current_track_name = track_info
+                time.sleep(2)  # Update every 2 seconds
+            except Exception as e:
+                logger.debug(f"Track info update failed: {e}")
+                time.sleep(5)
+
+    def change_playlist(self, playlist_path: str) -> bool:
+        """Change to a different playlist"""
+        if not playlist_path:
+            return False
+
+        # Store current volume
+        current_volume = self.config.get("classical_music_volume", 30)
+
+        # Stop current music
+        self._stop_process_only()
+
+        # Start with new playlist
+        success = self.start_music(playlist_path=playlist_path, volume=current_volume)
+
+        if success:
+            # Update config with new playlist selection
+            self.config.set("classical_music_selected_playlist", playlist_path)
+            logger.info(f"Changed to playlist: {playlist_path}")
+
+        return success
 
     def cleanup(self):
         self.stop_music()

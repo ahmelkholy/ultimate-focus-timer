@@ -605,6 +605,22 @@ class SessionManager:
                 SessionType.SHORT_BREAK,
                 self.config.get("short_break_mins", 5),
             )
+        # After breaks: short breaks auto-start work, long breaks require manual start
+        if self.session_type == SessionType.SHORT_BREAK:
+            # Always auto-start work session after short break
+            return (
+                True,
+                SessionType.WORK,
+                self.config.get("work_mins", 25),
+            )
+        elif self.session_type == SessionType.LONG_BREAK:
+            # Never auto-start after long break - require manual start
+            return (
+                False,
+                SessionType.WORK,
+                self.config.get("work_mins", 25),
+            )
+        # Default behavior for custom or other types
         return (
             self.config.get("auto_start_work", False),
             SessionType.WORK,

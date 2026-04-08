@@ -57,3 +57,12 @@ pyinstaller>=6.8.0
 fastapi>=0.110.0
 uvicorn>=0.27.0
 sounddevice>=0.4.6
+
+# Google API Integration for Tasks and Calendar
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
+google-api-python-client>=2.100.0
+
+# Windows-specific dependencies for MPV IPC
+pywin32>=305; sys_platform == 'win32'
