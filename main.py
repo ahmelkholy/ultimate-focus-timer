@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 from src.core import ConfigManager, SessionManager  # noqa: E402
 from src.focus_console import ConsoleInterface  # noqa: E402
 from src.system import MusicController, NotificationManager  # noqa: E402
+from src.mpv_installer import MPVInstaller  # noqa: E402
 
 # Ensure runtime directories exist
 ensure_dirs()
@@ -85,7 +86,7 @@ class UltimateFocusLauncher:
     # ── Dependency checks ─────────────────────────────────────────────────────
 
     def check_dependencies(self) -> Dict[str, bool]:
-        return {
+        deps = {
             "python": sys.version_info >= (3, 8),
             "tkinter": self._check_module("tkinter"),
             "yaml": self._check_module("yaml"),
@@ -95,6 +96,24 @@ class UltimateFocusLauncher:
             "pandas": self._check_module("pandas"),
             "mpv": self.music_controller.is_mpv_available(),
         }
+
+        # Auto-install MPV if not available
+        if not deps["mpv"]:
+            logger.info("MPV not found. Attempting auto-installation...")
+            installer = MPVInstaller()
+            is_available, message, mpv_path = installer.ensure_mpv_available(auto_install=True)
+
+            if is_available:
+                logger.info(f"MPV successfully installed at: {mpv_path}")
+                # Update config with MPV path
+                if mpv_path:
+                    self.config_manager.set("mpv_executable", str(mpv_path))
+                deps["mpv"] = True
+            else:
+                logger.warning(f"MPV installation failed: {message}")
+                deps["mpv"] = False
+
+        return deps
 
     def _check_module(self, name: str) -> bool:
         try:
