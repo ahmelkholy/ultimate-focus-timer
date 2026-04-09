@@ -309,3 +309,15 @@ Based on Ultimate Focus Timer by Ahmed Kholy
 For issues or questions:
 - GitHub Issues: https://github.com/ahmelkholy/ultimate-focus-timer/issues
 - Feature implemented in branch: `claude/add-drag-drop-reordering`
+
+feature to be added drag and drp taks to reorder in the task list use vim keybindings in the task list (j/k to navigate, dd to delete, etc.) dlegete taskes for tomorrow or next weak connect the task list with a googel tasks and calender in specific list
+
+i want the worksession to start auto after the break time is over twic but in the long break it manually start the work session after the long break is over
+
+add next back and change the music and i want to show the name of the playing track in gui in very small font or first 3 or four letters
+
+and when i change the playlist name it must change the music to this playlist but in this case the defualt music is always on the music is the same
+
+i want you to make this project stand alone however it depend on mpv i want to make it insatlled auto i want you to make all this feature and test it and make it all works and fix all bugs and make it all works as the optimized and working in greeet after finishing impelmenting all features loop to make sure old is woking and new is working loop loop loop till you had the best app
+
+

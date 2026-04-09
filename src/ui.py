@@ -21,27 +21,27 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Callable, Dict, List, Optional
 
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 from .core import (
     ConfigManager,
     SessionManager,
     SessionState,
     SessionType,
-    TaskManager,
     Task,
-)
-from .system import (
-    MusicController,
-    NotificationManager,
-    HotkeyManager,
-    TrayManager,
-    EXPORTS_DIR,
+    TaskManager,
 )
 from .daemon_manager import DaemonManager
-
-import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn as sns
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from .system import (
+    EXPORTS_DIR,
+    HotkeyManager,
+    MusicController,
+    NotificationManager,
+    TrayManager,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -601,16 +601,43 @@ class InlineTaskWidget:
     def setup_vim_keybindings(self):
         """Setup vim-style keybindings for task navigation"""
         # Bind to the frame and canvas for vim navigation
-        self.frame.bind("<j>", lambda e: self.vim_navigate_down() if not self.typing_active else None)
-        self.frame.bind("<k>", lambda e: self.vim_navigate_up() if not self.typing_active else None)
-        self.frame.bind("<d>", lambda e: self.vim_delete_selected() if not self.typing_active else None)
-        self.frame.bind("<g>", lambda e: self.vim_goto_first() if not self.typing_active else None)
-        self.frame.bind("<G>", lambda e: self.vim_goto_last() if not self.typing_active else None)
-        self.frame.bind("<i>", lambda e: self.show_add_task_entry() if not self.typing_active else None)
-        self.frame.bind("<a>", lambda e: self.show_add_task_entry() if not self.typing_active else None)
-        self.frame.bind("<space>", lambda e: self.vim_toggle_selected() if not self.typing_active else None)
-        self.frame.bind("<t>", lambda e: self.vim_delegate_tomorrow() if not self.typing_active else None)
-        self.frame.bind("<w>", lambda e: self.vim_delegate_next_week() if not self.typing_active else None)
+        self.frame.bind(
+            "<j>",
+            lambda e: self.vim_navigate_down() if not self.typing_active else None,
+        )
+        self.frame.bind(
+            "<k>", lambda e: self.vim_navigate_up() if not self.typing_active else None
+        )
+        self.frame.bind(
+            "<d>",
+            lambda e: self.vim_delete_selected() if not self.typing_active else None,
+        )
+        self.frame.bind(
+            "<g>", lambda e: self.vim_goto_first() if not self.typing_active else None
+        )
+        self.frame.bind(
+            "<G>", lambda e: self.vim_goto_last() if not self.typing_active else None
+        )
+        self.frame.bind(
+            "<i>",
+            lambda e: self.show_add_task_entry() if not self.typing_active else None,
+        )
+        self.frame.bind(
+            "<a>",
+            lambda e: self.show_add_task_entry() if not self.typing_active else None,
+        )
+        self.frame.bind(
+            "<space>",
+            lambda e: self.vim_toggle_selected() if not self.typing_active else None,
+        )
+        self.frame.bind(
+            "<t>",
+            lambda e: self.vim_delegate_tomorrow() if not self.typing_active else None,
+        )
+        self.frame.bind(
+            "<w>",
+            lambda e: self.vim_delegate_next_week() if not self.typing_active else None,
+        )
 
         # Make frame focusable
         self.frame.config(takefocus=1)
@@ -719,6 +746,7 @@ class InlineTaskWidget:
         if 0 <= self.selected_row_index < len(self.task_rows):
             task, _ = self.task_rows[self.selected_row_index]
             from datetime import datetime, timedelta
+
             tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
             task.description = f"[Delegated to {tomorrow}] {task.description}"
             self.task_manager.save_tasks()
@@ -730,6 +758,7 @@ class InlineTaskWidget:
         if 0 <= self.selected_row_index < len(self.task_rows):
             task, _ = self.task_rows[self.selected_row_index]
             from datetime import datetime, timedelta
+
             next_week = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
             task.description = f"[Delegated to {next_week}] {task.description}"
             self.task_manager.save_tasks()
@@ -759,8 +788,9 @@ class InlineTaskWidget:
                 if scroll_top < current_top:
                     self.tasks_canvas.yview_moveto(scroll_top)
                 elif scroll_bottom > current_bottom:
-                    self.tasks_canvas.yview_moveto(scroll_bottom - (canvas_height / bbox[3]))
-
+                    self.tasks_canvas.yview_moveto(
+                        scroll_bottom - (canvas_height / bbox[3])
+                    )
 
     def apply_dark_theme(self):
         """Apply dark theme to the task widget"""
@@ -974,9 +1004,13 @@ class InlineTaskWidget:
         )  # Make title column expand to fill space
 
         # Add drag-and-drop bindings
-        task_frame.bind("<ButtonPress-1>", lambda e: self.on_drag_start(e, task_frame, task))
+        task_frame.bind(
+            "<ButtonPress-1>", lambda e: self.on_drag_start(e, task_frame, task)
+        )
         task_frame.bind("<B1-Motion>", lambda e: self.on_drag_motion(e, task_frame))
-        task_frame.bind("<ButtonRelease-1>", lambda e: self.on_drag_release(e, task_frame, task))
+        task_frame.bind(
+            "<ButtonRelease-1>", lambda e: self.on_drag_release(e, task_frame, task)
+        )
 
         # Completion checkbox
         completed_var = tk.BooleanVar(value=task.completed)
@@ -1009,9 +1043,13 @@ class InlineTaskWidget:
         )  # Minimal padding for maximum width
 
         # Bind drag to title label as well
-        title_label.bind("<ButtonPress-1>", lambda e: self.on_drag_start(e, task_frame, task))
+        title_label.bind(
+            "<ButtonPress-1>", lambda e: self.on_drag_start(e, task_frame, task)
+        )
         title_label.bind("<B1-Motion>", lambda e: self.on_drag_motion(e, task_frame))
-        title_label.bind("<ButtonRelease-1>", lambda e: self.on_drag_release(e, task_frame, task))
+        title_label.bind(
+            "<ButtonRelease-1>", lambda e: self.on_drag_release(e, task_frame, task)
+        )
 
         # Pomodoro progress with green color
         pomodoro_text = f"🍅 {task.pomodoros_completed}/{task.pomodoros_planned}"
@@ -1176,7 +1214,9 @@ class InlineTaskWidget:
         tasks = self.task_manager.get_today_tasks()
 
         # Find source index
-        source_index = next((i for i, t in enumerate(tasks) if t.id == source_task.id), None)
+        source_index = next(
+            (i for i, t in enumerate(tasks) if t.id == source_task.id), None
+        )
 
         if source_index is not None and source_index != target_index:
             # Remove from old position
@@ -1192,7 +1232,9 @@ class InlineTaskWidget:
             # Refresh display
             self.update_display()
 
-            logger.info(f"Reordered task '{source_task.title}' from position {source_index} to {target_index}")
+            logger.info(
+                f"Reordered task '{source_task.title}' from position {source_index} to {target_index}"
+            )
 
     def get_frame(self):
         """Get the main frame widget"""
@@ -1607,7 +1649,7 @@ class DashboardGUI:
             logger.debug("Updating dashboard")
             self.update_dashboard()
             logger.debug("Dashboard initialization complete")
-        except Exception as e:
+        except Exception:
             logger.exception("Error during dashboard initialization")
             self.cleanup()
             raise
@@ -3687,10 +3729,62 @@ class FocusGUI:
         # Load playlists into the dropdown
         self.load_playlists()
 
+        # Music navigation: Prev | track name | Next
+        self.music_nav_frame = ttk.Frame(self.additional_frame)
+        self.music_nav_frame.grid(
+            row=2,
+            column=0,
+            columnspan=3,
+            pady=(initial_scaling["button_pady"], 0),
+            sticky=(tk.W, tk.E),
+        )
+        self.music_nav_frame.grid_columnconfigure(0, weight=1)
+        self.music_nav_frame.grid_columnconfigure(1, weight=3)
+        self.music_nav_frame.grid_columnconfigure(2, weight=1)
+
+        self.prev_track_button = ttk.Button(
+            self.music_nav_frame,
+            text="⏮",
+            command=self.prev_track,
+            style="Modern.TButton",
+            width=3,
+        )
+        self.prev_track_button.grid(row=0, column=0, sticky=tk.E, padx=(0, 2))
+
+        self.track_name_label = ttk.Label(
+            self.music_nav_frame,
+            text="",
+            font=("Arial", 7),
+            anchor="center",
+        )
+        self.track_name_label.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=2)
+
+        self.next_track_button = ttk.Button(
+            self.music_nav_frame,
+            text="⏭",
+            command=self.next_track,
+            style="Modern.TButton",
+            width=3,
+        )
+        self.next_track_button.grid(row=0, column=2, sticky=tk.W, padx=(2, 0))
+
+        # Music status label
+        self.music_status_label = ttk.Label(
+            self.additional_frame,
+            text="♪ Music Ready",
+            font=("Arial", 7),
+        )
+        self.music_status_label.grid(
+            row=3,
+            column=0,
+            columnspan=3,
+            pady=(0, initial_scaling["button_pady"]),
+        )
+
         # Daemon Control Section
         self.daemon_frame = ttk.Frame(self.additional_frame)
         self.daemon_frame.grid(
-            row=2, column=0, columnspan=3, pady=(initial_scaling["button_pady"], 0)
+            row=4, column=0, columnspan=3, pady=(initial_scaling["button_pady"], 0)
         )
 
         # Configure daemon frame for scaling
@@ -4837,6 +4931,14 @@ class FocusGUI:
                 5500, lambda: self.music_status_label.config(text="♪ Test Complete")
             )
 
+    def next_track(self):
+        """Skip to next track in current playlist"""
+        self.music.next_track()
+
+    def prev_track(self):
+        """Go to previous track in current playlist"""
+        self.music.previous_track()
+
     def load_playlists(self):
         """Load playlists into the combobox."""
         self.playlists = self.config.get_music_playlists()
@@ -4871,14 +4973,15 @@ class FocusGUI:
         )
 
         if selected_playlist:
-            self.config.set(
-                "classical_music_default_playlist", selected_playlist["path"]
-            )
+            path = selected_playlist["path"]
+            self.config.set("classical_music_default_playlist", path)
+            self.config.set("classical_music_selected_playlist", path)
             self.config.save_config()
 
             if self.music.is_playing:
-                self.music.stop_music()
-                self.music.start_music()
+                # change_playlist stops cleanly then starts with the new path
+                self.music.change_playlist(path)
+            # If not playing, config update is enough; next start will use the new path
 
     def show_statistics(self):
         """Show session statistics"""
@@ -4886,18 +4989,18 @@ class FocusGUI:
 
         stats_text = f"""Session Statistics:
 
-Total Sessions: {stats['total_sessions']}
-Work Sessions: {stats['work_sessions']}
-Break Sessions: {stats['break_sessions']}
+Total Sessions: {stats["total_sessions"]}
+Work Sessions: {stats["work_sessions"]}
+Break Sessions: {stats["break_sessions"]}
 
-Total Work Time: {stats['total_work_time']:.1f} minutes
-Total Break Time: {stats['total_break_time']:.1f} minutes
+Total Work Time: {stats["total_work_time"]:.1f} minutes
+Total Break Time: {stats["total_break_time"]:.1f} minutes
 
-Average Work Session: {stats['average_work_session']:.1f} minutes
-Average Break Session: {stats['average_break_session']:.1f} minutes
+Average Work Session: {stats["average_work_session"]:.1f} minutes
+Average Break Session: {stats["average_break_session"]:.1f} minutes
 
-Today's Sessions: {stats['today_sessions']}
-Today's Work Time: {stats['today_work_time']:.1f} minutes"""
+Today's Sessions: {stats["today_sessions"]}
+Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
 
         messagebox.showinfo("Session Statistics", stats_text)
 
@@ -5098,6 +5201,16 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
             else:
                 self.music_status_label.config(text="♪ Music Ready")
 
+        # Update track name label
+        if hasattr(self, "track_name_label"):
+            track = self.music.current_track_name
+            if track:
+                # Trim to ~20 chars so it fits in the small label
+                display = track[:20] if len(track) > 20 else track
+                self.track_name_label.config(text=display)
+            else:
+                self.track_name_label.config(text="")
+
     def update_button_states(self):
         """Update button states based on session state"""
         state = self.session_manager.state
@@ -5234,31 +5347,45 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
 
     def _on_daemon_status_changed(self, status: str):
         """Handle daemon status changes"""
+
         def _do():
             if self.daemon_status_label:
-                self.daemon_status_label.config(text=self.daemon_manager.get_status_display())
+                self.daemon_status_label.config(
+                    text=self.daemon_manager.get_status_display()
+                )
 
             # Update button states
             is_running = status == "running"
             if self.daemon_start_button:
-                self.daemon_start_button.config(state="disabled" if is_running else "normal")
+                self.daemon_start_button.config(
+                    state="disabled" if is_running else "normal"
+                )
             if self.daemon_stop_button:
-                self.daemon_stop_button.config(state="normal" if is_running else "disabled")
+                self.daemon_stop_button.config(
+                    state="normal" if is_running else "disabled"
+                )
+
         self._marshal(_do)
 
     def _start_daemon_clicked(self):
         """Handle start daemon button click"""
+
         def _do():
             self.daemon_start_button.config(state="disabled", text="Starting...")
             if self.daemon_manager.start():
-                messagebox.showinfo("Success", "Daemon started successfully!\n\nYou can now use daemon features.")
+                messagebox.showinfo(
+                    "Success",
+                    "Daemon started successfully!\n\nYou can now use daemon features.",
+                )
             else:
                 messagebox.showerror("Error", "Failed to start daemon")
             self.daemon_start_button.config(state="normal", text="Start Daemon")
+
         self.schedule_callback(100, _do)
 
     def _stop_daemon_clicked(self):
         """Handle stop daemon button click"""
+
         def _do():
             self.daemon_stop_button.config(state="disabled", text="Stopping...")
             if self.daemon_manager.stop():
@@ -5266,6 +5393,7 @@ Today's Work Time: {stats['today_work_time']:.1f} minutes"""
             else:
                 messagebox.showerror("Error", "Failed to stop daemon")
             self.daemon_stop_button.config(state="normal", text="Stop Daemon")
+
         self.schedule_callback(100, _do)
 
     def _marshal(self, fn):
