@@ -3425,19 +3425,41 @@ class FocusGUI:
     def load_window_dimensions(self):
         """Load saved window dimensions or use defaults"""
         try:
-            # Try to load saved dimensions from config
             saved_geometry = self.config.get("window_geometry", None)
-
-            if saved_geometry:
-                # Parse saved geometry (format: "widthxheight+x+y")
+            if saved_geometry and self._geometry_is_visible(saved_geometry):
                 self.root.geometry(saved_geometry)
             else:
-                # Use default centered position
                 self.center_window_default()
-
         except Exception:
-            # Fall back to default if loading fails
             self.center_window_default()
+
+    def _geometry_is_visible(self, geometry: str) -> bool:
+        """Return True if the given geometry string places the window on a visible screen."""
+        try:
+            import re, ctypes
+            m = re.match(r"(\d+)x(\d+)([\+\-][\+\-]?\d+)([\+\-]\d+)", geometry)
+            if not m:
+                return False
+            win_w = int(m.group(1))
+            win_h = int(m.group(2))
+            # Strip leading '+' that Tkinter sometimes puts before a negative sign
+            win_x = int(m.group(3).lstrip("+"))
+            win_y = int(m.group(4).lstrip("+"))
+            # Get virtual screen bounds (covers all monitors)
+            k = ctypes.windll.user32
+            vx = k.GetSystemMetrics(76)   # SM_XVIRTUALSCREEN
+            vy = k.GetSystemMetrics(77)   # SM_YVIRTUALSCREEN
+            vw = k.GetSystemMetrics(78)   # SM_CXVIRTUALSCREEN
+            vh = k.GetSystemMetrics(79)   # SM_CYVIRTUALSCREEN
+            # At least 50px of width and 30px of the title bar must be on-screen
+            return (
+                win_x + win_w >= vx + 50
+                and win_x <= vx + vw - 50
+                and win_y >= vy
+                and win_y <= vy + vh - 30
+            )
+        except Exception:
+            return True  # If check fails, trust the saved value
 
     def center_window_default(self):
         """Center window with default dimensions"""
