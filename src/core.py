@@ -17,7 +17,14 @@ from typing import Any, Callable, Dict, List, Optional
 
 import yaml
 
-from .system import CONFIG_FILE, DATA_DIR, LOG_DIR, PROJECT_ROOT, SESSION_LOG_FILE, TASKS_FILE
+from .system import (
+    CONFIG_FILE,
+    DATA_DIR,
+    LOG_DIR,
+    PROJECT_ROOT,
+    SESSION_LOG_FILE,
+    TASKS_FILE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -950,6 +957,21 @@ class TaskManager:
             self.save_tasks()
             return True
         return False
+
+    def reorder_tasks(self, task_id: str, dest_index: int) -> bool:
+        """Move task with task_id to dest_index position in today's list."""
+        today_key = self.get_today_key()
+        if today_key not in self.tasks:
+            return False
+        task_list = self.tasks[today_key]
+        src_index = next((i for i, t in enumerate(task_list) if t.id == task_id), -1)
+        if src_index < 0:
+            return False
+        dest_index = max(0, min(dest_index, len(task_list) - 1))
+        task = task_list.pop(src_index)
+        task_list.insert(dest_index, task)
+        self.save_tasks()
+        return True
 
     def update_task_title(self, task_id: str, new_title: str) -> bool:
         task = self.get_task_by_id(task_id)

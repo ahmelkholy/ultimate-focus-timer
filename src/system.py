@@ -18,7 +18,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # APP PATHS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -142,9 +141,19 @@ class MusicController:
         system = platform.system()
         search_paths: List[str] = []
         if system == "Darwin":
-            search_paths = ["/opt/homebrew/bin/mpv", "/usr/local/bin/mpv", "/usr/bin/mpv", "mpv"]
+            search_paths = [
+                "/opt/homebrew/bin/mpv",
+                "/usr/local/bin/mpv",
+                "/usr/bin/mpv",
+                "mpv",
+            ]
         elif system == "Linux":
-            search_paths = ["/usr/bin/mpv", "/usr/local/bin/mpv", "/snap/bin/mpv", "mpv"]
+            search_paths = [
+                "/usr/bin/mpv",
+                "/usr/local/bin/mpv",
+                "/snap/bin/mpv",
+                "mpv",
+            ]
         elif system == "Windows":
             search_paths = [
                 "mpv.exe",
@@ -185,7 +194,10 @@ class MusicController:
             logger.warning("No playlists available")
             return None
 
-        for key in ("classical_music_selected_playlist", "classical_music_default_playlist"):
+        for key in (
+            "classical_music_selected_playlist",
+            "classical_music_default_playlist",
+        ):
             configured = self.config.get(key, "")
             if configured:
                 for pl in playlists:
@@ -199,7 +211,9 @@ class MusicController:
 
         return playlists[0]["path"]
 
-    def start_music(self, playlist_path: Optional[str] = None, volume: Optional[int] = None) -> bool:
+    def start_music(
+        self, playlist_path: Optional[str] = None, volume: Optional[int] = None
+    ) -> bool:
         if not self.is_mpv_available():
             logger.warning("MPV not available; skipping music start")
             return False
@@ -218,8 +232,11 @@ class MusicController:
 
         # Create IPC socket path for control
         import tempfile
+
         if platform.system() == "Windows":
-            self.ipc_socket = Path(tempfile.gettempdir()) / "mpv_focus_timer.sock"
+            # Windows: MPV uses named pipes; pass a bare name so MPV creates
+            # \\.\pipe\mpv_focus_timer. Do NOT use a full path here.
+            self.ipc_socket = Path("mpv_focus_timer")
         else:
             self.ipc_socket = Path(tempfile.gettempdir()) / "mpv_focus_timer.sock"
 
@@ -251,7 +268,11 @@ class MusicController:
             self.current_playlist = playlist_path
             self._paused_playlist = playlist_path
             self.is_playing = True
-            logger.info("Music started (pid=%d, playlist=%s)", self.mpv_process.pid, playlist_path)
+            logger.info(
+                "Music started (pid=%d, playlist=%s)",
+                self.mpv_process.pid,
+                playlist_path,
+            )
             # Start track info update thread
             threading.Thread(target=self._update_track_info_loop, daemon=True).start()
             return True
@@ -349,43 +370,54 @@ class MusicController:
             return None
 
         try:
-            import socket
             import json
 
-            # Wait a bit for socket to be ready
-            import time
-            time.sleep(0.1)
+            cmd_str = json.dumps({"command": command}) + "\n"
 
             if platform.system() == "Windows":
-                # Windows uses named pipes
-                import win32file
-                import win32pipe
-                import pywintypes
+                # Windows: connect to named pipe \\.\pipe\<name> using ctypes
+                # No pywin32 dependency needed
+                import ctypes
 
-                try:
-                    handle = win32file.CreateFile(
-                        f"\\\\.\\pipe\\{self.ipc_socket.name}",
-                        win32file.GENERIC_READ | win32file.GENERIC_WRITE,
-                        0,
-                        None,
-                        win32file.OPEN_EXISTING,
-                        0,
-                        None
-                    )
-                    cmd_str = json.dumps({"command": command}) + "\n"
-                    win32file.WriteFile(handle, cmd_str.encode())
-                    result, data = win32file.ReadFile(handle, 4096)
-                    win32file.CloseHandle(handle)
-                    return json.loads(data.decode()) if data else None
-                except (pywintypes.error, Exception) as e:
-                    logger.debug(f"MPV command failed (Windows): {e}")
+                GENERIC_READ = 0x80000000
+                GENERIC_WRITE = 0x40000000
+                OPEN_EXISTING = 3
+                INVALID_HANDLE = ctypes.c_void_p(-1).value
+
+                pipe_path = f"\\\\.\\pipe\\{self.ipc_socket.name}"
+                kernel32 = ctypes.windll.kernel32
+                handle = kernel32.CreateFileW(
+                    pipe_path,
+                    GENERIC_READ | GENERIC_WRITE,
+                    0,
+                    None,
+                    OPEN_EXISTING,
+                    0,
+                    None,
+                )
+                if handle == INVALID_HANDLE or handle == 0:
                     return None
+                try:
+                    buf = cmd_str.encode("utf-8")
+                    written = ctypes.c_ulong(0)
+                    kernel32.WriteFile(
+                        handle, buf, len(buf), ctypes.byref(written), None
+                    )
+                    resp = ctypes.create_string_buffer(8192)
+                    read = ctypes.c_ulong(0)
+                    kernel32.ReadFile(handle, resp, 8192, ctypes.byref(read), None)
+                    data = (
+                        resp.raw[: read.value].decode("utf-8", errors="ignore").strip()
+                    )
+                    return json.loads(data) if data else None
+                finally:
+                    kernel32.CloseHandle(handle)
             else:
-                # Unix uses Unix domain sockets
-                sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                import socket as _socket
+
+                sock = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
                 sock.settimeout(1.0)
                 sock.connect(str(self.ipc_socket))
-                cmd_str = json.dumps({"command": command}) + "\n"
                 sock.sendall(cmd_str.encode())
                 response = sock.recv(4096).decode()
                 sock.close()
@@ -418,6 +450,7 @@ class MusicController:
             # Extract just filename without path and extension
             if isinstance(track_name, str):
                 from pathlib import Path
+
                 track_name = Path(track_name).stem
                 return track_name
         return None
@@ -425,6 +458,7 @@ class MusicController:
     def _update_track_info_loop(self):
         """Background thread to update track info"""
         import time
+
         while self.is_playing:
             try:
                 track_info = self.get_current_track_info()
@@ -746,6 +780,7 @@ class TrayManager:
             def _handler(icon, item):
                 if fn:
                     fn()
+
             return _handler
 
         return pystray.Menu(
@@ -764,6 +799,7 @@ class TrayManager:
             return
         try:
             import threading
+
             self._icon = pystray.Icon(
                 "FocusTimer",
                 _make_icon(self._COLORS["idle"]),
@@ -897,7 +933,9 @@ class BrainDumpHotkey:
     def start(self) -> None:
         """Register the global hotkey.  Safe to call if keyboard lib is missing."""
         if not _KEYBOARD_AVAILABLE:
-            logger_bd.warning("keyboard library not installed — BrainDumpHotkey disabled")
+            logger_bd.warning(
+                "keyboard library not installed — BrainDumpHotkey disabled"
+            )
             return
         try:
             keyboard.add_hotkey(_BRAIN_DUMP_HOTKEY, self._open_capture_box)

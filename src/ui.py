@@ -3872,6 +3872,15 @@ class FocusGUI:
         self.adding_task = False
         self.typing_active = False
 
+        # Vim navigation state
+        self.task_rows = []          # list of (task, frame) tuples — rebuilt each redraw
+        self.selected_task_index = -1
+        self._last_d_press = 0.0     # timestamp of previous 'd' for 'dd' detection
+
+        # Drag-and-drop state
+        self._drag_source_index = -1
+        self._drag_ghost = None
+
         # Minimal header with just add button and compact stats
         header_frame = ttk.Frame(self.task_frame)
         header_frame.grid(
@@ -4085,6 +4094,9 @@ class FocusGUI:
         for widget in self.tasks_display_frame.winfo_children():
             widget.destroy()
 
+        # Reset row tracker for vim navigation
+        self.task_rows = []
+
         # Get tasks and stats
         tasks = self.task_manager.get_today_tasks()
         stats = self.task_manager.get_task_stats()
@@ -4147,6 +4159,17 @@ class FocusGUI:
         )
         task_row.grid_columnconfigure(1, weight=1)  # Title column expands
 
+        # Track this row for vim selection (index matches tasks list)
+        self.task_rows.append((task, task_row))
+        idx = len(self.task_rows) - 1
+
+        # Apply selection highlight
+        sel_bg = "#1a3a1a" if idx == self.selected_task_index else "#2b2b2b"
+        try:
+            task_row.configure(background=sel_bg)
+        except Exception:
+            pass
+
         # Completion checkbox
         completed_var = tk.BooleanVar(value=task.completed)
         check = ttk.Checkbutton(
@@ -4178,6 +4201,10 @@ class FocusGUI:
         title_label.bind(
             "<Double-1>", lambda event, task=task: self.edit_task_title(event, task)
         )
+        # Drag-and-drop bindings (drag the title label to reorder)
+        title_label.bind("<ButtonPress-1>", lambda e, i=idx: self._drag_start(e, i))
+        title_label.bind("<B1-Motion>", self._drag_motion)
+        title_label.bind("<ButtonRelease-1>", self._drag_release)
 
         # Compact pomodoro progress
         pomodoro_text = f"{task.pomodoros_completed}/{task.pomodoros_planned}"
@@ -4320,8 +4347,12 @@ class FocusGUI:
             self.typing_active = True
 
     def is_typing(self):
-        """Check if user is currently typing in task entry"""
-        return getattr(self, "typing_active", False)
+        """Check if user is currently typing — true if any Entry/Text has focus."""
+        try:
+            focused = self.root.focus_get()
+            return isinstance(focused, (tk.Entry, tk.Text))
+        except Exception:
+            return getattr(self, "typing_active", False)
 
     def on_task_entry_focus_in(self, event):
         """Handle task entry focus in"""
@@ -4464,9 +4495,13 @@ class FocusGUI:
         self.root.bind("<KeyPress-m>", lambda e: self.shortcut_toggle_music())
         self.root.bind("<KeyPress-M>", lambda e: self.shortcut_toggle_music())
 
-        # D key - Delete last/selected task
+        # D key - Delete last/selected task (dd = double-press)
         self.root.bind("<KeyPress-d>", lambda e: self.shortcut_delete_task())
         self.root.bind("<KeyPress-D>", lambda e: self.shortcut_delete_task())
+
+        # J/K keys - Vim navigation (down/up through tasks)
+        self.root.bind("<KeyPress-j>", lambda e: self._vim_nav_down())
+        self.root.bind("<KeyPress-k>", lambda e: self._vim_nav_up())
 
         # W key - Open tasks in separate window
         self.root.bind("<KeyPress-w>", lambda e: self.shortcut_open_task_window())
@@ -4481,6 +4516,8 @@ class FocusGUI:
         self.root.bind("<Key-M>", lambda e: self.shortcut_toggle_music())
         self.root.bind("<Key-w>", lambda e: self.shortcut_open_task_window())
         self.root.bind("<Key-W>", lambda e: self.shortcut_open_task_window())
+        self.root.bind("<Key-j>", lambda e: self._vim_nav_down())
+        self.root.bind("<Key-k>", lambda e: self._vim_nav_up())
 
         # Ensure the main window can receive focus for shortcuts
         self.root.focus_set()
@@ -4521,11 +4558,103 @@ class FocusGUI:
             self.root.after(50, self.root.focus_set)
 
     def shortcut_delete_task(self):
-        """Handle D key shortcut to delete the last task"""
-        if not self.typing_active:
-            self.delete_last_task()
-            # Return focus to main window to ensure shortcuts continue working
+        """Handle D key shortcut — first press arms, second press (dd) deletes selected."""
+        if not self.is_typing():
+            import time as _time
+            now = _time.monotonic()
+            if now - self._last_d_press < 0.5:
+                # Double-d: delete selected task
+                self._vim_delete_selected()
+                self._last_d_press = 0.0
+            else:
+                self._last_d_press = now
             self.root.after(50, self.root.focus_set)
+
+    # ── Vim navigation helpers ────────────────────────────────────────────────
+
+    def _vim_nav_down(self):
+        if self.is_typing():
+            return
+        tasks = self.task_manager.get_today_tasks()
+        if not tasks:
+            return
+        self.selected_task_index = min(
+            self.selected_task_index + 1, len(tasks) - 1
+        )
+        self._vim_refresh_highlight()
+
+    def _vim_nav_up(self):
+        if self.is_typing():
+            return
+        tasks = self.task_manager.get_today_tasks()
+        if not tasks:
+            return
+        self.selected_task_index = max(self.selected_task_index - 1, 0)
+        self._vim_refresh_highlight()
+
+    def _vim_delete_selected(self):
+        tasks = self.task_manager.get_today_tasks()
+        if not tasks:
+            return
+        idx = self.selected_task_index
+        if 0 <= idx < len(tasks):
+            self.task_manager.delete_task(tasks[idx].id)
+        else:
+            # Fallback: delete first task
+            self.task_manager.delete_task(tasks[0].id)
+        # Adjust selection so it stays valid
+        remaining = max(0, len(tasks) - 2)
+        self.selected_task_index = min(self.selected_task_index, remaining)
+        self.update_task_display()
+        self.root.after(50, self.root.focus_set)
+
+    def _vim_refresh_highlight(self):
+        """Update row background colours to reflect current selection."""
+        for i, (task, frame) in enumerate(self.task_rows):
+            bg = "#1a3a1a" if i == self.selected_task_index else "#2b2b2b"
+            try:
+                frame.configure(background=bg)
+                for child in frame.winfo_children():
+                    try:
+                        child.configure(background=bg)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+    # ── Drag-and-drop helpers ─────────────────────────────────────────────────
+
+    def _drag_start(self, event, index):
+        self._drag_source_index = index
+
+    def _drag_motion(self, event):
+        pass  # Visual feedback could be added here
+
+    def _drag_release(self, event):
+        if self._drag_source_index < 0:
+            return
+        # Determine destination row from mouse y position
+        src = self._drag_source_index
+        dest = src
+        for i, (task, frame) in enumerate(self.task_rows):
+            try:
+                fy = frame.winfo_y()
+                fh = frame.winfo_height()
+                # event.y_root relative to canvas
+                canvas_y = event.y_root - self.tasks_canvas.winfo_rooty()
+                if fy <= canvas_y < fy + fh:
+                    dest = i
+                    break
+            except Exception:
+                pass
+
+        if src != dest:
+            tasks = self.task_manager.get_today_tasks()
+            if 0 <= src < len(tasks) and 0 <= dest < len(tasks):
+                self.task_manager.reorder_tasks(tasks[src].id, dest)
+                self.selected_task_index = dest
+                self.update_task_display()
+        self._drag_source_index = -1
 
     def shortcut_open_task_window(self):
         """Handle W key shortcut to open task window"""
