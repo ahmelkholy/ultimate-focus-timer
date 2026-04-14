@@ -2,7 +2,7 @@
 Ultimate Focus Timer Version Information
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __author__ = "Ahmed Elkholy"
 __email__ = "ahm_elkholy@outlook.com"
 __description__ = "A comprehensive cross-platform productivity timer application"

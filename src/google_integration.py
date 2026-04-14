@@ -1,30 +1,42 @@
 #!/usr/bin/env python3
 """
-google_integration.py - Google Tasks and Calendar integration for Ultimate Focus Timer.
+google_integration.py - Google Tasks integration for Ultimate Focus Timer.
 
-Connects the local task list with Google Tasks and Google Calendar.
+Connects the local task list with Google Tasks.
 """
 
 import json
 import logging
 import pickle
+import re
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 # Try to import Google API libraries
+if TYPE_CHECKING:
+    # Static-only imports for type checkers (Pylance / mypy).
+    # Use underscore-prefixed aliases to avoid redefining runtime names (Flake8 F811).
+    from google.oauth2.credentials import Credentials as _Credentials  # type: ignore
+    from googleapiclient.errors import HttpError as _HttpError  # type: ignore
+
 try:
     from google.auth.transport.requests import Request
-    from google.oauth2.credentials import Credentials
     from google_auth_oauthlib.flow import InstalledAppFlow
     from googleapiclient.discovery import build
     from googleapiclient.errors import HttpError
 
     GOOGLE_API_AVAILABLE = True
 except ImportError:
+    # Minimal runtime fallbacks. Keep only what's required at runtime.
+    Request = None  # type: ignore[assignment]
+    InstalledAppFlow = None  # type: ignore[assignment]
+    build = None  # type: ignore[assignment]
+    # Use Exception as a runtime fallback for HttpError so exception handlers work
+    HttpError = Exception  # type: ignore[assignment]
     GOOGLE_API_AVAILABLE = False
     logger.warning("Google API libraries not installed. Google integration disabled.")
 
@@ -32,13 +44,14 @@ except ImportError:
 # Google API scopes
 SCOPES = [
     "https://www.googleapis.com/auth/tasks",
-    "https://www.googleapis.com/auth/calendar",
 ]
 
 DEFAULT_TASK_LIST_ID = "@default"
-GOOGLE_OAUTH_SETUP_URL = (
-    "https://console.cloud.google.com/apis/credentials/oauthclient"
+GOOGLE_OAUTH_SETUP_URL = "https://console.cloud.google.com/apis/credentials/oauthclient"
+GOOGLE_TASKS_API_OVERVIEW_URL = (
+    "https://console.cloud.google.com/apis/library/tasks.googleapis.com"
 )
+GOOGLE_CONSOLE_URL_PATTERN = re.compile(r"https://console[^\s\"']+")
 
 
 class GoogleIntegration:
@@ -52,11 +65,13 @@ class GoogleIntegration:
         self.credentials_file = self.config_dir / "google_credentials.json"
         self.token_file = self.config_dir / "google_token.pickle"
 
-        self.creds: Optional[Credentials] = None
+        self.creds: Optional["_Credentials"] = None
         self.tasks_service = None
         self.calendar_service = None
 
         self.enabled = False
+        self.last_error: Optional[str] = None
+        self.last_error_help_url: Optional[str] = None
 
         if GOOGLE_API_AVAILABLE:
             self.reload()
@@ -76,6 +91,37 @@ class GoogleIntegration:
         """Return True when a saved OAuth token is available."""
         return self.token_file.exists()
 
+    def _clear_last_error(self) -> None:
+        """Clear the most recent API/setup error state."""
+        self.last_error = None
+        self.last_error_help_url = None
+
+    def _set_last_error(self, message: str, help_url: Optional[str] = None) -> None:
+        """Store the latest actionable Google integration error."""
+        self.last_error = message
+        self.last_error_help_url = help_url
+
+    def _record_http_error(self, exc: "_HttpError") -> None:
+        """Convert Google API HTTP failures into user-facing status."""
+        raw_message = str(exc)
+        help_url = None
+        help_url_match = GOOGLE_CONSOLE_URL_PATTERN.search(raw_message)
+        if help_url_match:
+            help_url = help_url_match.group(0).rstrip('".,')
+
+        if (
+            "accessNotConfigured" in raw_message
+            or "Google Tasks API has not been used" in raw_message
+        ):
+            self._set_last_error(
+                "Google Tasks API is disabled for this Google Cloud project. "
+                "Enable the Google Tasks API, wait a minute, then click Refresh Lists.",
+                help_url or GOOGLE_TASKS_API_OVERVIEW_URL,
+            )
+            return
+
+        self._set_last_error(raw_message, help_url)
+
     def get_connection_status(self) -> Dict[str, Any]:
         """Return the current Google Tasks connection state for UI/CLI callers."""
         return {
@@ -85,6 +131,8 @@ class GoogleIntegration:
             "has_token": self.has_token(),
             "credentials_file": str(self.credentials_file),
             "token_file": str(self.token_file),
+            "last_error": self.last_error,
+            "last_error_help_url": self.last_error_help_url,
         }
 
     def install_credentials_file(self, source_path: Path) -> Path:
@@ -128,15 +176,13 @@ class GoogleIntegration:
             pickle.dump(self.creds, token)
 
     def _build_services(self) -> None:
-        """Create Google Tasks and Calendar service clients."""
+        """Create Google Tasks service client."""
         if not self.creds:
             raise RuntimeError("Google credentials are not loaded")
         self.tasks_service = build(
             "tasks", "v1", credentials=self.creds, cache_discovery=False
         )
-        self.calendar_service = build(
-            "calendar", "v3", credentials=self.creds, cache_discovery=False
-        )
+        self.calendar_service = None
         self.enabled = True
 
     def _load_credentials(
@@ -147,6 +193,7 @@ class GoogleIntegration:
     ) -> bool:
         """Load credentials silently or, when requested, complete browser auth."""
         self._clear_session()
+        self._clear_last_error()
         try:
             if force_reauth and self.token_file.exists():
                 self.token_file.unlink()
@@ -204,12 +251,14 @@ class GoogleIntegration:
 
             self._save_token()
             self._build_services()
+            self._clear_last_error()
 
             logger.info("Google integration enabled")
             return True
 
         except Exception as e:
             logger.error(f"Failed to load Google credentials: {e}")
+            self._set_last_error(str(e))
             self._clear_session()
             if raise_errors:
                 raise
@@ -257,7 +306,9 @@ class GoogleIntegration:
         delay = 1.0
         for attempt in range(retries):
             try:
-                return func()
+                result = func()
+                self._clear_last_error()
+                return result
             except HttpError as exc:
                 status_code = getattr(getattr(exc, "resp", None), "status", None)
                 if status_code in (429, 500, 503) and attempt < retries - 1:
@@ -270,9 +321,11 @@ class GoogleIntegration:
                     time.sleep(delay)
                     delay = min(delay * 2, 30.0)
                     continue
+                self._record_http_error(exc)
                 logger.error("%s failed: %s", action, exc)
                 raise
             except Exception as exc:  # pragma: no cover - defensive
+                self._set_last_error(str(exc))
                 logger.error("%s failed unexpectedly: %s", action, exc)
                 raise
         return None
@@ -284,7 +337,8 @@ class GoogleIntegration:
 
         try:
             results = self._execute_with_backoff(
-                "list_task_lists", lambda: self.tasks_service.tasklists().list().execute()
+                "list_task_lists",
+                lambda: self.tasks_service.tasklists().list().execute(),
             )
             task_lists = results.get("items", [])
             return [{"id": tl["id"], "title": tl["title"]} for tl in task_lists]
@@ -317,7 +371,11 @@ class GoogleIntegration:
             return []
 
     def create_task(
-        self, task_list_id: str, title: str, notes: str = "", due: Optional[datetime] = None
+        self,
+        task_list_id: str,
+        title: str,
+        notes: str = "",
+        due: Optional[datetime] = None,
     ) -> Optional[Dict[str, Any]]:
         """Create a new task in Google Tasks"""
         if not self.is_enabled():
@@ -378,7 +436,9 @@ class GoogleIntegration:
             if completed is not None:
                 task["status"] = "completed" if completed else "needsAction"
                 if completed:
-                    task["completed"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
+                    task["completed"] = datetime.utcnow().strftime(
+                        "%Y-%m-%dT%H:%M:%S.000Z"
+                    )
                 else:
                     task.pop("completed", None)
 
@@ -422,7 +482,7 @@ class GoogleIntegration:
 
     def get_calendars(self) -> List[Dict[str, str]]:
         """Get all Google Calendars"""
-        if not self.is_enabled():
+        if not self.is_enabled() or self.calendar_service is None:
             return []
 
         try:
@@ -442,7 +502,7 @@ class GoogleIntegration:
         description: str = "",
     ) -> Optional[Dict[str, Any]]:
         """Create a calendar event"""
-        if not self.is_enabled():
+        if not self.is_enabled() or self.calendar_service is None:
             return None
 
         try:
@@ -560,12 +620,6 @@ if __name__ == "__main__":
         print(f"\nFound {len(task_lists)} task lists:")
         for tl in task_lists:
             print(f"  - {tl['title']} (ID: {tl['id']})")
-
-        # Test calendars
-        calendars = integration.get_calendars()
-        print(f"\nFound {len(calendars)} calendars:")
-        for cal in calendars:
-            print(f"  - {cal['summary']} (ID: {cal['id']})")
     else:
         print("✗ Google integration not available")
         print("\nTo enable:")

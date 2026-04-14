@@ -3,7 +3,7 @@
     {
       "id": "2026-03-23_175015490979",
       "title": "ch 4 optimizing",
-      "google_id": null,
+      "google_id": "dFJDa2YtdWo0RXdyc1NBeQ",
       "description": "",
       "completed": true,
       "pomodoros_planned": 1,
@@ -15,7 +15,7 @@
     {
       "id": "2026-03-23_095532358982",
       "title": "read ch 2 and other ch",
-      "google_id": null,
+      "google_id": "eVk3SFVKUm5CcmhISTNjSA",
       "description": "",
       "completed": true,
       "pomodoros_planned": 1,
@@ -27,7 +27,7 @@
     {
       "id": "2026-03-23_095519273135",
       "title": "read all plans",
-      "google_id": null,
+      "google_id": "YkhvTWRMU1BFUWZDWjN3OQ",
       "description": "",
       "completed": true,
       "pomodoros_planned": 1,
@@ -39,7 +39,7 @@
     {
       "id": "2026-03-23_095514207790",
       "title": "read ch1",
-      "google_id": null,
+      "google_id": "RVNqRlRiQ0V3RlcxODIxeg",
       "description": "",
       "completed": true,
       "pomodoros_planned": 1,
@@ -51,7 +51,7 @@
     {
       "id": "2026-03-23_095507405043",
       "title": "write all thesis and send it to dimitry ivano",
-      "google_id": null,
+      "google_id": "QS1oQUNsMWRJOWs3d0lSbw",
       "description": "",
       "completed": true,
       "pomodoros_planned": 1,
@@ -65,7 +65,7 @@
     {
       "id": "2026-03-25_144920524643",
       "title": "modify the code",
-      "google_id": null,
+      "google_id": "RHBuck8xTjk5SXlhQWlXUw",
       "description": "",
       "completed": true,
       "pomodoros_planned": 1,
@@ -77,7 +77,7 @@
     {
       "id": "2026-03-25_144914824489",
       "title": "write the plan",
-      "google_id": null,
+      "google_id": "NWNsaFZjck16N0tfVVhyVA",
       "description": "",
       "completed": true,
       "pomodoros_planned": 1,
@@ -91,7 +91,7 @@
     {
       "id": "2026-04-01_112843809030",
       "title": "read all conclustions",
-      "google_id": null,
+      "google_id": "N3R1TkFwRVdaUDRCaGpXbw",
       "description": "",
       "completed": true,
       "pomodoros_planned": 1,
@@ -103,7 +103,7 @@
     {
       "id": "2026-04-01_112837729677",
       "title": "sending it to prof",
-      "google_id": null,
+      "google_id": "V05vbUJnLUJjS2REcU0tMA",
       "description": "",
       "completed": true,
       "pomodoros_planned": 1,
@@ -111,6 +111,56 @@
       "created_at": "2026-04-01T11:28:37.729687",
       "updated_at": "2026-04-01T12:11:05.790052",
       "completed_at": "2026-04-01T12:11:05.790052"
+    }
+  ],
+  "2026-04-14": [
+    {
+      "id": "2026-04-14_162205307431",
+      "title": "call dmitry",
+      "google_id": "NnFJUEFsdDdnQ29BY3hGVg",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-04-14T16:22:05.307440",
+      "updated_at": "2026-04-14T16:24:25.224739",
+      "completed_at": null
+    },
+    {
+      "id": "2026-04-14_162156371910",
+      "title": "mahmoud master",
+      "google_id": "SXo2d0hEdE5MMXJIVUwzcA",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-04-14T16:21:56.371919",
+      "updated_at": "2026-04-14T16:21:56.371919",
+      "completed_at": null
+    },
+    {
+      "id": "2026-04-14_162117734545",
+      "title": "pid paper",
+      "google_id": "V0hjbGl2bnlTOEo4Y2Q1WQ",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-04-14T16:21:17.734554",
+      "updated_at": "2026-04-14T16:21:17.734554",
+      "completed_at": null
+    },
+    {
+      "id": "2026-04-14_162104851901",
+      "title": "arrange new computer search help gemini",
+      "google_id": "RUdfR09XY2dLREF1ZkZ0Zw",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-04-14T16:21:04.851909",
+      "updated_at": "2026-04-14T16:28:01.208405",
+      "completed_at": null
     }
   ]
 }

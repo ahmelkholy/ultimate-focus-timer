@@ -739,7 +739,7 @@ except ImportError:
 _ICON_SIZE = 64
 
 
-def _make_icon(color: str) -> "Image.Image":
+def _make_icon(color: str) -> Any:
     img = Image.new("RGBA", (_ICON_SIZE, _ICON_SIZE), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     draw.ellipse([4, 4, _ICON_SIZE - 4, _ICON_SIZE - 4], fill=color)
@@ -771,11 +771,11 @@ class TrayManager:
         self._on_pause_resume = on_pause_resume
         self._on_stop = on_stop
         self._on_quit = on_quit
-        self._icon: Optional["pystray.Icon"] = None
+        self._icon: Optional[Any] = None
         self._thread = None
         self.available = _PYSTRAY_AVAILABLE
 
-    def _build_menu(self) -> "pystray.Menu":
+    def _build_menu(self) -> Any:
         def _call(fn):
             def _handler(icon, item):
                 if fn:
@@ -846,6 +846,7 @@ try:
 
     _KEYBOARD_AVAILABLE = True
 except ImportError:
+    keyboard = None  # type: ignore[assignment]
     _KEYBOARD_AVAILABLE = False
     logger.warning("keyboard library not installed — global hotkeys disabled")
 

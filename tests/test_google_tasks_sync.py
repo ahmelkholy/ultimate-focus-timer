@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from src.core import TaskManager
-from src.google_integration import GoogleIntegration
+from src.google_integration import GoogleIntegration, SCOPES
 
 
 class StubGoogleIntegration:
@@ -190,3 +190,37 @@ def test_sync_with_cloud_updates_local_task_from_newer_remote_changes(tmp_path):
     assert task.title == "Remote title"
     assert task.description == "remote notes"
     assert task.completed is True
+
+
+def test_ui_module_has_google_browser_setup_dependencies():
+    import src.ui as ui
+
+    assert hasattr(ui, "webbrowser")
+    assert ui.GOOGLE_OAUTH_SETUP_URL.startswith("https://")
+
+
+def test_google_integration_requests_tasks_scope_only():
+    assert SCOPES == ["https://www.googleapis.com/auth/tasks"]
+
+
+def test_google_integration_status_includes_last_error(tmp_path):
+    integration = GoogleIntegration(tmp_path)
+
+    integration._set_last_error("Tasks API disabled", "https://console.example.com")
+    status = integration.get_connection_status()
+
+    assert status["last_error"] == "Tasks API disabled"
+    assert status["last_error_help_url"] == "https://console.example.com"
+
+
+def test_task_list_display_prefers_title_and_handles_duplicates():
+    from src.ui import SettingsDialog
+
+    options = {"Primary task list": "@default"}
+
+    first = SettingsDialog._task_list_display("Work", "list-1", options)
+    options[first] = "list-1"
+    second = SettingsDialog._task_list_display("Work", "list-2", options)
+
+    assert first == "Work"
+    assert second == "Work (list-2)"

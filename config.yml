@@ -38,7 +38,7 @@ export_format: csv
 fade_music_transitions: true
 fade_sound: true
 goal_tracking: true
-google_task_list_id: '@default'
+google_task_list_id: SndiajVLOW9qYVVKcWtLVQ
 gradient_backgrounds: true
 idle_cmd: ''
 long_break_interval: 3
@@ -81,7 +81,7 @@ track_idle_time: true
 transparency: 0.95
 weekly_goals: 40
 weekly_reports: true
-window_geometry: 250x662+264+194
+window_geometry: 250x636+-1040+-3
 work_end_cmd: scripts\classical_music.ps1 -Action stop
 work_mins: 25
 work_msg: Focus on your task

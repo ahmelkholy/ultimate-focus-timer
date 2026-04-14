@@ -10,9 +10,6 @@ import os
 import platform
 import shutil
 import subprocess
-import sys
-import tempfile
-import urllib.request
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -160,7 +157,7 @@ class MPVInstaller:
         if not shutil.which("brew"):
             msg = (
                 "Homebrew not found. Please install Homebrew first:\n"
-                "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"\n"
+                '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"\n'
                 "Then run: brew install mpv"
             )
             return False, msg
@@ -185,7 +182,10 @@ class MPVInstaller:
                 return False, f"Homebrew installation failed: {result.stderr}"
 
         except subprocess.TimeoutExpired:
-            return False, "Installation timed out. Please install manually: brew install mpv"
+            return (
+                False,
+                "Installation timed out. Please install manually: brew install mpv",
+            )
         except Exception as e:
             return False, f"Installation error: {str(e)}"
 
@@ -214,13 +214,19 @@ class MPVInstaller:
                         if self.is_mpv_installed():
                             return True, f"MPV installed successfully via {pm}!"
                         else:
-                            return False, "MPV installation completed but verification failed"
+                            return (
+                                False,
+                                "MPV installation completed but verification failed",
+                            )
                     else:
                         logger.warning(f"{pm} installation failed: {result.stderr}")
                         continue
 
                 except subprocess.TimeoutExpired:
-                    return False, f"Installation timed out. Please install manually: {' '.join(cmd)}"
+                    return (
+                        False,
+                        f"Installation timed out. Please install manually: {' '.join(cmd)}",
+                    )
                 except Exception as e:
                     logger.warning(f"{pm} installation error: {e}")
                     continue
@@ -234,7 +240,9 @@ class MPVInstaller:
         )
         return False, msg
 
-    def ensure_mpv_available(self, auto_install: bool = True) -> Tuple[bool, str, Optional[Path]]:
+    def ensure_mpv_available(
+        self, auto_install: bool = True
+    ) -> Tuple[bool, str, Optional[Path]]:
         """
         Ensure MPV is available, optionally installing it.
         Returns: (is_available: bool, message: str, mpv_path: Optional[Path])

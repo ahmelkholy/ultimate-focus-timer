@@ -40,6 +40,7 @@ from .daemon_manager import DaemonManager
 from .google_integration import (
     DEFAULT_TASK_LIST_ID,
     GOOGLE_OAUTH_SETUP_URL,
+    GOOGLE_TASKS_API_OVERVIEW_URL,
     create_google_integration,
 )
 from .system import (
@@ -3128,9 +3129,14 @@ class SettingsDialog:
         )
 
     @staticmethod
-    def _task_list_display(title: str, task_list_id: str) -> str:
+    def _task_list_display(
+        title: str, task_list_id: str, existing: Optional[Dict[str, str]] = None
+    ) -> str:
         """Format a task list label for the settings combobox."""
-        return f"{title} ({task_list_id})"
+        display = title.strip() or f"List {task_list_id}"
+        if existing and display in existing and existing[display] != task_list_id:
+            return f"{display} ({task_list_id})"
+        return display
 
     def create_tasks_tab(self, notebook):
         """Create Google Tasks settings tab."""
@@ -3187,6 +3193,9 @@ class SettingsDialog:
         ttk.Button(
             tab, text="Refresh Lists", command=self.refresh_google_task_lists
         ).grid(row=3, column=2, padx=(5, 0), pady=5, sticky=tk.W)
+        ttk.Button(
+            tab, text="Enable Tasks API", command=self.open_google_tasks_api_setup
+        ).grid(row=3, column=3, padx=(5, 0), pady=5, sticky=tk.W)
 
         ttk.Label(
             tab,
@@ -3231,17 +3240,36 @@ class SettingsDialog:
 
     def open_google_oauth_setup(self):
         """Open the Google Cloud page for creating a Desktop OAuth client."""
+        self._open_external_url(
+            GOOGLE_OAUTH_SETUP_URL,
+            "Failed to open Google Cloud setup",
+        )
+
+    def open_google_tasks_api_setup(self):
+        """Open the Google Cloud page for enabling the Google Tasks API."""
+        help_url = GOOGLE_TASKS_API_OVERVIEW_URL
+        if self.google_integration:
+            status = self.google_integration.get_connection_status()
+            help_url = status.get("last_error_help_url") or help_url
+        self._open_external_url(
+            help_url,
+            "Failed to open Google Tasks API page",
+        )
+
+    @staticmethod
+    def _open_external_url(url: str, error_prefix: str):
+        """Open an external URL in the default browser."""
         try:
-            opened = webbrowser.open(GOOGLE_OAUTH_SETUP_URL, new=2)
+            opened = webbrowser.open(url, new=2)
             if not opened and hasattr(os, "startfile"):
-                os.startfile(GOOGLE_OAUTH_SETUP_URL)
+                os.startfile(url)
                 opened = True
             if not opened:
                 raise RuntimeError("Could not launch the default browser.")
         except Exception as exc:
             messagebox.showerror(
                 "Google Tasks",
-                f"Failed to open Google Cloud setup:\n{exc}",
+                f"{error_prefix}:\n{exc}",
             )
 
     def _sync_google_tasks_after_connect(self):
@@ -3375,6 +3403,8 @@ class SettingsDialog:
                 "Google API packages are not installed. Install the project "
                 "requirements to enable Google Tasks."
             )
+        elif status.get("last_error"):
+            self.google_status_var.set(status["last_error"])
         elif status["connected"]:
             self.google_status_var.set("Connected. Google Tasks sync is ready.")
         elif status["has_credentials_file"]:
@@ -3401,12 +3431,15 @@ class SettingsDialog:
 
         if self.google_integration and self.google_integration.is_enabled():
             for task_list in self.google_integration.get_task_lists():
-                display = self._task_list_display(task_list["title"], task_list["id"])
+                display = self._task_list_display(
+                    task_list["title"], task_list["id"], options
+                )
                 options[display] = task_list["id"]
+            self.refresh_google_status()
         elif saved_task_list_id != DEFAULT_TASK_LIST_ID:
-            options[self._task_list_display("Saved task list", saved_task_list_id)] = (
-                saved_task_list_id
-            )
+            options[
+                self._task_list_display("Saved task list", saved_task_list_id, options)
+            ] = saved_task_list_id
 
         self.google_task_list_lookup = options
         values = list(options.keys())
@@ -3535,6 +3568,8 @@ class SettingsDialog:
 
             if self.config.save_config():
                 self._sync_task_manager()
+                if self.google_integration and self.google_integration.is_enabled():
+                    self._sync_google_tasks_after_connect()
                 messagebox.showinfo(
                     "Settings Saved",
                     "Settings saved successfully.",

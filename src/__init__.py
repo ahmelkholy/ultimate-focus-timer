@@ -11,6 +11,7 @@ __all__ = [
     "__description__",
     "ConfigManager",
     "SessionManager",
+    "TaskManager",
     "MusicController",
     "NotificationManager",
 ]
