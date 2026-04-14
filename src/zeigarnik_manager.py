@@ -16,12 +16,14 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Check for keyboard library
+keyboard = None
 try:
     import keyboard
 
     KEYBOARD_AVAILABLE = True
 except ImportError:
     KEYBOARD_AVAILABLE = False
+    keyboard = None
     logger.warning("keyboard library not available - Zeigarnik hotkey disabled")
 
 
@@ -52,7 +54,9 @@ class ZeigarnikOffloadManager:
     def start(self):
         """Start listening for the hotkey"""
         if not KEYBOARD_AVAILABLE:
-            logger.warning("Cannot start Zeigarnik hotkey - keyboard library not available")
+            logger.warning(
+                "Cannot start Zeigarnik hotkey - keyboard library not available"
+            )
             return
 
         if self.is_active:
@@ -122,7 +126,12 @@ class ZeigarnikOffloadManager:
 
         # Text entry
         text_entry = tk.Text(
-            self._input_window, height=4, font=("Consolas", 11), bg="#1a1a1a", fg=fg_color, insertbackground=fg_color
+            self._input_window,
+            height=4,
+            font=("Consolas", 11),
+            bg="#1a1a1a",
+            fg=fg_color,
+            insertbackground=fg_color,
         )
         text_entry.pack(padx=10, pady=(0, 10), fill="both", expand=True)
         text_entry.focus_set()

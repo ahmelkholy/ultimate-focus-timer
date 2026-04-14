@@ -1,4 +1,6 @@
 import json
+import importlib
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -193,10 +195,68 @@ def test_sync_with_cloud_updates_local_task_from_newer_remote_changes(tmp_path):
 
 
 def test_ui_module_has_google_browser_setup_dependencies():
-    import src.ui as ui
+    for module_name in (
+        "src.ui",
+        "matplotlib.pyplot",
+        "matplotlib.backends.backend_tkagg",
+        "pandas",
+        "seaborn",
+    ):
+        sys.modules.pop(module_name, None)
+
+    ui = importlib.import_module("src.ui")
 
     assert hasattr(ui, "webbrowser")
     assert ui.GOOGLE_OAUTH_SETUP_URL.startswith("https://")
+    assert "matplotlib.pyplot" not in sys.modules
+    assert "pandas" not in sys.modules
+    assert "seaborn" not in sys.modules
+
+
+def test_sync_with_cloud_pushes_newer_local_completion_to_google(tmp_path):
+    today = datetime.now().strftime("%Y-%m-%d")
+    write_tasks(
+        tmp_path / "daily_tasks.json",
+        {
+            today: [
+                {
+                    "id": f"{today}_local_complete",
+                    "title": "Finish spec",
+                    "google_id": "remote-3",
+                    "description": "done locally",
+                    "completed": True,
+                    "pomodoros_planned": 1,
+                    "pomodoros_completed": 1,
+                    "created_at": f"{today}T08:00:00",
+                    "updated_at": f"{today}T10:00:00",
+                    "completed_at": f"{today}T10:00:00",
+                }
+            ]
+        },
+    )
+    integration = StubGoogleIntegration(
+        remote_tasks=[
+            {
+                "id": "remote-3",
+                "title": "Finish spec",
+                "notes": "not done yet",
+                "status": "needsAction",
+                "updated": f"{today}T08:30:00",
+            }
+        ]
+    )
+    manager = TaskManager(
+        data_dir=tmp_path,
+        google_integration=integration,
+        google_task_list_id="@default",
+    )
+
+    summary = manager.sync_with_cloud()
+
+    assert summary["updated"] == 1
+    assert integration.updated
+    assert integration.updated[-1]["task_id"] == "remote-3"
+    assert integration.updated[-1]["completed"] is True
 
 
 def test_google_integration_requests_tasks_scope_only():

@@ -115,6 +115,18 @@
   ],
   "2026-04-14": [
     {
+      "id": "2026-04-14_170817847534",
+      "title": "pid paper",
+      "google_id": "SDQ0eGNYV0JidzdYcWFtRA",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-04-14T17:08:17.847543",
+      "updated_at": "2026-04-14T17:08:17.847543",
+      "completed_at": null
+    },
+    {
       "id": "2026-04-14_162205307431",
       "title": "call dmitry",
       "google_id": "NnFJUEFsdDdnQ29BY3hGVg",
@@ -123,7 +135,7 @@
       "pomodoros_planned": 1,
       "pomodoros_completed": 0,
       "created_at": "2026-04-14T16:22:05.307440",
-      "updated_at": "2026-04-14T16:24:25.224739",
+      "updated_at": "2026-04-14T17:03:35.971586",
       "completed_at": null
     },
     {
@@ -136,18 +148,6 @@
       "pomodoros_completed": 0,
       "created_at": "2026-04-14T16:21:56.371919",
       "updated_at": "2026-04-14T16:21:56.371919",
-      "completed_at": null
-    },
-    {
-      "id": "2026-04-14_162117734545",
-      "title": "pid paper",
-      "google_id": "V0hjbGl2bnlTOEo4Y2Q1WQ",
-      "description": "",
-      "completed": false,
-      "pomodoros_planned": 1,
-      "pomodoros_completed": 0,
-      "created_at": "2026-04-14T16:21:17.734554",
-      "updated_at": "2026-04-14T16:21:17.734554",
       "completed_at": null
     },
     {

@@ -9,7 +9,7 @@ __description__ = "A comprehensive cross-platform productivity timer application
 __url__ = "https://github.com/ahmelkholy/ultimate-focus-timer"
 
 # Version components
-VERSION_MAJOR = 1
+VERSION_MAJOR = 2
 VERSION_MINOR = 0
 VERSION_PATCH = 0
 VERSION_INFO = (VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)

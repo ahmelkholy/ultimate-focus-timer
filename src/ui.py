@@ -4,6 +4,8 @@ ui.py - Presentation layer for Ultimate Focus Timer.
 Combines: focus_app, focus_gui, dashboard, inline_task_widget, task_dialog
 """
 
+from __future__ import annotations
+
 import argparse
 import csv
 import importlib.util
@@ -21,12 +23,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
-from typing import Any, Callable, Dict, List, Optional
-
-import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn as sns
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from .core import (
     ConfigManager,
@@ -54,18 +51,46 @@ from .system import (
 
 logger = logging.getLogger(__name__)
 
-# Set style for better visualizations
-try:
-    import matplotlib
+if TYPE_CHECKING:
+    import pandas as pd
+
+
+_ANALYTICS_MODULES: Optional[Tuple[Any, Any, Any]] = None
+
+
+def _load_analytics_modules() -> Tuple[Any, Any, Any]:
+    """Import heavy analytics dependencies only when analytics is used."""
+    global _ANALYTICS_MODULES
+    if _ANALYTICS_MODULES is not None:
+        return _ANALYTICS_MODULES
 
     try:
-        matplotlib.use("TkAgg")
-    except Exception:
-        matplotlib.use("Agg")
-    plt.style.use("seaborn-v0_8")
-    sns.set_palette("husl")
-except Exception as e:
-    logger.warning("Could not set matplotlib style: %s", e)
+        import matplotlib
+
+        try:
+            matplotlib.use("TkAgg")
+        except Exception:
+            matplotlib.use("Agg")
+
+        import matplotlib.pyplot as plt
+        import pandas as pd
+        import seaborn as sns
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+    except ImportError as exc:
+        raise RuntimeError(
+            "Analytics dashboard requires matplotlib, pandas, and seaborn. "
+            "Install the project requirements to use analytics."
+        ) from exc
+
+    try:
+        plt.style.use("seaborn-v0_8")
+        sns.set_palette("husl")
+    except Exception as exc:
+        logger.warning("Could not set matplotlib style: %s", exc)
+
+    _ANALYTICS_MODULES = (plt, pd, FigureCanvasTkAgg)
+    return _ANALYTICS_MODULES
+
 
 try:
     from .focus_console import ConsoleInterface
@@ -1546,6 +1571,7 @@ class SessionAnalyzer:
 
     def get_daily_breakdown(self, sessions: List[SessionData]) -> pd.DataFrame:
         """Generate daily breakdown statistics"""
+        _, pd, _ = _load_analytics_modules()
         completed_sessions = [s for s in sessions if s.action == "Completed"]
 
         # Group by date
@@ -1649,6 +1675,7 @@ class DashboardGUI:
             self.analyzer = analyzer
             self.is_running = True
             self.check_running_id = None  # Track the scheduled callback
+            self.plt, _, self.figure_canvas_class = _load_analytics_modules()
 
             logger.debug("Creating root window")
             self.root = tk.Tk()
@@ -1729,8 +1756,8 @@ class DashboardGUI:
                 except Exception:
                     pass  # Ignore errors if already destroyed
 
-            # Close any matplotlib figures
-            plt.close("all")
+            if getattr(self, "plt", None) is not None:
+                self.plt.close("all")
 
             logger.debug("Dashboard cleanup complete")
         except Exception:
@@ -2052,7 +2079,7 @@ class DashboardGUI:
             return
 
         # Create matplotlib figure
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 8))
+        fig, ((ax1, ax2), (ax3, ax4)) = self.plt.subplots(2, 2, figsize=(12, 8))
         fig.patch.set_facecolor("#2c3e50")
 
         # Daily productivity trend
@@ -2145,10 +2172,10 @@ class DashboardGUI:
             ax.spines["right"].set_color("white")
             ax.spines["left"].set_color("white")
 
-        plt.tight_layout()
+        self.plt.tight_layout()
 
         # Embed in tkinter
-        canvas = FigureCanvasTkAgg(fig, self.charts_container)
+        canvas = self.figure_canvas_class(fig, self.charts_container)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
 
@@ -2209,7 +2236,7 @@ class DashboardGUI:
                     return
 
                 # Create a comprehensive report figure
-                fig, axes = plt.subplots(3, 2, figsize=(15, 12))
+                fig, axes = self.plt.subplots(3, 2, figsize=(15, 12))
                 fig.patch.set_facecolor("white")
                 fig.suptitle(
                     f"Focus Productivity Report — {self.current_period.title()} View",
@@ -2358,9 +2385,14 @@ class DashboardGUI:
                     color="#2c3e50",
                 )
 
-                plt.tight_layout()
-                plt.savefig(filename, dpi=300, bbox_inches="tight", facecolor="white")
-                plt.close()
+                self.plt.tight_layout()
+                self.plt.savefig(
+                    filename,
+                    dpi=300,
+                    bbox_inches="tight",
+                    facecolor="white",
+                )
+                self.plt.close()
 
                 messagebox.showinfo(
                     "Report Generated", f"Visual report saved to:\n{filename}"
@@ -3798,6 +3830,12 @@ class FocusGUI:
 
             # Store scheduled callback IDs for proper cleanup
             self.scheduled_callbacks = []
+            self._cloud_sync_lock = threading.Lock()
+            self._cloud_sync_interval_ms = 30000
+            self._window_geometry_save_callback_id = None
+            self._last_saved_window_geometry = str(
+                self.config.get("window_geometry", "") or ""
+            )
 
             # ── Daemon manager ─────────────────────────────────────────────────
             self.daemon_manager = DaemonManager(
@@ -3861,6 +3899,7 @@ class FocusGUI:
 
             # Start update loop
             self.schedule_callback(100, self.update_loop)
+            self.schedule_callback(5000, self._auto_sync_tasks)
 
         except Exception as e:
             print(f"[X] Error initializing GUI: {e}")
@@ -3883,6 +3922,7 @@ class FocusGUI:
 
         # Load saved window dimensions or use defaults
         self.load_window_dimensions()
+        self.root.bind("<Configure>", self.on_window_configure)
 
         # Bind minimize/restore events for mini indicator
         self.root.bind("<Unmap>", self.on_minimize)
@@ -3896,13 +3936,27 @@ class FocusGUI:
 
     def load_window_dimensions(self):
         """Load saved window dimensions or use defaults"""
+        saved_geometry = str(self.config.get("window_geometry", "") or "").strip()
+        if not saved_geometry:
+            self.center_window_default()
+            return
+
+        if not self._geometry_is_visible(saved_geometry):
+            logger.info(
+                "Saved window geometry %s is off-screen; restoring defaults.",
+                saved_geometry,
+            )
+            self.center_window_default()
+            return
+
         try:
-            saved_geometry = self.config.get("window_geometry", None)
-            if saved_geometry and self._geometry_is_visible(saved_geometry):
-                self.root.geometry(saved_geometry)
-            else:
-                self.center_window_default()
-        except Exception:
+            self.root.geometry(saved_geometry)
+        except tk.TclError as exc:
+            logger.warning(
+                "Failed to restore saved window geometry %s: %s",
+                saved_geometry,
+                exc,
+            )
             self.center_window_default()
 
     def _geometry_is_visible(self, geometry: str) -> bool:
@@ -3950,17 +4004,66 @@ class FocusGUI:
 
         self.root.geometry(f"{default_width}x{default_height}+{x}+{y}")
 
+    def on_window_configure(self, event=None):
+        """Debounce geometry persistence while the main window is resized or moved."""
+        if event is not None and event.widget is not self.root:
+            return
+        if not self._should_persist_window_geometry():
+            return
+
+        self._cancel_window_geometry_save()
+        self._window_geometry_save_callback_id = self.schedule_callback(
+            250, self._flush_window_geometry_save
+        )
+
+    def _should_persist_window_geometry(self) -> bool:
+        """Return True when the main window geometry should be saved."""
+        try:
+            return bool(self.root.winfo_exists()) and self.root.state() == "normal"
+        except tk.TclError:
+            return False
+
+    def _cancel_window_geometry_save(self) -> None:
+        """Cancel any pending debounced geometry save."""
+        if not self._window_geometry_save_callback_id:
+            return
+
+        try:
+            self.root.after_cancel(self._window_geometry_save_callback_id)
+        except tk.TclError:
+            pass
+
+        try:
+            self.scheduled_callbacks.remove(self._window_geometry_save_callback_id)
+        except ValueError:
+            pass
+
+        self._window_geometry_save_callback_id = None
+
+    def _flush_window_geometry_save(self) -> None:
+        """Persist the latest window geometry after debounce settles."""
+        self._window_geometry_save_callback_id = None
+        self.save_window_dimensions()
+
     def save_window_dimensions(self):
         """Save current window dimensions"""
+        if not self._should_persist_window_geometry():
+            return
+
         try:
-            # Get current window geometry
             geometry = self.root.geometry()
-            # Save to config
-            self.config.set("window_geometry", geometry)
-            self.config.save_config()
-        except Exception:
-            # Silently ignore save errors
-            pass
+        except tk.TclError as exc:
+            logger.warning("Failed to read window geometry: %s", exc)
+            return
+
+        if geometry == self._last_saved_window_geometry:
+            return
+
+        self.config.set("window_geometry", geometry)
+        if self.config.save_config():
+            self._last_saved_window_geometry = geometry
+        else:
+            logger.warning("Failed to persist window geometry %s", geometry)
 
     def create_widgets(self):
         """Create and layout GUI widgets"""
@@ -4808,34 +4911,87 @@ class FocusGUI:
             self.task_manager.delete_task(tasks[0].id)
             self.update_task_display()
 
+    def _auto_sync_tasks(self):
+        """Periodically sync Google Tasks while the GUI is running."""
+        self.schedule_callback(self._cloud_sync_interval_ms, self._auto_sync_tasks)
+        if not self.google_integration or not self.google_integration.is_enabled():
+            return
+        self._run_cloud_sync(notify_user=False)
+
+    def _run_cloud_sync(self, notify_user: bool) -> bool:
+        """Start a cloud sync if another sync is not already running."""
+        if not self._cloud_sync_lock.acquire(blocking=False):
+            return False
+
+        threading.Thread(
+            target=self._cloud_sync_worker,
+            args=(notify_user,),
+            daemon=True,
+        ).start()
+        return True
+
+    def _cloud_sync_worker(self, notify_user: bool) -> None:
+        """Run cloud sync off the main thread and marshal UI updates back safely."""
+        try:
+            summary = self.task_manager.sync_with_cloud()
+            self._marshal(
+                lambda summary=summary: self._handle_cloud_sync_result(
+                    summary,
+                    notify_user,
+                )
+            )
+        except Exception as exc:
+            logger.exception("Cloud sync failed")
+            if notify_user:
+                self._marshal(
+                    lambda exc=exc: messagebox.showerror(
+                        "Sync",
+                        f"Cloud sync failed:\n{exc}",
+                    )
+                )
+        finally:
+            self._cloud_sync_lock.release()
+
+    def _handle_cloud_sync_result(
+        self, summary: Dict[str, int], notify_user: bool
+    ) -> None:
+        """Refresh task views after a sync and optionally show a summary."""
+        self.update_task_display()
+        if hasattr(self, "task_window") and self.task_window.winfo_exists():
+            self.update_separate_task_display()
+
+        if not notify_user:
+            if any(summary.values()):
+                logger.info("Background Google task sync: %s", summary)
+            return
+
+        if self.google_integration and self.google_integration.is_enabled():
+            message = (
+                "Sync complete "
+                f"(pushed {summary.get('pushed', 0)}, "
+                f"pulled {summary.get('pulled', 0)}, "
+                f"updated {summary.get('updated', 0)}, "
+                f"queued {summary.get('queued', 0)})"
+            )
+        else:
+            message = (
+                f"Google sync offline. {summary.get('queued', 0)} change(s) queued."
+            )
+
+        try:
+            messagebox.showinfo("Sync", message)
+        except Exception:
+            logger.info(message)
+
     def sync_tasks_now(self):
         """Manually trigger a cloud sync (Ctrl+S)."""
+        if self._run_cloud_sync(notify_user=True):
+            return
 
-        def _worker():
-            summary = self.task_manager.sync_with_cloud()
-            if self.google_integration and self.google_integration.is_enabled():
-                message = (
-                    "Sync complete "
-                    f"(pushed {summary.get('pushed', 0)}, "
-                    f"pulled {summary.get('pulled', 0)}, "
-                    f"updated {summary.get('updated', 0)}, "
-                    f"queued {summary.get('queued', 0)})"
-                )
-            else:
-                message = (
-                    f"Google sync offline. {summary.get('queued', 0)} change(s) queued."
-                )
-
-            def _notify():
-                try:
-                    messagebox.showinfo("Sync", message)
-                except Exception:
-                    logger.info(message)
-                self.update_task_display()
-
-            self._marshal(_notify)
-
-        threading.Thread(target=_worker, daemon=True).start()
+        try:
+            messagebox.showinfo("Sync", "A sync is already running.")
+        except Exception:
+            logger.info("A sync is already running.")
 
     def trigger_add_task(self):
         """Public method to trigger adding a new task (for keyboard shortcuts)"""
@@ -5941,6 +6097,7 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
         if self.daemon_manager:
             self.daemon_manager.stop(managed_only=True)
 
+        self._cancel_window_geometry_save()
         self.cleanup_callbacks()
         self.save_window_dimensions()
         self.session_manager.cleanup()
