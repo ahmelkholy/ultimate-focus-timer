@@ -5,13 +5,13 @@ google_integration.py - Google Tasks and Calendar integration for Ultimate Focus
 Connects the local task list with Google Tasks and Google Calendar.
 """
 
-import json
 import logging
 import os
 import pickle
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,8 @@ SCOPES = [
     "https://www.googleapis.com/auth/tasks",
     "https://www.googleapis.com/auth/calendar",
 ]
+
+DEFAULT_TASK_LIST_ID = "@default"
 
 
 class GoogleIntegration:
@@ -104,29 +106,65 @@ class GoogleIntegration:
         """Check if Google integration is enabled"""
         return self.enabled and GOOGLE_API_AVAILABLE
 
+    def _execute_with_backoff(
+        self, action: str, func: Callable[[], Any], retries: int = 3
+    ) -> Any:
+        """Run Google API call with simple exponential backoff for transient errors."""
+        delay = 1.0
+        for attempt in range(retries):
+            try:
+                return func()
+            except HttpError as exc:
+                status_code = getattr(getattr(exc, "resp", None), "status", None)
+                if status_code in (429, 500, 503) and attempt < retries - 1:
+                    logger.warning(
+                        "%s throttled (%s); retrying in %.1fs",
+                        action,
+                        status_code,
+                        delay,
+                    )
+                    time.sleep(delay)
+                    delay = min(delay * 2, 30.0)
+                    continue
+                logger.error("%s failed: %s", action, exc)
+                raise
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.error("%s failed unexpectedly: %s", action, exc)
+                raise
+        return None
+
     def get_task_lists(self) -> List[Dict[str, str]]:
         """Get all Google Tasks lists"""
         if not self.is_enabled():
             return []
 
         try:
-            results = self.tasks_service.tasklists().list().execute()
+            results = self._execute_with_backoff(
+                "list_task_lists", lambda: self.tasks_service.tasklists().list().execute()
+            )
             task_lists = results.get("items", [])
             return [{"id": tl["id"], "title": tl["title"]} for tl in task_lists]
         except HttpError as e:
             logger.error(f"Failed to get task lists: {e}")
             return []
 
-    def get_tasks(self, task_list_id: str) -> List[Dict[str, Any]]:
+    def get_tasks(self, task_list_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get tasks from a specific Google Tasks list"""
         if not self.is_enabled():
             return []
 
         try:
-            results = (
-                self.tasks_service.tasks()
-                .list(tasklist=task_list_id, showCompleted=False, showHidden=False)
-                .execute()
+            results = self._execute_with_backoff(
+                "list_tasks",
+                lambda: (
+                    self.tasks_service.tasks()
+                    .list(
+                        tasklist=task_list_id or DEFAULT_TASK_LIST_ID,
+                        showCompleted=False,
+                        showHidden=False,
+                    )
+                    .execute()
+                ),
             )
             tasks = results.get("items", [])
             return tasks
@@ -151,10 +189,13 @@ class GoogleIntegration:
                 # Google Tasks uses RFC 3339 format for due dates
                 task["due"] = due.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
-            result = (
-                self.tasks_service.tasks()
-                .insert(tasklist=task_list_id, body=task)
-                .execute()
+            result = self._execute_with_backoff(
+                "create_task",
+                lambda: (
+                    self.tasks_service.tasks()
+                    .insert(tasklist=task_list_id or DEFAULT_TASK_LIST_ID, body=task)
+                    .execute()
+                ),
             )
             logger.info(f"Created Google task: {title}")
             return result
@@ -176,10 +217,13 @@ class GoogleIntegration:
 
         try:
             # Get current task
-            task = (
-                self.tasks_service.tasks()
-                .get(tasklist=task_list_id, task=task_id)
-                .execute()
+            task = self._execute_with_backoff(
+                "get_task",
+                lambda: (
+                    self.tasks_service.tasks()
+                    .get(tasklist=task_list_id or DEFAULT_TASK_LIST_ID, task=task_id)
+                    .execute()
+                ),
             )
 
             # Update fields
@@ -191,11 +235,20 @@ class GoogleIntegration:
                 task["status"] = "completed" if completed else "needsAction"
                 if completed:
                     task["completed"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
+                else:
+                    task.pop("completed", None)
 
-            result = (
-                self.tasks_service.tasks()
-                .update(tasklist=task_list_id, task=task_id, body=task)
-                .execute()
+            result = self._execute_with_backoff(
+                "update_task",
+                lambda: (
+                    self.tasks_service.tasks()
+                    .update(
+                        tasklist=task_list_id or DEFAULT_TASK_LIST_ID,
+                        task=task_id,
+                        body=task,
+                    )
+                    .execute()
+                ),
             )
             logger.info(f"Updated Google task: {task_id}")
             return result
@@ -209,7 +262,14 @@ class GoogleIntegration:
             return False
 
         try:
-            self.tasks_service.tasks().delete(tasklist=task_list_id, task=task_id).execute()
+            self._execute_with_backoff(
+                "delete_task",
+                lambda: (
+                    self.tasks_service.tasks()
+                    .delete(tasklist=task_list_id or DEFAULT_TASK_LIST_ID, task=task_id)
+                    .execute()
+                ),
+            )
             logger.info(f"Deleted Google task: {task_id}")
             return True
         except HttpError as e:
@@ -266,6 +326,32 @@ class GoogleIntegration:
             logger.error(f"Failed to create calendar event: {e}")
             return None
 
+    def fetch_remote_tasks(
+        self, task_list_id: Optional[str] = None, include_completed: bool = True
+    ) -> List[Dict[str, Any]]:
+        """Fetch tasks from the primary or specified Google task list."""
+        if not self.is_enabled():
+            return []
+
+        try:
+            result = self._execute_with_backoff(
+                "fetch_remote_tasks",
+                lambda: (
+                    self.tasks_service.tasks()
+                    .list(
+                        tasklist=task_list_id or DEFAULT_TASK_LIST_ID,
+                        showCompleted=include_completed,
+                        showHidden=False,
+                        maxResults=100,
+                    )
+                    .execute()
+                ),
+            )
+            return result.get("items", [])
+        except HttpError as e:
+            logger.error(f"Failed to fetch remote tasks: {e}")
+            return []
+
     def sync_tasks_to_google(
         self, local_tasks: List[Dict[str, Any]], task_list_id: str
     ) -> bool:
@@ -288,13 +374,17 @@ class GoogleIntegration:
                     # Update existing task
                     google_task = google_task_map[title]
                     self.update_task(
-                        task_list_id,
+                        task_list_id or DEFAULT_TASK_LIST_ID,
                         google_task["id"],
                         completed=local_task.get("completed", False),
                     )
                 else:
                     # Create new task
-                    self.create_task(task_list_id, title, local_task.get("description", ""))
+                    self.create_task(
+                        task_list_id or DEFAULT_TASK_LIST_ID,
+                        title,
+                        local_task.get("description", ""),
+                    )
 
             logger.info(f"Synced {len(local_tasks)} tasks to Google Tasks")
             return True
