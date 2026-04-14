@@ -1,0 +1,10 @@
+{
+  "session_type": "work",
+  "session_duration": 1500,
+  "elapsed_seconds": 331,
+  "state": "running",
+  "start_time": "2026-04-14T18:40:04.824792",
+  "completed_work_sessions": 1,
+  "session_count": 2,
+  "saved_at": "2026-04-14T18:45:35.067113"
+}
