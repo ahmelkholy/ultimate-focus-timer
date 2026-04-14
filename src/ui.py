@@ -16,6 +16,7 @@ import subprocess
 import sys
 import threading
 import tkinter as tk
+import webbrowser
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -35,10 +36,15 @@ from .core import (
     Task,
     TaskManager,
 )
-from .google_integration import DEFAULT_TASK_LIST_ID, create_google_integration
 from .daemon_manager import DaemonManager
+from .google_integration import (
+    DEFAULT_TASK_LIST_ID,
+    GOOGLE_OAUTH_SETUP_URL,
+    create_google_integration,
+)
 from .system import (
     EXPORTS_DIR,
+    SESSION_LOG_FILE,
     HotkeyManager,
     MusicController,
     NotificationManager,
@@ -132,7 +138,7 @@ class TaskInputDialog:
         # Title
         title_label = ttk.Label(
             main_frame,
-            text="📝 What are your tasks for today?",
+            text="📝 What are you working on?",
             font=("Arial", 14, "bold"),
         )
         title_label.grid(row=0, column=0, pady=(0, 10), sticky=tk.W)
@@ -141,7 +147,7 @@ class TaskInputDialog:
         existing_tasks = self.task_manager.get_today_tasks()
         if existing_tasks:
             existing_frame = ttk.LabelFrame(
-                main_frame, text="Existing Tasks", padding="5"
+                main_frame, text="Current Tasks", padding="5"
             )
             existing_frame.grid(
                 row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10)
@@ -281,10 +287,7 @@ class TaskInputDialog:
         if var.get():
             self.task_manager.complete_task(task.id)
         else:
-            # Uncomplete the task
-            task.completed = False
-            task.completed_at = None
-            self.task_manager.save_tasks()
+            self.task_manager.uncomplete_task(task.id)
 
         if self.on_tasks_updated:
             self.on_tasks_updated()
@@ -326,7 +329,7 @@ class TaskDisplayWidget:
         self.task_manager = task_manager
 
         # Create main frame
-        self.frame = ttk.LabelFrame(parent, text="📝 Today's Tasks", padding="5")
+        self.frame = ttk.LabelFrame(parent, text="📝 Current Tasks", padding="5")
         self.create_widgets()
         self.update_display()
 
@@ -377,7 +380,7 @@ class TaskDisplayWidget:
             )
             self.stats_label.config(text=stats_text)
         else:
-            self.stats_label.config(text="No tasks for today")
+            self.stats_label.config(text="No active tasks")
 
         # Display tasks
         if not tasks:
@@ -429,10 +432,7 @@ class TaskDisplayWidget:
         if var.get():
             self.task_manager.complete_task(task.id)
         else:
-            # Uncomplete the task
-            task.completed = False
-            task.completed_at = None
-            self.task_manager.save_tasks()
+            self.task_manager.uncomplete_task(task.id)
 
         self.update_display()
 
@@ -465,7 +465,7 @@ class InlineTaskWidget:
         self.selected_row_index = -1  # Currently selected row for vim navigation
 
         # Create main frame with dark styling
-        self.frame = ttk.LabelFrame(parent, text="📝 Today's Tasks", padding="8")
+        self.frame = ttk.LabelFrame(parent, text="📝 Current Tasks", padding="8")
         self.create_widgets()
         self.apply_dark_theme()
         self.setup_vim_keybindings()
@@ -736,11 +736,9 @@ class InlineTaskWidget:
         if 0 <= self.selected_row_index < len(self.task_rows):
             task, _ = self.task_rows[self.selected_row_index]
             if task.completed:
-                task.completed = False
-                task.completed_at = None
+                self.task_manager.uncomplete_task(task.id)
             else:
                 self.task_manager.complete_task(task.id)
-            self.task_manager.save_tasks()
             self.update_display()
 
     def vim_delegate_tomorrow(self):
@@ -751,6 +749,7 @@ class InlineTaskWidget:
 
             tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
             task.description = f"[Delegated to {tomorrow}] {task.description}"
+            task.touch()
             self.task_manager.save_tasks()
             logger.info(f"Task '{task.title}' delegated to tomorrow")
             self.update_display()
@@ -763,6 +762,7 @@ class InlineTaskWidget:
 
             next_week = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
             task.description = f"[Delegated to {next_week}] {task.description}"
+            task.touch()
             self.task_manager.save_tasks()
             logger.info(f"Task '{task.title}' delegated to next week")
             self.update_display()
@@ -1005,6 +1005,12 @@ class InlineTaskWidget:
             2, weight=1
         )  # Make title column expand to fill space
 
+        # Determine selection background for this row
+        idx = row
+        sel_bg = (
+            "#1a3a1a" if idx == getattr(self, "selected_task_index", -1) else "#2b2b2b"
+        )
+
         # Add drag-and-drop bindings
         task_frame.bind(
             "<ButtonPress-1>", lambda e: self.on_drag_start(e, task_frame, task)
@@ -1060,7 +1066,7 @@ class InlineTaskWidget:
             text=title_text,
             font=("Arial", 12),
             fg=text_color,
-            bg="#2b2b2b",  # Dark background
+            bg=sel_bg,  # Dark background or selected
             anchor="w",
             justify="left",
         )
@@ -1086,7 +1092,7 @@ class InlineTaskWidget:
             text=pomodoro_text,
             font=("Arial", 11),
             fg=pomodoro_color,
-            bg="#2b2b2b",
+            bg=sel_bg,
         )
         pomodoro_label.grid(row=0, column=3, padx=(1, 1))  # Minimal padding
 
@@ -2961,8 +2967,16 @@ class CustomSessionDialog:
 class SettingsDialog:
     """Dialog for application settings"""
 
-    def __init__(self, parent, config_manager):
+    def __init__(
+        self,
+        parent,
+        config_manager,
+        google_integration=None,
+        task_manager: Optional[TaskManager] = None,
+    ):
         self.config = config_manager
+        self.google_integration = google_integration
+        self.task_manager = task_manager
         self.result = False
 
         self.dialog = tk.Toplevel(parent)
@@ -2973,6 +2987,19 @@ class SettingsDialog:
         self.dialog.transient(parent)
         self.dialog.grab_set()
 
+        default_credentials_path = (
+            str(self.google_integration.credentials_file)
+            if self.google_integration
+            else str(Path.home() / ".ultimate-focus-timer" / "google_credentials.json")
+        )
+        self.google_credentials_path = tk.StringVar(
+            master=self.dialog, value=default_credentials_path
+        )
+        self.google_status_var = tk.StringVar(master=self.dialog, value="")
+        self.google_task_list_var = tk.StringVar(master=self.dialog, value="")
+        self.google_task_list_lookup: Dict[str, str] = {}
+        self.google_task_list_combo = None
+
         main_frame = ttk.Frame(self.dialog, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -2982,6 +3009,7 @@ class SettingsDialog:
         self.create_timer_tab(notebook)
         self.create_music_tab(notebook)
         self.create_notifications_tab(notebook)
+        self.create_tasks_tab(notebook)
         self.create_theme_tab(notebook)
 
         button_frame = ttk.Frame(main_frame)
@@ -3099,6 +3127,387 @@ class SettingsDialog:
             row=1, column=1, sticky=tk.W
         )
 
+    @staticmethod
+    def _task_list_display(title: str, task_list_id: str) -> str:
+        """Format a task list label for the settings combobox."""
+        return f"{title} ({task_list_id})"
+
+    def create_tasks_tab(self, notebook):
+        """Create Google Tasks settings tab."""
+        tab = ttk.Frame(notebook, padding="10")
+        notebook.add(tab, text="Tasks")
+        tab.grid_columnconfigure(1, weight=1)
+
+        ttk.Label(tab, text="Google Tasks Status:").grid(
+            row=0, column=0, sticky=tk.NW, pady=5
+        )
+        ttk.Label(
+            tab,
+            textvariable=self.google_status_var,
+            wraplength=320,
+            justify=tk.LEFT,
+        ).grid(row=0, column=1, columnspan=2, sticky=tk.W, pady=5)
+
+        ttk.Label(tab, text="OAuth Client JSON:").grid(
+            row=1, column=0, sticky=tk.W, pady=5
+        )
+        ttk.Entry(tab, textvariable=self.google_credentials_path, width=40).grid(
+            row=1, column=1, sticky=(tk.W, tk.E), pady=5
+        )
+        ttk.Button(tab, text="Browse...", command=self.browse_google_credentials).grid(
+            row=1, column=2, padx=(5, 0), pady=5, sticky=tk.W
+        )
+        ttk.Button(
+            tab, text="Paste JSON...", command=self.paste_google_credentials
+        ).grid(row=1, column=3, padx=(5, 0), pady=5, sticky=tk.W)
+
+        actions = ttk.Frame(tab)
+        actions.grid(row=2, column=1, columnspan=3, sticky=tk.W, pady=(5, 10))
+        ttk.Button(
+            actions,
+            text="Connect Google Tasks",
+            command=self.connect_google_tasks,
+        ).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(
+            actions,
+            text="Disconnect",
+            command=self.disconnect_google_tasks,
+        ).pack(side=tk.LEFT)
+
+        ttk.Label(tab, text="Google Task List:").grid(
+            row=3, column=0, sticky=tk.W, pady=5
+        )
+        self.google_task_list_combo = ttk.Combobox(
+            tab,
+            textvariable=self.google_task_list_var,
+            state="readonly",
+            width=40,
+        )
+        self.google_task_list_combo.grid(row=3, column=1, sticky=(tk.W, tk.E), pady=5)
+        ttk.Button(
+            tab, text="Refresh Lists", command=self.refresh_google_task_lists
+        ).grid(row=3, column=2, padx=(5, 0), pady=5, sticky=tk.W)
+
+        ttk.Label(
+            tab,
+            text=(
+                "Click Connect Google Tasks to launch setup if needed, then open "
+                "your browser for Google sign-in. The saved token stays local on "
+                "this machine."
+            ),
+            wraplength=420,
+            justify=tk.LEFT,
+        ).grid(row=4, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
+
+        self.refresh_google_status()
+        self.refresh_google_task_lists()
+
+    def browse_google_credentials(self, connect_after_install: bool = False):
+        """Pick and install a Google OAuth client JSON file."""
+        selected = filedialog.askopenfilename(
+            parent=self.dialog,
+            title="Select Google OAuth Client JSON",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+        )
+        if not selected:
+            return False
+
+        try:
+            if self.google_integration:
+                installed = self.google_integration.install_credentials_file(Path(selected))
+                self.google_credentials_path.set(str(installed))
+            else:
+                self.google_credentials_path.set(selected)
+            self.refresh_google_status()
+            if connect_after_install:
+                self.dialog.after(0, self.connect_google_tasks)
+            return True
+        except Exception as exc:
+            messagebox.showerror(
+                "Google Tasks",
+                f"Failed to install Google OAuth JSON:\n{exc}",
+            )
+            return False
+
+    def open_google_oauth_setup(self):
+        """Open the Google Cloud page for creating a Desktop OAuth client."""
+        try:
+            opened = webbrowser.open(GOOGLE_OAUTH_SETUP_URL, new=2)
+            if not opened and hasattr(os, "startfile"):
+                os.startfile(GOOGLE_OAUTH_SETUP_URL)
+                opened = True
+            if not opened:
+                raise RuntimeError("Could not launch the default browser.")
+        except Exception as exc:
+            messagebox.showerror(
+                "Google Tasks",
+                f"Failed to open Google Cloud setup:\n{exc}",
+            )
+
+    def _sync_google_tasks_after_connect(self):
+        """Pull Google tasks in the background after a successful connection."""
+        if not self.task_manager:
+            return
+
+        def _worker():
+            try:
+                summary = self.task_manager.sync_with_cloud()
+                logger.info("Google task sync after connect: %s", summary)
+            except Exception:
+                logger.exception("Failed to sync tasks after Google connect")
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _browse_credentials_from_dialog(
+        self, dialog: tk.Toplevel, connect_after_install: bool = False
+    ):
+        """Install a JSON file from a child dialog and optionally continue to OAuth."""
+        if self.browse_google_credentials(connect_after_install=connect_after_install):
+            dialog.destroy()
+
+    def paste_google_credentials(self, connect_after_install: bool = False):
+        """Paste the OAuth client JSON and optionally continue into browser auth."""
+        paste_win = tk.Toplevel(self.dialog)
+        paste_win.title("Paste Google OAuth JSON")
+        paste_win.geometry("640x460")
+        paste_win.transient(self.dialog)
+        paste_win.grab_set()
+
+        header = ttk.Frame(paste_win, padding="10")
+        header.pack(fill=tk.X)
+        ttk.Label(
+            header,
+            text=(
+                "Google Tasks needs a one-time OAuth Desktop App JSON from Google Cloud. "
+                "If you do not have one yet, click Open Google Cloud, create a Desktop "
+                "app OAuth client, then paste the JSON below."
+            ),
+            wraplength=600,
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W)
+
+        helper_actions = ttk.Frame(header)
+        helper_actions.pack(anchor=tk.W, pady=(8, 0))
+        ttk.Button(
+            helper_actions,
+            text="Open Google Cloud",
+            command=self.open_google_oauth_setup,
+        ).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(
+            helper_actions,
+            text="Browse JSON...",
+            command=lambda: self._browse_credentials_from_dialog(
+                paste_win, connect_after_install
+            ),
+        ).pack(side=tk.LEFT)
+
+        text = tk.Text(paste_win, wrap=tk.NONE)
+        text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        button_frame = ttk.Frame(paste_win)
+        button_frame.pack(pady=8)
+
+        def do_install(continue_to_connect: bool = False):
+            content = text.get("1.0", tk.END).strip()
+            if not content:
+                messagebox.showerror("Paste credentials", "No content provided.")
+                return
+            try:
+                if self.google_integration:
+                    target = self.google_integration.install_credentials_content(content)
+                else:
+                    target = Path(self.google_credentials_path.get()).expanduser()
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text(content, encoding="utf-8")
+                self.google_credentials_path.set(str(target))
+                self.refresh_google_status()
+                messagebox.showinfo(
+                    "Paste credentials", f"Credentials saved to {target}"
+                )
+                paste_win.destroy()
+                if continue_to_connect or connect_after_install:
+                    self.dialog.after(0, self.connect_google_tasks)
+            except Exception as exc:
+                messagebox.showerror(
+                    "Paste credentials", f"Failed to save credentials: {exc}"
+                )
+
+        ttk.Button(
+            button_frame, text="Install", command=lambda: do_install(False)
+        ).pack(
+            side=tk.LEFT, padx=5
+        )
+        ttk.Button(
+            button_frame,
+            text="Install and Connect",
+            command=lambda: do_install(True),
+        ).pack(
+            side=tk.LEFT, padx=5
+        )
+        ttk.Button(button_frame, text="Cancel", command=paste_win.destroy).pack(
+            side=tk.LEFT, padx=5
+        )
+
+    def _current_google_task_list_id(self) -> str:
+        """Return the selected Google task list id."""
+        selected_display = self.google_task_list_var.get().strip()
+        if selected_display in self.google_task_list_lookup:
+            return self.google_task_list_lookup[selected_display]
+        return self.config.get("google_task_list_id", DEFAULT_TASK_LIST_ID)
+
+    def _sync_task_manager(self):
+        """Apply the active Google integration settings to the task manager."""
+        if self.task_manager:
+            self.task_manager.set_google_integration(
+                self.google_integration,
+                self._current_google_task_list_id(),
+            )
+
+    def refresh_google_status(self):
+        """Refresh the Google Tasks connection label."""
+        if not self.google_integration:
+            self.google_status_var.set("Google Tasks integration is unavailable.")
+            return
+
+        status = self.google_integration.get_connection_status()
+        if not status["api_available"]:
+            self.google_status_var.set(
+                "Google API packages are not installed. Install the project "
+                "requirements to enable Google Tasks."
+            )
+        elif status["connected"]:
+            self.google_status_var.set("Connected. Google Tasks sync is ready.")
+        elif status["has_credentials_file"]:
+            self.google_status_var.set(
+                "OAuth client file found. Click Connect Google Tasks to sign in "
+                "in your browser."
+            )
+        else:
+            self.google_status_var.set(
+                "Not connected. Click Connect Google Tasks to start the one-time "
+                "setup, save your OAuth JSON, and open the browser sign-in flow."
+            )
+
+    def refresh_google_task_lists(self):
+        """Load task lists for the connected account and refresh the combobox."""
+        saved_task_list_id = self.config.get(
+            "google_task_list_id", DEFAULT_TASK_LIST_ID
+        )
+        options = {
+            self._task_list_display(
+                "Primary task list", DEFAULT_TASK_LIST_ID
+            ): DEFAULT_TASK_LIST_ID
+        }
+
+        if self.google_integration and self.google_integration.is_enabled():
+            for task_list in self.google_integration.get_task_lists():
+                display = self._task_list_display(task_list["title"], task_list["id"])
+                options[display] = task_list["id"]
+        elif saved_task_list_id != DEFAULT_TASK_LIST_ID:
+            options[self._task_list_display("Saved task list", saved_task_list_id)] = (
+                saved_task_list_id
+            )
+
+        self.google_task_list_lookup = options
+        values = list(options.keys())
+        if self.google_task_list_combo:
+            self.google_task_list_combo["values"] = values
+            self.google_task_list_combo.config(
+                state="readonly" if values else "disabled"
+            )
+
+        for display, task_list_id in options.items():
+            if task_list_id == saved_task_list_id:
+                self.google_task_list_var.set(display)
+                break
+        else:
+            self.google_task_list_var.set(values[0])
+
+    def connect_google_tasks(self):
+        """Connect Google Tasks and launch browser-based OAuth."""
+        if not self.google_integration:
+            messagebox.showerror(
+                "Google Tasks", "Google Tasks integration is unavailable."
+            )
+            return
+
+        credentials_source = None
+        raw_credentials_path = self.google_credentials_path.get().strip()
+        if raw_credentials_path:
+            candidate = Path(raw_credentials_path).expanduser()
+            if candidate.exists():
+                credentials_source = candidate
+
+        if credentials_source is None and not self.google_integration.has_credentials_file():
+            self.paste_google_credentials(connect_after_install=True)
+            self.refresh_google_status()
+            return
+
+        try:
+            connected = self.google_integration.connect(credentials_source)
+        except FileNotFoundError as exc:
+            messagebox.showwarning(
+                "Google Tasks",
+                f"{exc}\n\nPaste or browse your Google OAuth JSON to finish setup.",
+            )
+            self.refresh_google_status()
+            return
+        except RuntimeError as exc:
+            messagebox.showerror("Google Tasks", str(exc))
+            self.refresh_google_status()
+            return
+        except Exception as exc:
+            messagebox.showerror(
+                "Google Tasks",
+                f"Failed to connect Google Tasks:\n{exc}",
+            )
+            self.refresh_google_status()
+            return
+
+        if not connected:
+            messagebox.showerror(
+                "Google Tasks",
+                "Google Tasks could not be connected.",
+            )
+            self.refresh_google_status()
+            return
+
+        self.google_credentials_path.set(str(self.google_integration.credentials_file))
+        self.refresh_google_status()
+        self.refresh_google_task_lists()
+        self._sync_task_manager()
+        self._sync_google_tasks_after_connect()
+        messagebox.showinfo(
+            "Google Tasks",
+            "Google Tasks connected. The app will keep the token locally and "
+            "start syncing your tasks automatically.",
+        )
+
+    def disconnect_google_tasks(self):
+        """Remove the saved Google token from this device."""
+        if not self.google_integration:
+            messagebox.showerror(
+                "Google Tasks", "Google Tasks integration is unavailable."
+            )
+            return
+
+        try:
+            self.google_integration.disconnect()
+        except Exception as exc:
+            messagebox.showerror(
+                "Google Tasks",
+                f"Failed to disconnect Google Tasks:\n{exc}",
+            )
+            return
+
+        self.refresh_google_status()
+        self.refresh_google_task_lists()
+        self._sync_task_manager()
+        messagebox.showinfo(
+            "Google Tasks",
+            "Google Tasks disconnected on this device.",
+        )
+
     def save_application_settings(self):
         """Save all settings to config file"""
         try:
@@ -3122,11 +3531,13 @@ class SettingsDialog:
             # Theme settings
             self.config.set("dark_theme", self.dark_theme.get())
             self.config.set("accent_color", self.accent_color.get())
+            self.config.set("google_task_list_id", self._current_google_task_list_id())
 
             if self.config.save_config():
+                self._sync_task_manager()
                 messagebox.showinfo(
                     "Settings Saved",
-                    "Settings saved successfully. Please restart the application for all changes to take effect.",
+                    "Settings saved successfully.",
                 )
                 self.result = True
                 self.dialog.destroy()
@@ -3410,8 +3821,7 @@ class FocusGUI:
             # Show task input dialog if no tasks exist for today
             self.schedule_callback(400, self.check_and_show_task_dialog)
 
-            # Start daemon background status checking
-            self.daemon_manager.check_status_background(interval=2.0)
+            # Auto-manage the daemon in the background while the GUI is running
             self._auto_start_daemon()
 
             # Start update loop
@@ -3463,21 +3873,23 @@ class FocusGUI:
     def _geometry_is_visible(self, geometry: str) -> bool:
         """Return True if the given geometry string places the window on a visible screen."""
         try:
-            import re, ctypes
+            import ctypes
+            import re
+
             m = re.match(r"(\d+)x(\d+)([\+\-][\+\-]?\d+)([\+\-]\d+)", geometry)
             if not m:
                 return False
             win_w = int(m.group(1))
-            win_h = int(m.group(2))
+            # height from geometry not used
             # Strip leading '+' that Tkinter sometimes puts before a negative sign
             win_x = int(m.group(3).lstrip("+"))
             win_y = int(m.group(4).lstrip("+"))
             # Get virtual screen bounds (covers all monitors)
             k = ctypes.windll.user32
-            vx = k.GetSystemMetrics(76)   # SM_XVIRTUALSCREEN
-            vy = k.GetSystemMetrics(77)   # SM_YVIRTUALSCREEN
-            vw = k.GetSystemMetrics(78)   # SM_CXVIRTUALSCREEN
-            vh = k.GetSystemMetrics(79)   # SM_CYVIRTUALSCREEN
+            vx = k.GetSystemMetrics(76)  # SM_XVIRTUALSCREEN
+            vy = k.GetSystemMetrics(77)  # SM_YVIRTUALSCREEN
+            vw = k.GetSystemMetrics(78)  # SM_CXVIRTUALSCREEN
+            vh = k.GetSystemMetrics(79)  # SM_CYVIRTUALSCREEN
             # At least 50px of width and 30px of the title bar must be on-screen
             return (
                 win_x + win_w >= vx + 50
@@ -3830,50 +4242,6 @@ class FocusGUI:
             pady=(0, initial_scaling["button_pady"]),
         )
 
-        # Daemon Control Section
-        self.daemon_frame = ttk.Frame(self.additional_frame)
-        self.daemon_frame.grid(
-            row=4, column=0, columnspan=3, pady=(initial_scaling["button_pady"], 0)
-        )
-
-        # Configure daemon frame for scaling
-        self.daemon_frame.grid_columnconfigure(0, weight=1)
-        self.daemon_frame.grid_columnconfigure(1, weight=1)
-        self.daemon_frame.grid_columnconfigure(2, weight=1)
-
-        # Daemon status label
-        self.daemon_status_label = ttk.Label(
-            self.daemon_frame,
-            text="❓ Daemon: Unknown",
-            font=("Arial", initial_sizes["small"]),
-        )
-        self.daemon_status_label.grid(
-            row=0, column=0, columnspan=3, pady=(0, initial_scaling["button_pady"])
-        )
-
-        # Daemon control buttons
-        self.daemon_start_button = ttk.Button(
-            self.daemon_frame,
-            text="▶ Auto Daemon",
-            command=lambda: None,
-            state="disabled",
-            style="Modern.TButton",
-        )
-        self.daemon_start_button.grid(
-            row=1, column=0, padx=initial_scaling["button_padx"], sticky=(tk.W, tk.E)
-        )
-
-        self.daemon_stop_button = ttk.Button(
-            self.daemon_frame,
-            text="⏹ Stop Daemon",
-            command=self._stop_daemon_clicked,
-            state="disabled",
-            style="Modern.TButton",
-        )
-        self.daemon_stop_button.grid(
-            row=1, column=1, padx=initial_scaling["button_padx"], sticky=(tk.W, tk.E)
-        )
-
         # Task Management Section (Native Integration)
         self.create_task_section()
 
@@ -3923,9 +4291,9 @@ class FocusGUI:
         self.typing_active = False
 
         # Vim navigation state
-        self.task_rows = []          # list of (task, frame) tuples — rebuilt each redraw
+        self.task_rows = []  # list of (task, frame) tuples — rebuilt each redraw
         self.selected_task_index = -1
-        self._last_d_press = 0.0     # timestamp of previous 'd' for 'dd' detection
+        self._last_d_press = 0.0  # timestamp of previous 'd' for 'dd' detection
 
         # Drag-and-drop state
         self._drag_source_index = -1
@@ -4407,6 +4775,7 @@ class FocusGUI:
 
     def sync_tasks_now(self):
         """Manually trigger a cloud sync (Ctrl+S)."""
+
         def _worker():
             summary = self.task_manager.sync_with_cloud()
             if self.google_integration and self.google_integration.is_enabled():
@@ -4658,6 +5027,7 @@ class FocusGUI:
         """Handle D key shortcut — first press arms, second press (dd) deletes selected."""
         if not self.is_typing():
             import time as _time
+
             now = _time.monotonic()
             if now - self._last_d_press < 0.5:
                 # Double-d: delete selected task
@@ -4675,9 +5045,7 @@ class FocusGUI:
         tasks = self.task_manager.get_today_tasks()
         if not tasks:
             return
-        self.selected_task_index = min(
-            self.selected_task_index + 1, len(tasks) - 1
-        )
+        self.selected_task_index = min(self.selected_task_index + 1, len(tasks) - 1)
         self._vim_refresh_highlight()
 
     def _vim_nav_up(self):
@@ -4818,7 +5186,7 @@ class FocusGUI:
 
         # Task management frame (reuse the same logic as main GUI)
         self.separate_task_frame = ttk.LabelFrame(
-            main_frame, text="Today's Tasks", padding="8"
+            main_frame, text="Current Tasks", padding="8"
         )
         self.separate_task_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         self.separate_task_frame.grid_columnconfigure(0, weight=1)
@@ -5232,22 +5600,29 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
 
     def show_settings(self):
         """Show settings dialog"""
-        dialog = SettingsDialog(self.root, self.config)
+        dialog = SettingsDialog(
+            self.root,
+            self.config,
+            google_integration=self.google_integration,
+            task_manager=self.task_manager,
+        )
         self.root.wait_window(dialog.dialog)
 
-        if dialog.result:
-            # Reload configuration
-            self.config.load_config()
-            # Update button labels
-            self.work_button.config(
-                text=f"Work Session ({self.config.get('work_mins')} min)"
-            )
-            self.short_break_button.config(
-                text=f"Short Break ({self.config.get('short_break_mins')} min)"
-            )
-            self.long_break_button.config(
-                text=f"Long Break ({self.config.get('long_break_mins')} min)"
-            )
+        self.config.load_config()
+        self.task_manager.set_google_integration(
+            self.google_integration,
+            self.config.get("google_task_list_id", DEFAULT_TASK_LIST_ID),
+        )
+        self.work_button.config(
+            text=f"Work Session ({self.config.get('work_mins')} min)"
+        )
+        self.short_break_button.config(
+            text=f"Short Break ({self.config.get('short_break_mins')} min)"
+        )
+        self.long_break_button.config(
+            text=f"Long Break ({self.config.get('long_break_mins')} min)"
+        )
+        self.update_task_display()
 
     def on_session_tick(self, elapsed_seconds: int, total_seconds: int):
         """Handle session timer tick"""
@@ -5528,9 +5903,8 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
                 pass
             self.mini_indicator = None  # prevent stale ref in callbacks
 
-        # Stop daemon background checking
         if self.daemon_manager:
-            self.daemon_manager.stop_background_check()
+            self.daemon_manager.stop(managed_only=True)
 
         self.cleanup_callbacks()
         self.save_window_dimensions()

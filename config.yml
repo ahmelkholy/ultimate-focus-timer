@@ -10,8 +10,7 @@ blur_background: true
 break_end_cmd: scripts\classical_music.ps1 -Action start -Volume 20
 break_start_cmd: ''
 classical_music: true
-classical_music_default_playlist: "C:\\Users\\ahm_e\\mpv\\PlayList\\\u0646\u0648\u062A\
-  \u0629 \u062C\u0645\u064A\u0644\u0629.m3u"
+classical_music_default_playlist: C:\Users\ahm_e\mpv\PlayList\ClassicalMusic.m3u
 classical_music_genres:
 - baroque
 - classical
@@ -22,8 +21,7 @@ classical_music_online_playlists:
 - https://www.youtube.com/watch?v=mdJU5ogrPMY
 classical_music_playlist_dir: C:\Users\ahm_e\mpv\PlayList
 classical_music_repeat: true
-classical_music_selected_playlist: "C:\\Users\\ahm_e\\mpv\\PlayList\\\u0646\u0648\u062A\
-  \u0629 \u062C\u0645\u064A\u0644\u0629.m3u"
+classical_music_selected_playlist: C:\Users\ahm_e\mpv\PlayList\ClassicalMusic.m3u
 classical_music_shuffle: true
 classical_music_volume: 70
 color_scheme: forest
@@ -40,6 +38,7 @@ export_format: csv
 fade_music_transitions: true
 fade_sound: true
 goal_tracking: true
+google_task_list_id: '@default'
 gradient_backgrounds: true
 idle_cmd: ''
 long_break_interval: 3
@@ -82,7 +81,7 @@ track_idle_time: true
 transparency: 0.95
 weekly_goals: 40
 weekly_reports: true
-window_geometry: 250x669+-422+172
+window_geometry: 250x662+264+194
 work_end_cmd: scripts\classical_music.ps1 -Action stop
 work_mins: 25
 work_msg: Focus on your task

@@ -12,7 +12,7 @@ import sys
 import time
 import traceback
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 # ── Bootstrap: make `src` importable when running as a plain script ───────────
 _project_root = Path(__file__).resolve().parent
@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 # ── Remaining src imports ─────────────────────────────────────────────────────
 from src.core import ConfigManager, SessionManager  # noqa: E402
 from src.focus_console import ConsoleInterface  # noqa: E402
+from src.google_integration import create_google_integration  # noqa: E402
 from src.system import MusicController, NotificationManager  # noqa: E402
 from src.mpv_installer import MPVInstaller  # noqa: E402
 
@@ -223,6 +224,44 @@ class UltimateFocusLauncher:
         except ImportError:
             print("[X] Dashboard requires: pip install matplotlib pandas")
 
+    def connect_google_tasks(self, credentials_path: Optional[str] = None) -> None:
+        """Launch browser-based Google Tasks OAuth from the CLI."""
+        google_integration = create_google_integration(
+            Path.home() / ".ultimate-focus-timer"
+        )
+        source_path = Path(credentials_path).expanduser() if credentials_path else None
+
+        try:
+            connected = google_integration.connect(source_path)
+        except (FileNotFoundError, RuntimeError) as exc:
+            print(f"[X] {exc}")
+            return
+        except Exception as exc:
+            logger.exception("Error connecting Google Tasks")
+            print(f"[X] Failed to connect Google Tasks: {exc}")
+            return
+
+        if connected:
+            print("[OK] Google Tasks connected. Your browser was opened for sign-in.")
+            print(
+                "Use Settings > Tasks in the GUI to pick a specific Google task list."
+            )
+        else:
+            print("[X] Google Tasks could not be connected.")
+
+    def disconnect_google_tasks(self) -> None:
+        """Disconnect Google Tasks on this device."""
+        google_integration = create_google_integration(
+            Path.home() / ".ultimate-focus-timer"
+        )
+        try:
+            google_integration.disconnect()
+        except Exception as exc:
+            logger.exception("Error disconnecting Google Tasks")
+            print(f"[X] Failed to disconnect Google Tasks: {exc}")
+            return
+        print("[OK] Google Tasks disconnected on this device.")
+
     # ── Interactive text launcher ─────────────────────────────────────────────
 
     def interactive_launcher(self):
@@ -353,6 +392,21 @@ def main():
     parser.add_argument("--quick-session", type=int, metavar="MINUTES")
     parser.add_argument("--quick-break", type=int, metavar="MINUTES")
     parser.add_argument("--stats", action="store_true")
+    parser.add_argument(
+        "--connect-tasks",
+        action="store_true",
+        help="Connect Google Tasks in your browser",
+    )
+    parser.add_argument(
+        "--disconnect-tasks",
+        action="store_true",
+        help="Disconnect Google Tasks on this device",
+    )
+    parser.add_argument(
+        "--google-credentials",
+        metavar="PATH",
+        help="Path to a Google OAuth Desktop App JSON file for --connect-tasks",
+    )
     parser.add_argument("--check-deps", action="store_true")
     parser.add_argument("--sys-info", action="store_true")
     parser.add_argument(
@@ -391,6 +445,10 @@ def main():
         launcher.run_quick_session(args.quick_break, "break")
     elif args.stats:
         launcher.show_stats()
+    elif args.connect_tasks:
+        launcher.connect_google_tasks(args.google_credentials)
+    elif args.disconnect_tasks:
+        launcher.disconnect_google_tasks()
     elif args.check_deps:
         launcher.print_dependency_status()
     elif args.sys_info:

@@ -5,11 +5,11 @@ google_integration.py - Google Tasks and Calendar integration for Ultimate Focus
 Connects the local task list with Google Tasks and Google Calendar.
 """
 
+import json
 import logging
-import os
 import pickle
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -36,6 +36,9 @@ SCOPES = [
 ]
 
 DEFAULT_TASK_LIST_ID = "@default"
+GOOGLE_OAUTH_SETUP_URL = (
+    "https://console.cloud.google.com/apis/credentials/oauthclient"
+)
 
 
 class GoogleIntegration:
@@ -56,51 +59,192 @@ class GoogleIntegration:
         self.enabled = False
 
         if GOOGLE_API_AVAILABLE:
-            self._load_credentials()
+            self.reload()
 
-    def _load_credentials(self) -> bool:
-        """Load or refresh Google credentials"""
+    def _clear_session(self) -> None:
+        """Reset the active Google session state."""
+        self.creds = None
+        self.tasks_service = None
+        self.calendar_service = None
+        self.enabled = False
+
+    def has_credentials_file(self) -> bool:
+        """Return True when the OAuth client secrets file is available."""
+        return self.credentials_file.exists()
+
+    def has_token(self) -> bool:
+        """Return True when a saved OAuth token is available."""
+        return self.token_file.exists()
+
+    def get_connection_status(self) -> Dict[str, Any]:
+        """Return the current Google Tasks connection state for UI/CLI callers."""
+        return {
+            "api_available": GOOGLE_API_AVAILABLE,
+            "connected": self.enabled,
+            "has_credentials_file": self.has_credentials_file(),
+            "has_token": self.has_token(),
+            "credentials_file": str(self.credentials_file),
+            "token_file": str(self.token_file),
+        }
+
+    def install_credentials_file(self, source_path: Path) -> Path:
+        """Copy a Google OAuth client secrets file into the app config directory."""
+        resolved_source = Path(source_path).expanduser().resolve()
+        if not resolved_source.exists():
+            raise FileNotFoundError(
+                f"Google credentials file not found: {resolved_source}"
+            )
+
+        with open(resolved_source, "r", encoding="utf-8-sig") as source_file:
+            return self.install_credentials_content(source_file.read())
+
+    def install_credentials_content(self, content: str) -> Path:
+        """Validate and save a Google OAuth client JSON payload."""
         try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError as exc:
+            raise ValueError("Google credentials content is not valid JSON.") from exc
+
+        if not isinstance(parsed, dict) or not any(
+            section in parsed for section in ("installed", "web")
+        ):
+            raise ValueError(
+                "Google credentials JSON must contain an 'installed' or 'web' "
+                "OAuth client section."
+            )
+
+        resolved_target = self.credentials_file.resolve()
+        with open(resolved_target, "w", encoding="utf-8") as target_file:
+            json.dump(parsed, target_file, indent=2, ensure_ascii=False)
+            target_file.write("\n")
+        logger.info("Saved Google credentials file to %s", resolved_target)
+        return resolved_target
+
+    def _save_token(self) -> None:
+        """Persist the current OAuth token."""
+        if not self.creds:
+            raise RuntimeError("Cannot save an empty Google credential set")
+        with open(self.token_file, "wb") as token:
+            pickle.dump(self.creds, token)
+
+    def _build_services(self) -> None:
+        """Create Google Tasks and Calendar service clients."""
+        if not self.creds:
+            raise RuntimeError("Google credentials are not loaded")
+        self.tasks_service = build(
+            "tasks", "v1", credentials=self.creds, cache_discovery=False
+        )
+        self.calendar_service = build(
+            "calendar", "v3", credentials=self.creds, cache_discovery=False
+        )
+        self.enabled = True
+
+    def _load_credentials(
+        self,
+        allow_user_auth: bool = False,
+        force_reauth: bool = False,
+        raise_errors: bool = False,
+    ) -> bool:
+        """Load credentials silently or, when requested, complete browser auth."""
+        self._clear_session()
+        try:
+            if force_reauth and self.token_file.exists():
+                self.token_file.unlink()
+
             # Load token if it exists
             if self.token_file.exists():
-                with open(self.token_file, "rb") as token:
-                    self.creds = pickle.load(token)
-
-            # Refresh or get new credentials
-            if not self.creds or not self.creds.valid:
-                if self.creds and self.creds.expired and self.creds.refresh_token:
-                    logger.info("Refreshing Google credentials...")
-                    self.creds.refresh(Request())
-                else:
-                    # Need to authenticate
-                    if not self.credentials_file.exists():
-                        logger.warning(
-                            f"Google credentials file not found: {self.credentials_file}"
-                        )
-                        return False
-
-                    logger.info("Authenticating with Google...")
-                    flow = InstalledAppFlow.from_client_secrets_file(
-                        str(self.credentials_file), SCOPES
+                try:
+                    with open(self.token_file, "rb") as token:
+                        self.creds = pickle.load(token)
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to read Google token from %s: %s", self.token_file, exc
                     )
-                    self.creds = flow.run_local_server(port=0)
+                    self.creds = None
 
-                # Save the credentials
-                with open(self.token_file, "wb") as token:
-                    pickle.dump(self.creds, token)
+            if (
+                self.creds
+                and not self.creds.valid
+                and self.creds.expired
+                and self.creds.refresh_token
+            ):
+                logger.info("Refreshing Google credentials...")
+                self.creds.refresh(Request())
 
-            # Build services
-            self.tasks_service = build("tasks", "v1", credentials=self.creds)
-            self.calendar_service = build("calendar", "v3", credentials=self.creds)
-            self.enabled = True
+            if not self.creds or not self.creds.valid:
+                if not allow_user_auth:
+                    logger.info("Google integration available but not connected yet")
+                    return False
+                if not self.credentials_file.exists():
+                    raise FileNotFoundError(
+                        f"Google credentials file not found: {self.credentials_file}"
+                    )
+
+                logger.info("Starting browser-based Google authentication...")
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    str(self.credentials_file), SCOPES
+                )
+                self.creds = flow.run_local_server(
+                    host="127.0.0.1",
+                    port=0,
+                    open_browser=True,
+                    authorization_prompt_message=(
+                        "Opening your browser to connect Google Tasks..."
+                    ),
+                    success_message=(
+                        "Google Tasks is connected. You can close this window and "
+                        "return to the app."
+                    ),
+                )
+
+            if not self.creds or not self.creds.valid:
+                logger.warning("Google credentials are not valid after loading")
+                self._clear_session()
+                return False
+
+            self._save_token()
+            self._build_services()
 
             logger.info("Google integration enabled")
             return True
 
         except Exception as e:
             logger.error(f"Failed to load Google credentials: {e}")
-            self.enabled = False
+            self._clear_session()
+            if raise_errors:
+                raise
             return False
+
+    def reload(self) -> bool:
+        """Reload existing Google credentials without launching a browser."""
+        if not GOOGLE_API_AVAILABLE:
+            self._clear_session()
+            return False
+        return self._load_credentials(allow_user_auth=False)
+
+    def connect(
+        self,
+        credentials_source: Optional[Path] = None,
+        force_reauth: bool = False,
+    ) -> bool:
+        """Connect Google Tasks with an explicit browser-based OAuth flow."""
+        if not GOOGLE_API_AVAILABLE:
+            raise RuntimeError(
+                "Google API libraries are not installed. Install requirements to "
+                "enable Google Tasks."
+            )
+        if credentials_source is not None:
+            self.install_credentials_file(credentials_source)
+        return self._load_credentials(
+            allow_user_auth=True, force_reauth=force_reauth, raise_errors=True
+        )
+
+    def disconnect(self) -> None:
+        """Disconnect Google Tasks locally by removing the saved OAuth token."""
+        if self.token_file.exists():
+            self.token_file.unlink()
+        self._clear_session()
+        logger.info("Google integration disconnected")
 
     def is_enabled(self) -> bool:
         """Check if Google integration is enabled"""
@@ -425,6 +569,12 @@ if __name__ == "__main__":
     else:
         print("✗ Google integration not available")
         print("\nTo enable:")
-        print("1. Install dependencies: pip install google-auth google-auth-oauthlib google-api-python-client")
+        print(
+            "1. Install dependencies: pip install google-auth "
+            "google-auth-oauthlib google-api-python-client"
+        )
         print(f"2. Place credentials JSON at: {config_dir / 'google_credentials.json'}")
-        print("3. Run authentication flow")
+        print(
+            "3. Connect from Settings -> Tasks or run: "
+            "focus --connect-tasks (or python main.py --connect-tasks)"
+        )

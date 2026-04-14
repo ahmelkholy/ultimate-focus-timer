@@ -75,10 +75,14 @@ python main.py --dashboard
 ## ☁️ Google Tasks Sync & Daemon Automation
 
 1. Enable the **Google Tasks API** in your Google Cloud project and create an OAuth client (Desktop App).
-2. Download the credentials JSON, rename it to `google_credentials.json`, and place it in `~/.ultimate-focus-timer/` (tokens stay local in `google_token.pickle`).
-3. Launch the GUI or CLI. Tasks with the cloud icon are synced; the dot/ellipsis icon shows local or pending sync. Set `google_task_list_id` in `config.yml` to target a specific list (defaults to primary).
-4. Press `Ctrl+S` in the GUI to force a sync. Failed updates are queued in `data/sync_queue.json` and retried with backoff.
-5. The GUI now auto-starts the FastAPI daemon in the background; the daemon also runs a sync every 15 minutes and whenever the Ultradian cycle enters Rest. No API secrets are stored in the repo.
+2. Copy or download the OAuth client JSON once.
+3. Connect Google Tasks in one of two ways:
+   - **GUI**: open **Settings -> Tasks** and click **Connect Google Tasks**. If the OAuth JSON is missing, the app now opens the in-app setup helper so you can paste or browse the JSON and immediately continue into the browser sign-in flow.
+   - **CLI**: run `focus --connect-tasks --google-credentials PATH_TO_CLIENT_JSON` or `python main.py --connect-tasks --google-credentials PATH_TO_CLIENT_JSON`.
+4. After connecting, pick the Google task list in **Settings -> Tasks** or set `google_task_list_id` in `config.yml` (defaults to the primary list).
+5. Incomplete tasks now carry forward automatically instead of disappearing on a new day, and Google sync no longer pulls only "today" tasks.
+6. Press `Ctrl+S` in the GUI to force a sync. Failed updates are queued in `data/sync_queue.json` and retried with backoff.
+7. The GUI auto-starts the FastAPI daemon in the background with no daemon controls shown in the main window. On Windows it is launched hidden, and the GUI stops the daemon instance it started when the app closes.
 
 ## 📖 Documentation
 
@@ -135,7 +139,7 @@ npm install
 npm run compile
 # Press F5 in VS Code to launch Extension Development Host
 
-# Start daemon
+# Optional: start daemon manually for debugging
 python -m src.daemon
 
 # Test it

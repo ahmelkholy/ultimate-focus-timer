@@ -27,12 +27,14 @@
 
 ## Usage Options
 
-### Option 1: Daemon Mode (Recommended for Ultradian Rhythm)
+### Option 1: GUI + Auto Daemon (Recommended for Ultradian Rhythm)
 
-**Start the daemon:**
+**Start the GUI:**
 ```bash
-python -m src.daemon
+python main.py --gui
 ```
+
+The GUI starts the daemon automatically in the background. Manual daemon startup is only needed for debugging or direct API use.
 
 **Use from terminal:**
 ```bash
@@ -160,11 +162,11 @@ early_warning_minutes: 5
 
 ### "Daemon not running" error
 ```bash
-# Start daemon first
-python -m src.daemon
+# Launch the GUI once - it starts the daemon automatically
+python main.py --gui
 
-# Or use the focus CLI
-focus daemon
+# Manual mode is only needed for debugging
+python -m src.daemon
 ```
 
 ### "PortAudio library not found"

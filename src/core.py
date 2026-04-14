@@ -163,6 +163,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "weekly_reports": True,
     "data_retention_days": 365,
     "todo_integration": False,
+    "google_task_list_id": DEFAULT_TASK_LIST_ID,
     "task_file": "~/tasks.md",
     "auto_task_complete": True,
     "window_geometry": "",
@@ -818,22 +819,36 @@ class Task:
     pomodoros_planned: int = 1
     pomodoros_completed: int = 0
     created_at: str = ""
+    updated_at: str = ""
     completed_at: Optional[str] = None
 
     def __post_init__(self):
         if not self.created_at:
             self.created_at = datetime.now().isoformat()
+        if not self.updated_at:
+            self.updated_at = self.completed_at or self.created_at
+
+    def touch(self):
+        self.updated_at = datetime.now().isoformat()
 
     def mark_complete(self):
         self.completed = True
         self.completed_at = datetime.now().isoformat()
+        self.updated_at = self.completed_at
+
+    def mark_incomplete(self):
+        self.completed = False
+        self.completed_at = None
+        self.touch()
 
     def add_pomodoro(self):
         self.pomodoros_completed += 1
+        self.touch()
 
     def remove_pomodoro(self):
         if self.pomodoros_completed > 0:
             self.pomodoros_completed -= 1
+            self.touch()
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -874,6 +889,87 @@ class TaskManager:
 
     def get_today_key(self) -> str:
         return datetime.now().strftime("%Y-%m-%d")
+
+    def _all_task_entries(self):
+        """Yield task entries across every stored day bucket."""
+        for date_key, task_list in self.tasks.items():
+            for index, task in enumerate(task_list):
+                yield date_key, index, task
+
+    def get_all_tasks(self) -> List[Task]:
+        """Return every task across all stored days, newest days first."""
+        tasks: List[Task] = []
+        for date_key in sorted(self.tasks.keys(), reverse=True):
+            tasks.extend(self.tasks[date_key])
+        return tasks
+
+    def _find_task_location(self, task_id: str):
+        """Find the day bucket and index for a task id."""
+        for date_key, index, task in self._all_task_entries():
+            if task.id == task_id:
+                return date_key, index, task
+        return None, None, None
+
+    def _day_key_from_timestamp(self, value: Optional[str]) -> Optional[str]:
+        timestamp = self._parse_timestamp(value)
+        if timestamp is None:
+            return None
+        return timestamp.strftime("%Y-%m-%d")
+
+    def _remote_task_bucket_key(
+        self, remote_task: Dict[str, Any], today_key: Optional[str] = None
+    ) -> str:
+        """Choose the local day bucket for a remote Google task."""
+        today_key = today_key or self.get_today_key()
+        if remote_task.get("status") != "completed":
+            return today_key
+        for key in ("completed", "updated", "due"):
+            day_key = self._day_key_from_timestamp(remote_task.get(key))
+            if day_key:
+                return day_key
+        return today_key
+
+    def _promote_incomplete_tasks_to_today(self) -> bool:
+        """Carry unfinished tasks forward so they stay visible across days."""
+        today_key = self.get_today_key()
+        today_tasks = self.tasks.setdefault(today_key, [])
+        existing_ids = {task.id for task in today_tasks}
+        existing_google_ids = {task.google_id for task in today_tasks if task.google_id}
+        carried: List[Task] = []
+        changed = False
+
+        for date_key in sorted(list(self.tasks.keys())):
+            if date_key >= today_key:
+                continue
+            remaining: List[Task] = []
+            for task in self.tasks.get(date_key, []):
+                if task.completed:
+                    remaining.append(task)
+                    continue
+                if task.id in existing_ids or (
+                    task.google_id and task.google_id in existing_google_ids
+                ):
+                    changed = True
+                    continue
+                carried.append(task)
+                existing_ids.add(task.id)
+                if task.google_id:
+                    existing_google_ids.add(task.google_id)
+                changed = True
+            self.tasks[date_key] = remaining
+
+        if carried:
+            today_tasks.extend(carried)
+
+        empty_days = [
+            date_key
+            for date_key, task_list in self.tasks.items()
+            if date_key != today_key and not task_list
+        ]
+        for date_key in empty_days:
+            del self.tasks[date_key]
+
+        return changed or bool(empty_days)
 
     def set_google_integration(
         self, integration: Optional[GoogleIntegration], task_list_id: Optional[str] = None
@@ -1104,7 +1200,7 @@ class TaskManager:
         self._process_sync_queue(force=True)
 
         today_key = self.get_today_key()
-        local_tasks = list(self.tasks.get(today_key, []))
+        local_tasks = self.get_all_tasks()
         try:
             remote_tasks = self.google_integration.fetch_remote_tasks(
                 self.google_task_list_id, include_completed=True
@@ -1116,7 +1212,7 @@ class TaskManager:
         remote_by_id = {t.get("id"): t for t in remote_tasks if t.get("id")}
         local_by_gid = {t.google_id: t for t in local_tasks if t.google_id}
 
-        # Push local tasks that are missing a google_id
+        # Push local tasks that are missing a google_id.
         for task in local_tasks:
             if task.google_id:
                 continue
@@ -1126,6 +1222,15 @@ class TaskManager:
                 )
                 if created and created.get("id"):
                     task.google_id = created["id"]
+                    task.touch()
+                    if task.completed:
+                        self.google_integration.update_task(
+                            self.google_task_list_id,
+                            task.google_id,
+                            title=task.title,
+                            notes=task.description,
+                            completed=True,
+                        )
                     summary["pushed"] += 1
                 else:
                     self._enqueue_sync("create", task)
@@ -1135,41 +1240,63 @@ class TaskManager:
                 self._enqueue_sync("create", task)
                 summary["queued"] += 1
 
-        # Pull remote tasks not present locally (for today only)
+        # Pull remote tasks not present locally.
         for remote_id, remote_task in remote_by_id.items():
             if remote_id in local_by_gid:
                 continue
-            if not self._remote_task_matches_today(remote_task, today_key):
-                continue
+            bucket_key = self._remote_task_bucket_key(remote_task, today_key)
             task = Task(
-                id=f"{today_key}_{remote_id}",
+                id=f"{bucket_key}_{remote_id}",
                 title=remote_task.get("title", "Untitled Task"),
                 description=remote_task.get("notes", ""),
                 completed=remote_task.get("status") == "completed",
                 pomodoros_planned=1,
                 pomodoros_completed=0,
-                created_at=remote_task.get("updated", datetime.now().isoformat()),
+                created_at=(
+                    remote_task.get("updated")
+                    or remote_task.get("due")
+                    or datetime.now().isoformat()
+                ),
+                updated_at=remote_task.get("updated", ""),
                 completed_at=remote_task.get("completed"),
                 google_id=remote_id,
             )
-            self.tasks.setdefault(today_key, []).append(task)
+            self.tasks.setdefault(bucket_key, []).append(task)
+            local_by_gid[remote_id] = task
             summary["pulled"] += 1
 
-        # Resolve conflicts based on completed_at recency
+        # Resolve conflicts based on the latest known update timestamp.
         for google_id, task in local_by_gid.items():
             remote_task = remote_by_id.get(google_id)
             if not remote_task:
                 continue
-            remote_completed = self._parse_timestamp(remote_task.get("completed"))
-            local_completed = self._parse_timestamp(task.completed_at)
-            if remote_completed and (
-                not local_completed or remote_completed > local_completed
-            ):
-                task.completed = True
-                task.completed_at = remote_task.get("completed")
-                summary["updated"] += 1
-            elif local_completed and (
-                not remote_completed or local_completed > remote_completed
+            remote_updated = self._parse_timestamp(
+                remote_task.get("updated") or remote_task.get("completed")
+            )
+            local_updated = self._parse_timestamp(task.updated_at or task.created_at)
+            remote_completed = remote_task.get("status") == "completed"
+            remote_completed_at = remote_task.get("completed")
+            remote_title = remote_task.get("title", task.title)
+            remote_notes = remote_task.get("notes", "")
+
+            if remote_updated and (not local_updated or remote_updated > local_updated):
+                changed = (
+                    task.title != remote_title
+                    or task.description != remote_notes
+                    or task.completed != remote_completed
+                    or task.completed_at != remote_completed_at
+                )
+                if changed:
+                    task.title = remote_title
+                    task.description = remote_notes
+                    task.completed = remote_completed
+                    task.completed_at = remote_completed_at
+                    task.updated_at = remote_task.get(
+                        "updated", remote_completed_at or task.updated_at
+                    )
+                    summary["updated"] += 1
+            elif local_updated and (
+                not remote_updated or local_updated > remote_updated
             ):
                 try:
                     updated = self.google_integration.update_task(
@@ -1188,6 +1315,7 @@ class TaskManager:
                     self._enqueue_sync("update", task)
                     summary["queued"] += 1
 
+        self._promote_incomplete_tasks_to_today()
         self.save_tasks()
         return summary
 
@@ -1214,6 +1342,8 @@ class TaskManager:
             except (json.JSONDecodeError, Exception):
                 logger.exception("Error loading tasks from %s", self.tasks_file)
                 self.tasks = {}
+        if self._promote_incomplete_tasks_to_today():
+            self.save_tasks()
 
     def save_tasks(self):
         with self._lock:
@@ -1261,12 +1391,20 @@ class TaskManager:
             return True
         return False
 
+    def uncomplete_task(self, task_id: str) -> bool:
+        task = self.get_task_by_id(task_id)
+        if task:
+            task.mark_incomplete()
+            self.save_tasks()
+            self._sync_task_update(task)
+            return True
+        return False
+
     def toggle_task_completion(self, task_id: str) -> bool:
         task = self.get_task_by_id(task_id)
         if task:
             if task.completed:
-                task.completed = False
-                task.completed_at = None
+                task.mark_incomplete()
             else:
                 task.mark_complete()
             self.save_tasks()
@@ -1291,19 +1429,18 @@ class TaskManager:
         return False
 
     def get_task_by_id(self, task_id: str) -> Optional[Task]:
-        for task in self.get_today_tasks():
-            if task.id == task_id:
-                return task
-        return None
+        _, _, task = self._find_task_location(task_id)
+        return task
 
     def delete_task(self, task_id: str) -> bool:
-        today_key = self.get_today_key()
-        if today_key not in self.tasks:
+        date_key, _, task = self._find_task_location(task_id)
+        if not date_key:
             return False
-        task = self.get_task_by_id(task_id)
         if task:
             self._sync_task_delete(task)
-        self.tasks[today_key] = [t for t in self.tasks[today_key] if t.id != task_id]
+        self.tasks[date_key] = [t for t in self.tasks[date_key] if t.id != task_id]
+        if not self.tasks[date_key]:
+            del self.tasks[date_key]
         self.save_tasks()
         return True
 
@@ -1326,6 +1463,7 @@ class TaskManager:
         task = self.get_task_by_id(task_id)
         if task:
             task.title = new_title
+            task.touch()
             self.save_tasks()
             self._sync_task_update(task)
             return True

@@ -36,6 +36,7 @@ class DaemonManager:
         self._status = "unknown"  # unknown, stopped, running, error
         self._check_thread: Optional[threading.Thread] = None
         self._stop_checking = False
+        self._owns_daemon = False
 
     @property
     def status(self) -> str:
@@ -54,20 +55,22 @@ class DaemonManager:
         """Check if daemon is running"""
         try:
             import urllib.request
+
             try:
                 response = urllib.request.urlopen(
                     f"http://{self.DAEMON_HOST}:{self.DAEMON_PORT}/status",
                     timeout=2.0,
                 )
                 return response.status == 200
-            except Exception as e:
+            except Exception:
                 # Also try with requests as fallback
                 try:
                     import requests
+
                     response = requests.get(
                         f"http://{self.DAEMON_HOST}:{self.DAEMON_PORT}/status",
                         timeout=2.0,
-                        proxies={"http": "", "https": ""}  # Disable proxies
+                        proxies={"http": "", "https": ""},  # Disable proxies
                     )
                     return response.status_code == 200
                 except Exception:
@@ -100,6 +103,7 @@ class DaemonManager:
             # Also try HTTP stop request
             try:
                 import requests
+
                 requests.post(
                     f"http://{self.DAEMON_HOST}:{self.DAEMON_PORT}/stop",
                     timeout=1.0,
@@ -111,11 +115,37 @@ class DaemonManager:
         except Exception as e:
             logger.warning(f"Could not kill stale daemon: {e}")
 
+    def _resolve_python_executable(self) -> str:
+        """Prefer a windowless Python executable on Windows for daemon launch."""
+        current_executable = Path(sys.executable)
+        if sys.platform != "win32":
+            return str(current_executable)
+
+        candidates = []
+        if current_executable.name.lower() == "pythonw.exe":
+            candidates.append(current_executable)
+            candidates.append(current_executable.parent / "python.exe")
+        else:
+            candidates.append(current_executable.parent / "pythonw.exe")
+            candidates.append(current_executable)
+
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+        return str(current_executable)
+
+    def _creation_flags(self) -> int:
+        """Return subprocess flags that keep the daemon hidden on Windows."""
+        if sys.platform != "win32":
+            return 0
+        return subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
+
     def start(self) -> bool:
         """Start the daemon in background"""
         try:
             if self.is_running():
                 logger.info("Daemon already running")
+                self._owns_daemon = False
                 self._set_status("running")
                 return True
 
@@ -125,13 +155,7 @@ class DaemonManager:
             # Kill any stale daemon first
             self._kill_stale_daemon()
 
-            if sys.executable.endswith("pythonw.exe"):
-                # Use the non-GUI python
-                python_exe = Path(sys.executable).parent / "python.exe"
-                if not python_exe.exists():
-                    python_exe = sys.executable
-            else:
-                python_exe = sys.executable
+            python_exe = self._resolve_python_executable()
 
             # Start daemon subprocess - capture stderr for debugging
             log_file = PROJECT_ROOT / "daemon.log"
@@ -141,12 +165,9 @@ class DaemonManager:
                     cwd=str(PROJECT_ROOT),
                     stdout=logf,
                     stderr=subprocess.STDOUT,
-                    creationflags=(
-                        subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
-                        if sys.platform == "win32"
-                        else 0
-                    ),
+                    creationflags=self._creation_flags(),
                 )
+            self._owns_daemon = True
 
             # Save PID
             if self._daemon_process and self._daemon_process.pid:
@@ -168,21 +189,30 @@ class DaemonManager:
                     logger.error(f"Daemon startup logs:\n{log_content}")
             except Exception:
                 pass
+            self._owns_daemon = False
             self._set_status("error")
             return False
 
         except Exception as e:
             logger.error(f"Error starting daemon: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
+            self._owns_daemon = False
             self._set_status("error")
             return False
 
-    def stop(self) -> bool:
+    def stop(self, managed_only: bool = False) -> bool:
         """Stop the daemon"""
         try:
+            if managed_only and not self._owns_daemon:
+                logger.info(
+                    "Skipping daemon stop because this instance does not own it"
+                )
+                return True
             if not self.is_running():
                 logger.info("Daemon already stopped")
+                self._owns_daemon = False
                 self._set_status("stopped")
                 return True
 
@@ -215,6 +245,8 @@ class DaemonManager:
             if self.DAEMON_PID_FILE.exists():
                 self.DAEMON_PID_FILE.unlink()
 
+            self._daemon_process = None
+            self._owns_daemon = False
             logger.info("Daemon stopped")
             self._set_status("stopped")
             return True

@@ -35,7 +35,7 @@ except ImportError as e:
     ZeigarnikOffloadManager = None  # type: ignore
     logging.getLogger(__name__).warning("Zeigarnik manager not available: %s", e)
 
-from .core import TaskManager
+from .core import ConfigManager, TaskManager
 from .google_integration import DEFAULT_TASK_LIST_ID, create_google_integration
 from .system import DATA_DIR
 
@@ -365,11 +365,12 @@ state_machine = UltradianStateMachine()
 SYNC_INTERVAL_SECONDS = 15 * 60
 
 google_config_dir = Path.home() / ".ultimate-focus-timer"
+daemon_config = ConfigManager()
 daemon_google_integration = create_google_integration(google_config_dir)
 daemon_task_manager = TaskManager(
     data_dir=DATA_DIR,
     google_integration=daemon_google_integration,
-    google_task_list_id=DEFAULT_TASK_LIST_ID,
+    google_task_list_id=daemon_config.get("google_task_list_id", DEFAULT_TASK_LIST_ID),
 )
 _periodic_sync_handle: Optional[asyncio.Task] = None
 
@@ -500,7 +501,7 @@ def run_daemon(host: str = "127.0.0.1", port: int = 8765):
     import uvicorn
 
     logger.info("Starting daemon on %s:%d", host, port)
-    uvicorn.run(app, host=host, port=port, log_level="info")
+    uvicorn.run(app, host=host, port=port, log_level="warning", access_log=False)
 
 
 if __name__ == "__main__":

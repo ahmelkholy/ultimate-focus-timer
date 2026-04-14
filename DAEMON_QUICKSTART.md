@@ -1,165 +1,85 @@
-# Quick Start - Daemon GUI Controls
+# Quick Start - Auto-Managed Daemon
 
-**Updated**: 2026-03-25
+**Updated**: 2026-04-14
 
 ---
 
-## Now Working!
+## Default behavior
 
-The daemon controls in the GUI are **fully operational**:
+The GUI now manages the daemon for you:
 
-### GUI Usage
-
-1. **Start the application**:
+1. Start the app:
    ```bash
    python main.py --gui
    ```
+   Or launch `focus.bat` / `focus.pyw` on Windows.
 
-2. **Daemon Control Frame** (at bottom of GUI):
-   - **Status Label**: Shows real-time daemon status
-     - Green dot: Daemon running
-     - Red dot: Daemon stopped
-     - Orange dot: Starting/Stopping
-     - Question mark: Unknown state
+2. The app starts the FastAPI daemon automatically in the background.
 
-   - **Start Daemon Button**: Click to start the Ultradian daemon
-     - Disabled when daemon is already running
-     - Shows "Starting..." feedback
-     - Displays success/error message
+3. The main GUI no longer shows daemon start/stop controls at the bottom.
 
-   - **Stop Daemon Button**: Click to stop the daemon
-     - Enabled only when daemon is running
-     - Shows "Stopping..." feedback
-     - Displays success/error message
+4. On Windows the daemon is launched with a hidden Python process, so no extra terminal window should stay open for the daemon.
 
-3. **Status Updates**: The status label updates every 2 seconds automatically
+5. When the GUI closes, it stops the daemon process that this GUI instance started.
 
 ---
 
-## What the Daemon Does
+## What the daemon does
 
 The daemon runs a **FastAPI HTTP server** on `http://127.0.0.1:8765` that manages:
 
-- **Ultradian Rhythm**: 90-minute focus cycles
-  - 5 min: Ramp-up phase
-  - 85 min: Deep work (peak focus)
-  - 20 min: Neural rest (recovery)
+- **Ultradian Rhythm**
+  - 5 min: Ramp-up
+  - 85 min: Deep work
+  - 20 min: Neural rest
 
-- **HTTP API** for session control:
-  - GET `/status` — Current session state
-  - POST `/start` — Begin 90-minute session
-  - POST `/stop` — End current session
+- **HTTP API**
+  - `GET /status` — Current session state
+  - `POST /start` — Begin a 90-minute session
+  - `POST /stop` — End the current session
 
-- **Background Operation**: Runs non-blocking in background
+- **Background sync**
+  - Periodic Google Tasks sync
+  - Sync when the cycle enters Rest
 
 ---
 
-## Fixed Issues
+## Manual mode (advanced only)
 
-### ✓ Port Conflicts
-Previously: "Only one usage of each socket address error"
-Now: Automatic cleanup of stale processes
+You only need to start the daemon manually when debugging or talking to the API directly:
 
-### ✓ Slow Startup Detection
-Previously: Daemon would timeout before starting
-Now: 7.5-second wait with proper health checks
+```bash
+python -m src.daemon
+```
 
-### ✓ HTTP Request Failures
-Previously: Proxy configuration blocked health checks
-Now: Using urllib.request with fallback to requests
+Then:
 
-### ✓ Silent Failures
-Previously: No error messages
-Now: All errors logged to `daemon.log`
+```bash
+curl http://127.0.0.1:8765/status
+curl -X POST http://127.0.0.1:8765/stop
+```
 
 ---
 
 ## Troubleshooting
 
-### Daemon won't start
-1. Check `daemon.log` for error messages
-2. Kill any stale daemon processes:
-   ```bash
-   taskkill /F /IM python.exe
-   ```
-3. Verify port 8765 is free:
-   ```bash
-   netstat -ano | findstr 8765
-   ```
-4. Restart GUI and try again
+### The daemon did not start with the GUI
 
-### Daemon shows "Error" status
-1. Check daemon.log
-2. Restart daemon
-3. Clear port and retry
+1. Check `daemon.log`
+2. Make sure port `8765` is free
+3. Restart the GUI
 
-### GUI not detecting daemon
-1. Ensure firewall allows localhost:8765
-2. Check that no proxy is blocking requests
-3. Increase health check timeout if needed
+### A terminal window still appears on Windows
 
----
+Start the GUI with one of these launchers instead of running the daemon directly:
 
-## Advanced Usage
-
-### Manual Daemon Control (Terminal)
 ```bash
-# Start daemon
-python -m src.daemon
-
-# In another terminal, check status
-curl http://127.0.0.1:8765/status
-
-# Stop daemon
-curl -X POST http://127.0.0.1:8765/stop
+python main.py --gui
+focus.bat
 ```
 
-### View Daemon Logs
+### Need to inspect daemon output
+
 ```bash
 type daemon.log
 ```
-
-### PowerShell Module
-The PowerShell module also works with the daemon:
-```powershell
-focus gui                # Start GUI with daemon
-focus-quick 25          # Start 25-min work with daemon
-```
-
----
-
-## Current Status
-
-- **Daemon Manager**: Fully implemented
-- **GUI Controls**: Integrated and tested
-- **Status Monitoring**: Real-time updates working
-- **Error Handling**: Improved with logging
-- **Port Management**: Auto-cleanup of conflicts
-- **Start/Stop**: Both operations successful
-
-**Status: PRODUCTION READY** ✓
-
----
-
-## What Changed This Session
-
-1. **Fixed port binding conflicts** - Automatic stale process cleanup
-2. **Improved startup detection** - Increased timeout and retry count
-3. **Fixed proxy issues** - Using urllib for health checks
-4. **Added error logging** - Daemon output captured to daemon.log
-5. **Tested end-to-end** - GUI → Daemon → Status updates working
-
----
-
-## All Systems Go! 🚀
-
-You can now:
-- ✓ Start daemon from GUI
-- ✓ Monitor daemon status in real-time
-- ✓ Stop daemon cleanly
-- ✓ Get error messages if something fails
-- ✓ Auto-recovery on port conflicts
-
-Enjoy your Focus Timer with daemon support!
-
-Generated: 2026-03-25
