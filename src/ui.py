@@ -14,6 +14,7 @@ import re
 import signal
 import subprocess
 import sys
+import threading
 import tkinter as tk
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -34,6 +35,7 @@ from .core import (
     Task,
     TaskManager,
 )
+from .google_integration import DEFAULT_TASK_LIST_ID, create_google_integration
 from .daemon_manager import DaemonManager
 from .system import (
     EXPORTS_DIR,
@@ -1000,7 +1002,7 @@ class InlineTaskWidget:
         # Configure the task frame to fill available width
         parent.grid_columnconfigure(0, weight=1)  # Ensure parent expands column 0
         task_frame.grid_columnconfigure(
-            1, weight=1
+            2, weight=1
         )  # Make title column expand to fill space
 
         # Add drag-and-drop bindings
@@ -1012,6 +1014,30 @@ class InlineTaskWidget:
             "<ButtonRelease-1>", lambda e: self.on_drag_release(e, task_frame, task)
         )
 
+        sync_state = self.task_manager.get_sync_status(task.id)
+        sync_icon_map = {
+            "synced": "☁",
+            "pending": "…",
+            "error": "⚠",
+            "disabled": "⏻",
+            "local": "·",
+        }
+        sync_color_map = {
+            "synced": "#00bfff",
+            "pending": "#ffaa00",
+            "error": "#ff5555",
+            "disabled": "#666666",
+            "local": "#666666",
+        }
+        sync_label = tk.Label(
+            task_frame,
+            text=sync_icon_map.get(sync_state, "·"),
+            font=("Arial", 11),
+            fg=sync_color_map.get(sync_state, "#666666"),
+            bg=sel_bg,
+        )
+        sync_label.grid(row=0, column=0, padx=(0, 2))
+
         # Completion checkbox
         completed_var = tk.BooleanVar(value=task.completed)
         check = ttk.Checkbutton(
@@ -1019,7 +1045,7 @@ class InlineTaskWidget:
             variable=completed_var,
             command=lambda: self.toggle_task(task, completed_var),
         )
-        check.grid(row=0, column=0, padx=(0, 4))  # Small padding after checkbox
+        check.grid(row=0, column=1, padx=(0, 4))  # Small padding after checkbox
 
         # Task title with green text color - MAXIMUM WIDTH
         title_text = task.title
@@ -1039,7 +1065,7 @@ class InlineTaskWidget:
             justify="left",
         )
         title_label.grid(
-            row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 1)
+            row=0, column=2, sticky=(tk.W, tk.E), padx=(0, 1)
         )  # Minimal padding for maximum width
 
         # Bind drag to title label as well
@@ -1062,7 +1088,7 @@ class InlineTaskWidget:
             fg=pomodoro_color,
             bg="#2b2b2b",
         )
-        pomodoro_label.grid(row=0, column=2, padx=(1, 1))  # Minimal padding
+        pomodoro_label.grid(row=0, column=3, padx=(1, 1))  # Minimal padding
 
         # Pomodoro buttons (only for incomplete tasks)
         if not task.completed:
@@ -1100,16 +1126,9 @@ class InlineTaskWidget:
 
     def toggle_task(self, task: Task, var: tk.BooleanVar):
         """Toggle task completion"""
+        self.task_manager.toggle_task_completion(task.id)
         if var.get():
-            self.task_manager.complete_task(task.id)
-            # Show congratulations for completed task
             self.show_task_completion_message(task)
-        else:
-            # Uncomplete the task
-            task.completed = False
-            task.completed_at = None
-            self.task_manager.save_tasks()
-
         self.update_display()
 
     def add_pomodoro_to_task(self, task: Task):
@@ -3319,7 +3338,14 @@ class FocusGUI:
             self.session_manager = SessionManager(self.config)
 
             # Initialize task manager
-            self.task_manager = TaskManager()
+            self.google_config_dir = Path.home() / ".ultimate-focus-timer"
+            self.google_integration = create_google_integration(self.google_config_dir)
+            self.task_manager = TaskManager(
+                google_integration=self.google_integration,
+                google_task_list_id=self.config.get(
+                    "google_task_list_id", DEFAULT_TASK_LIST_ID
+                ),
+            )
 
             # Add a variable to store the current task ID
             self.current_task_id = None
@@ -3386,6 +3412,7 @@ class FocusGUI:
 
             # Start daemon background status checking
             self.daemon_manager.check_status_background(interval=2.0)
+            self._auto_start_daemon()
 
             # Start update loop
             self.schedule_callback(100, self.update_loop)
@@ -3827,8 +3854,9 @@ class FocusGUI:
         # Daemon control buttons
         self.daemon_start_button = ttk.Button(
             self.daemon_frame,
-            text="▶ Start Daemon",
-            command=self._start_daemon_clicked,
+            text="▶ Auto Daemon",
+            command=lambda: None,
+            state="disabled",
             style="Modern.TButton",
         )
         self.daemon_start_button.grid(
@@ -4179,7 +4207,7 @@ class FocusGUI:
             pady=scaling["small_pady"],
             padx=scaling["small_pady"],
         )
-        task_row.grid_columnconfigure(1, weight=1)  # Title column expands
+        task_row.grid_columnconfigure(2, weight=1)  # Title column expands
 
         # Track this row for vim selection (index matches tasks list)
         self.task_rows.append((task, task_row))
@@ -4192,6 +4220,30 @@ class FocusGUI:
         except Exception:
             pass
 
+        sync_state = self.task_manager.get_sync_status(task.id)
+        sync_icon_map = {
+            "synced": "☁",
+            "pending": "…",
+            "error": "⚠",
+            "disabled": "⏻",
+            "local": "·",
+        }
+        sync_color_map = {
+            "synced": "#00bfff",
+            "pending": "#ffaa00",
+            "error": "#ff5555",
+            "disabled": "#666666",
+            "local": "#666666",
+        }
+        sync_label = tk.Label(
+            task_row,
+            text=sync_icon_map.get(sync_state, "·"),
+            font=("Arial", self.task_font_sizes["pomodoro"]),
+            fg=sync_color_map.get(sync_state, "#666666"),
+            bg=sel_bg,
+        )
+        sync_label.grid(row=0, column=0, padx=(0, scaling["small_pady"]))
+
         # Completion checkbox
         completed_var = tk.BooleanVar(value=task.completed)
         check = ttk.Checkbutton(
@@ -4199,7 +4251,7 @@ class FocusGUI:
             variable=completed_var,
             command=lambda: self.toggle_task(task, completed_var),
         )
-        check.grid(row=0, column=0, padx=(0, scaling["button_padx"]))
+        check.grid(row=0, column=1, padx=(0, scaling["button_padx"]))
 
         # Task title (more compact)
         title_text = task.title
@@ -4214,11 +4266,11 @@ class FocusGUI:
             text=title_text,
             font=("Arial", self.task_font_sizes["task_title"]),
             fg=text_color,
-            bg="#2b2b2b",
+            bg=sel_bg,
             anchor="w",
         )
         title_label.grid(
-            row=0, column=1, sticky=(tk.W, tk.E), padx=(0, scaling["small_pady"])
+            row=0, column=2, sticky=(tk.W, tk.E), padx=(0, scaling["small_pady"])
         )
         title_label.bind(
             "<Double-1>", lambda event, task=task: self.edit_task_title(event, task)
@@ -4237,10 +4289,10 @@ class FocusGUI:
             text=pomodoro_text,
             font=("Arial", self.task_font_sizes["pomodoro"]),
             fg=pomodoro_color,
-            bg="#2b2b2b",
+            bg=sel_bg,
         )
         pomodoro_label.grid(
-            row=0, column=2, padx=(scaling["small_pady"], scaling["small_pady"])
+            row=0, column=3, padx=(scaling["small_pady"], scaling["small_pady"])
         )
 
         # Compact pomodoro buttons (for incomplete tasks) with dynamic width
@@ -4255,7 +4307,7 @@ class FocusGUI:
                 )
                 decrease_pomodoro_btn.grid(
                     row=0,
-                    column=3,
+                    column=4,
                     padx=(scaling["small_pady"], scaling["small_pady"] // 2),
                 )
 
@@ -4268,10 +4320,10 @@ class FocusGUI:
                 )
                 add_pomodoro_btn.grid(
                     row=0,
-                    column=4,
+                    column=5,
                     padx=(scaling["small_pady"] // 2, scaling["small_pady"]),
                 )
-                delete_column = 5
+                delete_column = 6
             else:
                 # Only add button when no completed pomodoros
                 add_pomodoro_btn = ttk.Button(
@@ -4281,11 +4333,11 @@ class FocusGUI:
                     width=scaling["small_button_width"],
                 )
                 add_pomodoro_btn.grid(
-                    row=0, column=3, padx=(scaling["small_pady"], scaling["small_pady"])
+                    row=0, column=4, padx=(scaling["small_pady"], scaling["small_pady"])
                 )
-                delete_column = 4
+                delete_column = 5
         else:
-            delete_column = 3
+            delete_column = 4
 
         # Compact delete button with dynamic width
         delete_btn = ttk.Button(
@@ -4327,13 +4379,7 @@ class FocusGUI:
 
     def toggle_task(self, task, var):
         """Toggle task completion"""
-        if var.get():
-            self.task_manager.complete_task(task.id)
-        else:
-            # Uncomplete task
-            task.completed = False
-            task.completed_at = None
-            self.task_manager.save_tasks()
+        self.task_manager.toggle_task_completion(task.id)
         self.update_task_display()
 
     def add_pomodoro_to_task(self, task):
@@ -4358,6 +4404,34 @@ class FocusGUI:
             # Delete the first task (most recently added since we insert at top)
             self.task_manager.delete_task(tasks[0].id)
             self.update_task_display()
+
+    def sync_tasks_now(self):
+        """Manually trigger a cloud sync (Ctrl+S)."""
+        def _worker():
+            summary = self.task_manager.sync_with_cloud()
+            if self.google_integration and self.google_integration.is_enabled():
+                message = (
+                    "Sync complete "
+                    f"(pushed {summary.get('pushed', 0)}, "
+                    f"pulled {summary.get('pulled', 0)}, "
+                    f"updated {summary.get('updated', 0)}, "
+                    f"queued {summary.get('queued', 0)})"
+                )
+            else:
+                message = (
+                    f"Google sync offline. {summary.get('queued', 0)} change(s) queued."
+                )
+
+            def _notify():
+                try:
+                    messagebox.showinfo("Sync", message)
+                except Exception:
+                    logger.info(message)
+                self.update_task_display()
+
+            self._marshal(_notify)
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def trigger_add_task(self):
         """Public method to trigger adding a new task (for keyboard shortcuts)"""
@@ -4540,6 +4614,7 @@ class FocusGUI:
         self.root.bind("<Key-W>", lambda e: self.shortcut_open_task_window())
         self.root.bind("<Key-j>", lambda e: self._vim_nav_down())
         self.root.bind("<Key-k>", lambda e: self._vim_nav_up())
+        self.root.bind("<Control-s>", lambda e: self.sync_tasks_now())
 
         # Ensure the main window can receive focus for shortcuts
         self.root.focus_set()
@@ -5509,7 +5584,8 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
             is_running = status == "running"
             if self.daemon_start_button:
                 self.daemon_start_button.config(
-                    state="disabled" if is_running else "normal"
+                    state="disabled",
+                    text="Auto Daemon ✔" if is_running else "Auto Daemon…",
                 )
             if self.daemon_stop_button:
                 self.daemon_stop_button.config(
@@ -5530,7 +5606,7 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
                 )
             else:
                 messagebox.showerror("Error", "Failed to start daemon")
-            self.daemon_start_button.config(state="normal", text="Start Daemon")
+            self.daemon_start_button.config(state="disabled", text="Auto Daemon")
 
         self.schedule_callback(100, _do)
 
@@ -5546,6 +5622,23 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
             self.daemon_stop_button.config(state="normal", text="Stop Daemon")
 
         self.schedule_callback(100, _do)
+
+    def _auto_start_daemon(self):
+        """Start the daemon automatically in the background."""
+
+        def _do():
+            try:
+                if self.daemon_manager.is_running():
+                    self._on_daemon_status_changed("running")
+                    return
+                started = self.daemon_manager.start()
+                self._on_daemon_status_changed("running" if started else "error")
+                if not started:
+                    logger.warning("Daemon auto-start failed")
+            except Exception as exc:
+                logger.warning("Daemon auto-start error: %s", exc)
+
+        threading.Thread(target=_do, daemon=True).start()
 
     def _marshal(self, fn):
         """Schedule fn on the Tkinter event loop from any thread (fire-and-forget)."""

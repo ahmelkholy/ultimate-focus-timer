@@ -5,6 +5,7 @@ Implements 90/20 Ultradian rhythm without system monitoring
 """
 
 import asyncio
+from contextlib import suppress
 import enum
 import logging
 import platform
@@ -33,6 +34,10 @@ except ImportError as e:
     ZEIGARNIK_AVAILABLE = False
     ZeigarnikOffloadManager = None  # type: ignore
     logging.getLogger(__name__).warning("Zeigarnik manager not available: %s", e)
+
+from .core import TaskManager
+from .google_integration import DEFAULT_TASK_LIST_ID, create_google_integration
+from .system import DATA_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -357,6 +362,16 @@ app = FastAPI(title="Ultimate Focus Timer Daemon", version="3.0.0")
 
 # Global state machine instance
 state_machine = UltradianStateMachine()
+SYNC_INTERVAL_SECONDS = 15 * 60
+
+google_config_dir = Path.home() / ".ultimate-focus-timer"
+daemon_google_integration = create_google_integration(google_config_dir)
+daemon_task_manager = TaskManager(
+    data_dir=DATA_DIR,
+    google_integration=daemon_google_integration,
+    google_task_list_id=DEFAULT_TASK_LIST_ID,
+)
+_periodic_sync_handle: Optional[asyncio.Task] = None
 
 
 class StartSessionRequest(BaseModel):
@@ -376,6 +391,31 @@ class StatusResponse(BaseModel):
     remaining_seconds: int
     distraction_blocking_active: bool
     audio_active: bool
+
+
+async def run_background_sync(reason: str = "interval") -> None:
+    """Run a task sync in a background thread to avoid blocking the loop."""
+    try:
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, daemon_task_manager.sync_with_cloud)
+        logger.info("Background sync finished (%s)", reason)
+    except Exception as exc:
+        logger.warning("Background sync failed (%s): %s", reason, exc)
+
+
+async def periodic_sync_loop():
+    """Periodic sync every SYNC_INTERVAL_SECONDS seconds."""
+    while True:
+        await asyncio.sleep(SYNC_INTERVAL_SECONDS)
+        await run_background_sync("interval")
+
+
+async def rest_phase_sync():
+    """Trigger sync when entering neural rest."""
+    await run_background_sync("rest_phase")
+
+
+state_machine.register_phase_callback(UltradianPhase.NEURAL_REST, rest_phase_sync)
 
 
 @app.get("/")
@@ -421,6 +461,9 @@ async def startup_event():
     """Initialize daemon on startup"""
     logger.info("Focus Timer Daemon starting...")
     logger.info("Ultradian rhythm: 5m RAMP_UP -> 85m DEEP_WORK -> 20m NEURAL_REST")
+    global _periodic_sync_handle
+    if _periodic_sync_handle is None:
+        _periodic_sync_handle = asyncio.create_task(periodic_sync_loop())
 
     # Start Zeigarnik hotkey manager
     if state_machine.zeigarnik_manager:
@@ -432,6 +475,12 @@ async def startup_event():
 async def shutdown_event():
     """Clean up on shutdown"""
     logger.info("Focus Timer Daemon shutting down...")
+    global _periodic_sync_handle
+    if _periodic_sync_handle:
+        _periodic_sync_handle.cancel()
+        with suppress(asyncio.CancelledError):
+            await _periodic_sync_handle
+        _periodic_sync_handle = None
 
     # Stop Zeigarnik hotkey
     if state_machine.zeigarnik_manager:

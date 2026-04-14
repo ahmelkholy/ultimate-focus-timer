@@ -17,6 +17,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import yaml
 
+from .google_integration import DEFAULT_TASK_LIST_ID, GoogleIntegration
 from .system import (
     CONFIG_FILE,
     DATA_DIR,
@@ -811,6 +812,7 @@ class Task:
 
     id: str
     title: str
+    google_id: Optional[str] = None
     description: str = ""
     completed: bool = False
     pomodoros_planned: int = 1
@@ -848,16 +850,359 @@ class TaskManager:
     the Tkinter main loop.  A threading.Lock serialises concurrent writes.
     """
 
-    def __init__(self, data_dir: Path = None):
+    def __init__(
+        self,
+        data_dir: Path = None,
+        google_integration: Optional[GoogleIntegration] = None,
+        google_task_list_id: Optional[str] = None,
+    ):
         self.data_dir = Path(data_dir) if data_dir else DATA_DIR
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.tasks_file = self.data_dir / "daily_tasks.json" if data_dir else TASKS_FILE
         self.tasks: Dict[str, List[Task]] = {}
         self._lock = threading.Lock()
+        self._sync_lock = threading.Lock()
+        self.google_integration = google_integration
+        self.google_task_list_id = google_task_list_id or DEFAULT_TASK_LIST_ID
+        self._sync_queue_file = self.data_dir / "sync_queue.json"
+        self._sync_queue: List[Dict[str, Any]] = self._load_sync_queue()
+        self._sync_states: Dict[str, str] = {}
         self.load_tasks()
+        # Try flushing any queued operations on startup without blocking the caller
+        if self.google_integration:
+            self._process_sync_queue_async()
 
     def get_today_key(self) -> str:
         return datetime.now().strftime("%Y-%m-%d")
+
+    def set_google_integration(
+        self, integration: Optional[GoogleIntegration], task_list_id: Optional[str] = None
+    ) -> None:
+        """Attach Google integration after construction."""
+        self.google_integration = integration
+        if task_list_id:
+            self.google_task_list_id = task_list_id
+        if self.google_integration:
+            self._process_sync_queue_async()
+
+    def _can_sync(self) -> bool:
+        return bool(
+            self.google_integration
+            and getattr(self.google_integration, "is_enabled", lambda: False)()
+        )
+
+    def _load_sync_queue(self) -> List[Dict[str, Any]]:
+        if not self.data_dir.exists():
+            return []
+        try:
+            if self._sync_queue_file.exists():
+                with open(self._sync_queue_file, "r", encoding="utf-8") as fh:
+                    return json.load(fh)
+        except Exception:
+            logger.exception("Error loading sync queue")
+        return []
+
+    def _save_sync_queue(self) -> None:
+        try:
+            with open(self._sync_queue_file, "w", encoding="utf-8") as fh:
+                json.dump(self._sync_queue, fh, indent=2, ensure_ascii=False)
+        except OSError:
+            logger.exception("Error saving sync queue")
+
+    def _process_sync_queue_async(self, force: bool = False) -> None:
+        threading.Thread(
+            target=self._process_sync_queue, args=(force,), daemon=True
+        ).start()
+
+    def _process_sync_queue(self, force: bool = False) -> None:
+        if not self._can_sync():
+            return
+        now = time.time()
+        with self._sync_lock:
+            remaining: List[Dict[str, Any]] = []
+            for entry in list(self._sync_queue):
+                next_attempt = entry.get("next_attempt", 0)
+                if not force and next_attempt > now:
+                    remaining.append(entry)
+                    continue
+                success = self._perform_sync_action(entry)
+                if success:
+                    continue
+                entry["retries"] = entry.get("retries", 0) + 1
+                delay = min(900, 5 * (2 ** (entry["retries"] - 1)))
+                entry["next_attempt"] = now + delay
+                remaining.append(entry)
+            self._sync_queue = remaining
+            self._save_sync_queue()
+
+    def _enqueue_sync(self, action: str, task: Task) -> None:
+        payload = task.to_dict()
+        entry = {
+            "action": action,
+            "task_id": task.id,
+            "google_id": task.google_id,
+            "payload": payload,
+            "retries": 0,
+            "next_attempt": time.time(),
+        }
+        with self._sync_lock:
+            self._sync_states[task.id] = "pending"
+            self._sync_queue.append(entry)
+            self._save_sync_queue()
+
+    def _perform_sync_action(self, entry: Dict[str, Any]) -> bool:
+        if not self._can_sync():
+            return False
+        action = entry.get("action")
+        payload: Dict[str, Any] = entry.get("payload", {})
+        task_id = entry.get("task_id")
+        task = self.get_task_by_id(task_id) if task_id else None
+        google_id = (task.google_id if task else None) or entry.get("google_id")
+        try:
+            if action == "create":
+                result = self.google_integration.create_task(
+                    self.google_task_list_id,
+                    payload.get("title", ""),
+                    payload.get("description", ""),
+                )
+                if result and result.get("id"):
+                    google_id = result["id"]
+                    if task:
+                        task.google_id = google_id
+                        self.save_tasks()
+                    self._sync_states[task_id] = "synced"
+                    return True
+                return False
+            if action == "update":
+                if not google_id:
+                    return self._perform_sync_action({**entry, "action": "create"})
+                result = self.google_integration.update_task(
+                    self.google_task_list_id,
+                    google_id,
+                    title=payload.get("title") or (task.title if task else None),
+                    notes=payload.get("description") or (task.description if task else None),
+                    completed=payload.get("completed")
+                    if payload.get("completed") is not None
+                    else (task.completed if task else None),
+                )
+                if result is not None:
+                    self._sync_states[task_id] = "synced"
+                    return True
+                return False
+            if action == "delete":
+                if not google_id:
+                    return True
+                success = self.google_integration.delete_task(
+                    self.google_task_list_id, google_id
+                )
+                if success and task_id:
+                    self._sync_states[task_id] = "synced"
+                return success
+        except Exception as exc:
+            logger.warning("Sync action %s failed for %s: %s", action, task_id, exc)
+            entry["last_error"] = str(exc)
+            self._sync_states[task_id] = "error"
+            return False
+        return False
+
+    def _sync_new_task(self, task: Task) -> None:
+        if not self.google_integration:
+            return
+
+        def _worker():
+            if not self._can_sync():
+                self._enqueue_sync("create", task)
+                return
+            try:
+                result = self.google_integration.create_task(
+                    self.google_task_list_id, task.title, task.description
+                )
+                if result and result.get("id"):
+                    task.google_id = result["id"]
+                    self._sync_states[task.id] = "synced"
+                    self.save_tasks()
+                else:
+                    self._enqueue_sync("create", task)
+            except Exception:
+                self._enqueue_sync("create", task)
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _sync_task_update(self, task: Task) -> None:
+        if not self.google_integration:
+            return
+
+        def _worker():
+            if not self._can_sync():
+                self._enqueue_sync("update", task)
+                return
+            try:
+                if not task.google_id:
+                    self._enqueue_sync("create", task)
+                    return
+                result = self.google_integration.update_task(
+                    self.google_task_list_id,
+                    task.google_id,
+                    title=task.title,
+                    notes=task.description,
+                    completed=task.completed,
+                )
+                if result is None:
+                    self._enqueue_sync("update", task)
+                else:
+                    self._sync_states[task.id] = "synced"
+            except Exception:
+                self._enqueue_sync("update", task)
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _sync_task_delete(self, task: Task) -> None:
+        if not self.google_integration:
+            return
+
+        def _worker():
+            if not self._can_sync():
+                if task.google_id:
+                    self._enqueue_sync("delete", task)
+                return
+            if not task.google_id:
+                return
+            success = self.google_integration.delete_task(
+                self.google_task_list_id, task.google_id
+            )
+            if not success:
+                self._enqueue_sync("delete", task)
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    @staticmethod
+    def _parse_timestamp(value: Optional[str]) -> Optional[datetime]:
+        if not value:
+            return None
+        try:
+            if value.endswith("Z"):
+                value = value.replace("Z", "+00:00")
+            return datetime.fromisoformat(value)
+        except Exception:
+            return None
+
+    def _remote_task_matches_today(self, remote_task: Dict[str, Any], today_key: str) -> bool:
+        """Filter remote tasks to only those updated or due today."""
+        for key in ("due", "updated", "completed"):
+            ts = self._parse_timestamp(remote_task.get(key))
+            if ts and ts.strftime("%Y-%m-%d") == today_key:
+                return True
+        return False
+
+    def sync_with_cloud(self) -> Dict[str, int]:
+        """Bidirectional sync between local tasks and Google Tasks."""
+        summary = {"pushed": 0, "pulled": 0, "updated": 0, "queued": 0}
+        if not self._can_sync():
+            summary["queued"] = len(self._sync_queue)
+            return summary
+
+        self._process_sync_queue(force=True)
+
+        today_key = self.get_today_key()
+        local_tasks = list(self.tasks.get(today_key, []))
+        try:
+            remote_tasks = self.google_integration.fetch_remote_tasks(
+                self.google_task_list_id, include_completed=True
+            )
+        except Exception as exc:
+            logger.warning("Failed to fetch remote tasks: %s", exc)
+            return summary
+
+        remote_by_id = {t.get("id"): t for t in remote_tasks if t.get("id")}
+        local_by_gid = {t.google_id: t for t in local_tasks if t.google_id}
+
+        # Push local tasks that are missing a google_id
+        for task in local_tasks:
+            if task.google_id:
+                continue
+            try:
+                created = self.google_integration.create_task(
+                    self.google_task_list_id, task.title, task.description
+                )
+                if created and created.get("id"):
+                    task.google_id = created["id"]
+                    summary["pushed"] += 1
+                else:
+                    self._enqueue_sync("create", task)
+                    summary["queued"] += 1
+            except Exception as exc:
+                logger.debug("Queueing task %s for later sync: %s", task.id, exc)
+                self._enqueue_sync("create", task)
+                summary["queued"] += 1
+
+        # Pull remote tasks not present locally (for today only)
+        for remote_id, remote_task in remote_by_id.items():
+            if remote_id in local_by_gid:
+                continue
+            if not self._remote_task_matches_today(remote_task, today_key):
+                continue
+            task = Task(
+                id=f"{today_key}_{remote_id}",
+                title=remote_task.get("title", "Untitled Task"),
+                description=remote_task.get("notes", ""),
+                completed=remote_task.get("status") == "completed",
+                pomodoros_planned=1,
+                pomodoros_completed=0,
+                created_at=remote_task.get("updated", datetime.now().isoformat()),
+                completed_at=remote_task.get("completed"),
+                google_id=remote_id,
+            )
+            self.tasks.setdefault(today_key, []).append(task)
+            summary["pulled"] += 1
+
+        # Resolve conflicts based on completed_at recency
+        for google_id, task in local_by_gid.items():
+            remote_task = remote_by_id.get(google_id)
+            if not remote_task:
+                continue
+            remote_completed = self._parse_timestamp(remote_task.get("completed"))
+            local_completed = self._parse_timestamp(task.completed_at)
+            if remote_completed and (
+                not local_completed or remote_completed > local_completed
+            ):
+                task.completed = True
+                task.completed_at = remote_task.get("completed")
+                summary["updated"] += 1
+            elif local_completed and (
+                not remote_completed or local_completed > remote_completed
+            ):
+                try:
+                    updated = self.google_integration.update_task(
+                        self.google_task_list_id,
+                        google_id,
+                        title=task.title,
+                        notes=task.description,
+                        completed=task.completed,
+                    )
+                    if updated is None:
+                        self._enqueue_sync("update", task)
+                        summary["queued"] += 1
+                    else:
+                        summary["updated"] += 1
+                except Exception:
+                    self._enqueue_sync("update", task)
+                    summary["queued"] += 1
+
+        self.save_tasks()
+        return summary
+
+    def get_sync_status(self, task_id: str) -> str:
+        """Return sync status for UI indicator."""
+        if any(entry.get("task_id") == task_id for entry in self._sync_queue):
+            return "pending"
+        if self._sync_states.get(task_id) == "error":
+            return "error"
+        if not self.google_integration or not self.google_integration.is_enabled():
+            return "disabled"
+        task = self.get_task_by_id(task_id)
+        if task and task.google_id:
+            return "synced"
+        return "local"
 
     def load_tasks(self):
         if self.tasks_file.exists():
@@ -904,6 +1249,7 @@ class TaskManager:
             self.tasks[today_key] = []
         self.tasks[today_key].insert(0, task)
         self.save_tasks()
+        self._sync_new_task(task)
         return task
 
     def complete_task(self, task_id: str) -> bool:
@@ -911,6 +1257,7 @@ class TaskManager:
         if task:
             task.mark_complete()
             self.save_tasks()
+            self._sync_task_update(task)
             return True
         return False
 
@@ -923,6 +1270,7 @@ class TaskManager:
             else:
                 task.mark_complete()
             self.save_tasks()
+            self._sync_task_update(task)
             return True
         return False
 
@@ -950,13 +1298,14 @@ class TaskManager:
 
     def delete_task(self, task_id: str) -> bool:
         today_key = self.get_today_key()
-        if today_key in self.tasks:
-            self.tasks[today_key] = [
-                t for t in self.tasks[today_key] if t.id != task_id
-            ]
-            self.save_tasks()
-            return True
-        return False
+        if today_key not in self.tasks:
+            return False
+        task = self.get_task_by_id(task_id)
+        if task:
+            self._sync_task_delete(task)
+        self.tasks[today_key] = [t for t in self.tasks[today_key] if t.id != task_id]
+        self.save_tasks()
+        return True
 
     def reorder_tasks(self, task_id: str, dest_index: int) -> bool:
         """Move task with task_id to dest_index position in today's list."""
@@ -978,6 +1327,7 @@ class TaskManager:
         if task:
             task.title = new_title
             self.save_tasks()
+            self._sync_task_update(task)
             return True
         return False
 

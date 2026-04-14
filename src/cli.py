@@ -35,6 +35,10 @@ sys.path.insert(0, str(current_dir.parent))
 
 try:
     from src.core import ConfigManager, SessionManager, TaskManager
+    from src.google_integration import (
+        DEFAULT_TASK_LIST_ID,
+        create_google_integration,
+    )
     from src.ui import SessionAnalyzer
     from src.system import MusicController, NotificationManager
 except ImportError as e:
@@ -60,7 +64,15 @@ class UltimateCLI:
         self.music_controller = MusicController(self.config_manager)
         self.notification_manager = NotificationManager()
         self.session_analyzer = SessionAnalyzer()
-        self.task_manager = TaskManager()
+        self.google_integration = create_google_integration(
+            Path.home() / ".ultimate-focus-timer"
+        )
+        self.task_manager = TaskManager(
+            google_integration=self.google_integration,
+            google_task_list_id=self.config_manager.get(
+                "google_task_list_id", DEFAULT_TASK_LIST_ID
+            ),
+        )
 
     def print(self, *args, **kwargs):
         """Enhanced print function that uses rich if available"""
