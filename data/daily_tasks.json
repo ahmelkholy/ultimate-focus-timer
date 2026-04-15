@@ -115,15 +115,15 @@
   ],
   "2026-04-15": [
     {
-      "id": "2026-04-14_170817847534",
-      "title": "pid paper",
-      "google_id": "SDQ0eGNYV0JidzdYcWFtRA",
+      "id": "2026-04-14_162156371910",
+      "title": "mahmoud master",
+      "google_id": "SXo2d0hEdE5MMXJIVUwzcA",
       "description": "",
       "completed": false,
       "pomodoros_planned": 1,
-      "pomodoros_completed": 1,
-      "created_at": "2026-04-14T17:08:17.847543",
-      "updated_at": "2026-04-14T18:35:00.921824",
+      "pomodoros_completed": 2,
+      "created_at": "2026-04-14T16:21:56.371919",
+      "updated_at": "2026-04-14T21:57:02.593865",
       "completed_at": null
     },
     {
@@ -139,51 +139,15 @@
       "completed_at": null
     },
     {
-      "id": "2026-04-14_162156371910",
-      "title": "mahmoud master",
-      "google_id": "SXo2d0hEdE5MMXJIVUwzcA",
+      "id": "2026-04-14_UFZFQjJmeFlzUmszYUpXSg",
+      "title": "pid paper to do ",
+      "google_id": "UFZFQjJmeFlzUmszYUpXSg",
       "description": "",
       "completed": false,
       "pomodoros_planned": 1,
       "pomodoros_completed": 0,
-      "created_at": "2026-04-14T16:21:56.371919",
-      "updated_at": "2026-04-14T16:21:56.371919",
-      "completed_at": null
-    },
-    {
-      "id": "2026-04-14_162104851901",
-      "title": "arrange new computer search help gemini",
-      "google_id": "RUdfR09XY2dLREF1ZkZ0Zw",
-      "description": "",
-      "completed": false,
-      "pomodoros_planned": 1,
-      "pomodoros_completed": 0,
-      "created_at": "2026-04-14T16:21:04.851909",
-      "updated_at": "2026-04-14T16:28:01.208405",
-      "completed_at": null
-    },
-    {
-      "id": "2026-04-14_Q3lFWkRSQ3FlUXpaU21xLQ",
-      "title": "rt",
-      "google_id": "Q3lFWkRSQ3FlUXpaU21xLQ",
-      "description": "",
-      "completed": false,
-      "pomodoros_planned": 1,
-      "pomodoros_completed": 0,
-      "created_at": "2026-04-14T14:10:08.041Z",
-      "updated_at": "2026-04-14T14:10:08.041Z",
-      "completed_at": null
-    },
-    {
-      "id": "2026-04-14_Q3JOUUtWZE80NjNLYVpRVQ",
-      "title": "dd",
-      "google_id": "Q3JOUUtWZE80NjNLYVpRVQ",
-      "description": "",
-      "completed": false,
-      "pomodoros_planned": 1,
-      "pomodoros_completed": 0,
-      "created_at": "2026-04-14T14:09:56.205Z",
-      "updated_at": "2026-04-14T14:09:56.205Z",
+      "created_at": "2026-04-14T19:12:41.407Z",
+      "updated_at": "2026-04-14T19:12:41.407Z",
       "completed_at": null
     }
   ]
