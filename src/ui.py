@@ -3858,6 +3858,8 @@ class FocusGUI:
             )
             self.tray.start()
 
+
+
             # ── Global hotkeys ─────────────────────────────────────────────────
             self.hotkeys = HotkeyManager(
                 on_show=self._show_window,

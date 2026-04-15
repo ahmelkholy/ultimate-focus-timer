@@ -26,6 +26,9 @@ from src.system import setup_logging, ERROR_LOG_FILE, ensure_dirs  # noqa: E402
 setup_logging()
 logger = logging.getLogger(__name__)
 
+# Bypass proxy for local daemon
+os.environ["no_proxy"] = "localhost,127.0.0.1"
+
 # ── Remaining src imports ─────────────────────────────────────────────────────
 from src.core import ConfigManager, SessionManager  # noqa: E402
 from src.focus_console import ConsoleInterface  # noqa: E402

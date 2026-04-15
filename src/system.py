@@ -775,6 +775,21 @@ class TrayManager:
         self._thread = None
         self.available = _PYSTRAY_AVAILABLE
 
+        # Detect Tcl 9.0 on macOS - known to crash with pystray/NSApplication
+        self._is_macos_tcl9 = False
+        if platform.system() == "Darwin":
+            try:
+                import tkinter
+                tcl_version = tkinter.Tcl().eval("info patchlevel")
+                if tcl_version.startswith("9."):
+                    self._is_macos_tcl9 = True
+                    logger.warning(
+                        f"Tcl/Tk {tcl_version} detected on macOS. "
+                        "Disabling System Tray to prevent crash."
+                    )
+            except Exception:
+                pass
+
     def _build_menu(self) -> Any:
         def _call(fn):
             def _handler(icon, item):
@@ -795,7 +810,7 @@ class TrayManager:
         )
 
     def start(self) -> None:
-        if not _PYSTRAY_AVAILABLE:
+        if not _PYSTRAY_AVAILABLE or self._is_macos_tcl9:
             return
         try:
             import threading
@@ -870,17 +885,22 @@ class HotkeyManager:
     def start(self) -> None:
         if not _KEYBOARD_AVAILABLE:
             return
+        
+        # Register each hotkey individually to prevent one failure from stopping all
         try:
             keyboard.add_hotkey(self.HOTKEY_SHOW, self._handle_show)
+            logger.info("Global hotkey registered: %s (show)", self.HOTKEY_SHOW)
+        except Exception as e:
+            logger.warning("Failed to register 'show' hotkey (%s): %s", self.HOTKEY_SHOW, e)
+
+        try:
             keyboard.add_hotkey(self.HOTKEY_PAUSE, self._handle_pause_resume)
-            self._registered = True
-            logger.info(
-                "Global hotkeys registered: %s (show), %s (pause/resume)",
-                self.HOTKEY_SHOW,
-                self.HOTKEY_PAUSE,
-            )
-        except Exception:
-            logger.exception("Failed to register global hotkeys")
+            logger.info("Global hotkey registered: %s (pause/resume)", self.HOTKEY_PAUSE)
+        except Exception as e:
+            logger.warning("Failed to register 'pause' hotkey (%s): %s", self.HOTKEY_PAUSE, e)
+
+        self._registered = True
+
 
     def stop(self) -> None:
         if not _KEYBOARD_AVAILABLE or not self._registered:
