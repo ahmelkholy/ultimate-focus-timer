@@ -196,7 +196,12 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 mpv_classical.pid
+daemon.pid
+.session.state
 .vscode
 exports/
+log/
+*.log.*
+data/sync_queue.dead.json
 /vscode-extension/node_modules
 vscode-extension/
