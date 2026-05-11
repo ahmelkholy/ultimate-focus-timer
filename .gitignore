@@ -203,6 +203,9 @@ exports/
 log/
 *.log.*
 data/sync_queue.dead.json
+data/daily_tasks.json
+data/daily_tasks.json.corrupt*
+data/sync_queue.json
 /vscode-extension/node_modules
 vscode-extension/
 config.yml
