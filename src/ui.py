@@ -56,6 +56,50 @@ if TYPE_CHECKING:
 
 
 _ANALYTICS_MODULES: Optional[Tuple[Any, Any, Any]] = None
+_DEFAULT_WINDOW_WIDTH = 300
+_DEFAULT_WINDOW_HEIGHT = 400
+_WINDOW_GEOMETRY_RE = re.compile(r"^(\d+)x(\d+)(?:([+-]-?\d+)([+-]-?\d+))?$")
+
+
+def _parse_window_geometry(
+    geometry: str,
+) -> Optional[Tuple[int, int, Optional[int], Optional[int]]]:
+    """Parse a Tk geometry string, including legacy '+-N' offsets."""
+    match = _WINDOW_GEOMETRY_RE.match(geometry.strip())
+    if not match:
+        return None
+
+    width = int(match.group(1))
+    height = int(match.group(2))
+    raw_x = match.group(3)
+    raw_y = match.group(4)
+
+    if raw_x is None or raw_y is None:
+        return width, height, None, None
+
+    return width, height, int(raw_x.lstrip("+")), int(raw_y.lstrip("+"))
+
+
+def _format_window_geometry(
+    width: int,
+    height: int,
+    x: Optional[int] = None,
+    y: Optional[int] = None,
+) -> str:
+    """Format geometry with Tk-compatible negative offsets."""
+    geometry = f"{width}x{height}"
+    if x is not None and y is not None:
+        x_part = f"+{x}" if x >= 0 else str(x)
+        y_part = f"+{y}" if y >= 0 else str(y)
+        geometry = f"{geometry}{x_part}{y_part}"
+    return geometry
+
+
+def _normalise_window_geometry(geometry: str) -> Optional[str]:
+    parsed = _parse_window_geometry(geometry)
+    if not parsed:
+        return None
+    return _format_window_geometry(*parsed)
 
 
 def _load_analytics_modules() -> Tuple[Any, Any, Any]:
@@ -3950,38 +3994,49 @@ class FocusGUI:
             self.center_window_default()
             return
 
-        if not self._geometry_is_visible(saved_geometry):
-            logger.info(
-                "Saved window geometry %s is off-screen; restoring defaults.",
+        parsed_geometry = _parse_window_geometry(saved_geometry)
+        if not parsed_geometry:
+            logger.warning(
+                "Saved window geometry %s is invalid; restoring defaults.",
                 saved_geometry,
             )
             self.center_window_default()
             return
 
+        width, height, x, y = parsed_geometry
+        normalised_geometry = _format_window_geometry(width, height, x, y)
+        if x is None or y is None:
+            self.center_window_default(width, height)
+            return
+
         try:
-            self.root.geometry(saved_geometry)
+            if self._geometry_is_visible(normalised_geometry):
+                self.root.geometry(normalised_geometry)
+                return
         except tk.TclError as exc:
             logger.warning(
                 "Failed to restore saved window geometry %s: %s",
-                saved_geometry,
+                normalised_geometry,
                 exc,
             )
-            self.center_window_default()
+
+        logger.info(
+            "Saved window geometry %s is off-screen; restoring saved size.",
+            saved_geometry,
+        )
+        self.center_window_default(width, height)
 
     def _geometry_is_visible(self, geometry: str) -> bool:
         """Return True if the given geometry string places the window on a visible screen."""
         try:
             import ctypes
-            import re
 
-            m = re.match(r"(\d+)x(\d+)([\+\-][\+\-]?\d+)([\+\-]\d+)", geometry)
-            if not m:
+            parsed_geometry = _parse_window_geometry(geometry)
+            if not parsed_geometry:
                 return False
-            win_w = int(m.group(1))
-            # height from geometry not used
-            # Strip leading '+' that Tkinter sometimes puts before a negative sign
-            win_x = int(m.group(3).lstrip("+"))
-            win_y = int(m.group(4).lstrip("+"))
+            win_w, _win_h, win_x, win_y = parsed_geometry
+            if win_x is None or win_y is None:
+                return False
             # Get virtual screen bounds (covers all monitors)
             k = ctypes.windll.user32
             vx = k.GetSystemMetrics(76)  # SM_XVIRTUALSCREEN
@@ -3998,12 +4053,12 @@ class FocusGUI:
         except Exception:
             return True  # If check fails, trust the saved value
 
-    def center_window_default(self):
+    def center_window_default(
+        self,
+        default_width: int = _DEFAULT_WINDOW_WIDTH,
+        default_height: int = _DEFAULT_WINDOW_HEIGHT,
+    ):
         """Center window with default dimensions"""
-        # Default size optimized for compact usage
-        default_width = 300
-        default_height = 400
-
         self.root.update_idletasks()
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
@@ -4064,6 +4119,8 @@ class FocusGUI:
         except tk.TclError as exc:
             logger.warning("Failed to read window geometry: %s", exc)
             return
+
+        geometry = _normalise_window_geometry(geometry) or geometry
 
         if geometry == self._last_saved_window_geometry:
             return
