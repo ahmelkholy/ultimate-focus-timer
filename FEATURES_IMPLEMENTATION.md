@@ -33,12 +33,14 @@ This implementation adds comprehensive enhancements to the Ultimate Focus Timer,
 **Implementation:** `src/ui.py` - InlineTaskWidget class
 
 Tasks can now be reordered by dragging and dropping:
+
 - Click and hold on a task row or title
 - Drag to the desired position
 - Release to drop
 - Visual feedback with highlighted frames
 
 **Key Methods:**
+
 - `on_drag_start()` - Initiates drag operation
 - `on_drag_motion()` - Provides visual feedback
 - `on_drag_release()` - Completes reordering
@@ -63,6 +65,7 @@ Full vim-style keyboard navigation:
 | `w` | Delegate task to next week |
 
 **Key Methods:**
+
 - `setup_vim_keybindings()` - Binds all vim keys
 - `vim_navigate_down/up()` - Navigation
 - `vim_delete_selected()` - Task deletion
@@ -74,6 +77,7 @@ Full vim-style keyboard navigation:
 **Implementation:** `src/ui.py` - vim_delegate_* methods
 
 Tasks can be delegated to future dates:
+
 - **Tomorrow (t key):** Adds `[Delegated to YYYY-MM-DD]` to task description
 - **Next Week (w key):** Delegates task 7 days forward
 - Delegation info stored in task description field
@@ -83,6 +87,7 @@ Tasks can be delegated to future dates:
 **Implementation:** `src/google_integration.py`
 
 Backend module for Google API integration:
+
 - OAuth2 authentication flow
 - Google Tasks API support
 - Google Calendar API support
@@ -90,11 +95,13 @@ Backend module for Google API integration:
 - Create calendar events
 
 **Requirements:**
+
 - Google API credentials JSON file
 - OAuth2 token storage
 - Dependencies: `google-auth`, `google-auth-oauthlib`, `google-api-python-client`
 
 **Key Classes:**
+
 - `GoogleIntegration` - Main integration class
 - Methods: `get_task_lists()`, `create_task()`, `sync_tasks_to_google()`
 
@@ -105,6 +112,7 @@ Backend module for Google API integration:
 Enhanced MPV integration with IPC (Inter-Process Communication):
 
 **New Features:**
+
 - `next_track()` - Skip to next track
 - `previous_track()` - Go to previous track
 - `get_current_track_info()` - Get playing track name
@@ -112,12 +120,14 @@ Enhanced MPV integration with IPC (Inter-Process Communication):
 - `_update_track_info_loop()` - Background track info updates
 
 **IPC Communication:**
+
 - Unix domain sockets (Linux/macOS)
 - Named pipes (Windows with pywin32)
 - JSON command protocol
 - Real-time track information
 
 **Track Display:**
+
 - Current track name stored in `current_track_name` attribute
 - Available in `get_status()` response
 - Updates every 2 seconds while playing
@@ -129,16 +139,19 @@ Enhanced MPV integration with IPC (Inter-Process Communication):
 Enhanced auto-start behavior:
 
 **Short Breaks:**
+
 - Always auto-start work session after completion
 - No user interaction required
 - Configurable delay (default: 2 seconds)
 
 **Long Breaks:**
+
 - NEVER auto-start work session
 - Requires manual start from user
 - Prevents burnout and forced rest
 
 **Code Changes:**
+
 ```python
 # Short break: always auto-start
 if self.session_type == SessionType.SHORT_BREAK:
@@ -156,17 +169,20 @@ elif self.session_type == SessionType.LONG_BREAK:
 Cross-platform MPV detection and installation:
 
 **Features:**
+
 - Platform detection (Windows/macOS/Linux)
 - Common directory search
 - Executable testing
 - Package manager integration
 
 **Installation Methods:**
+
 - **macOS:** Homebrew (`brew install mpv`)
 - **Linux:** apt/dnf/pacman/zypper auto-detection
 - **Windows:** Manual installation guidance
 
 **Usage:**
+
 ```python
 from src.mpv_installer import MPVInstaller
 
@@ -207,6 +223,7 @@ pywin32>=305; sys_platform == 'win32'
 **Test Suite:** `test_features.py`
 
 Comprehensive tests covering:
+
 - ✓ Configuration management
 - ✓ Session auto-start logic
 - ✓ Task operations (add, complete, reorder, delete)
@@ -214,6 +231,7 @@ Comprehensive tests covering:
 - ✓ Music controller status
 
 **Run Tests:**
+
 ```bash
 python test_features.py
 ```
@@ -242,6 +260,7 @@ python test_features.py
 ### Music Controls
 
 Music controls would be integrated into the GUI with:
+
 - Next/Previous buttons
 - Track name display (showing first 3-4 characters)
 - Playlist selector dropdown
@@ -276,10 +295,12 @@ Potential improvements for future versions:
 ## Compatibility
 
 **Tested On:**
+
 - Linux (GitHub Actions CI environment)
 - Python 3.8+
 
 **Expected Compatible:**
+
 - Windows 10/11
 - macOS 10.14+
 - Any platform with Python 3.8+ and Tkinter
@@ -307,6 +328,6 @@ Based on Ultimate Focus Timer by Ahmed Kholy
 ## Support
 
 For issues or questions:
+
 - GitHub Issues: https://github.com/ahmelkholy/ultimate-focus-timer/issues
 - Feature implemented in branch: `claude/add-drag-drop-reordering`
-

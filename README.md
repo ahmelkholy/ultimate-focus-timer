@@ -9,17 +9,20 @@ A lightweight personal productivity timer for traditional Pomodoro sessions, opt
 ## ✨ Key Features
 
 ### 🧠 Scientific Focus Technology
+
 - **90/20 Ultradian Rhythm**: Research-backed 90-minute focus cycles with 20-minute recovery
 - **40Hz Binaural Beats**: Gamma wave cognitive enhancement during deep work phases
 - **Zeigarnik Offload System**: Instant thought capture (Ctrl+Shift+Space) to clear working memory
 - **Distraction Blocking**: Automatic domain and process blocking during focus sessions
 
 ### 💻 Lightweight Interfaces
+
 - **Global CLI**: `focus start`, `focus status`, `focus stop` from any terminal
 - **Opt-in FastAPI Daemon**: Background Ultradian service when you explicitly enable it
 - **REST API**: Full programmatic control via HTTP endpoints
 
 ### 🎮 Traditional Features
+
 - **Multiple Interfaces**: GUI, Console, Dashboard, and Interactive Launcher
 - **Task Management**: Add, complete, and track tasks during focus sessions
 - **Music Integration**: Classical music playback with cross-platform audio support
@@ -38,11 +41,13 @@ python main.py --gui
 ### Option 2: Optional Daemon Mode (Ultradian Rhythm)
 
 **Start the daemon only when you need background Ultradian control:**
+
 ```bash
 python -m src.daemon
 ```
 
 **Use from terminal:**
+
 ```bash
 # Install global CLI
 ./scripts/install_global_cli.sh
@@ -90,11 +95,13 @@ python main.py --dashboard
 ## 🛠️ System Requirements
 
 ### For Optional Daemon Mode (Ultradian Rhythm)
+
 - **Python 3.8+** (Python 3.10+ recommended)
 - **PortAudio** (for 40Hz binaural beats)
 - **FastAPI & Uvicorn** (async web framework)
 
 ### For Traditional Mode (Pomodoro GUI)
+
 - **Python 3.8+** (Python 3.10+ recommended)
 - **MPV Media Player** (auto-installed by setup script)
 - **Tkinter** (usually included with Python)
@@ -157,6 +164,7 @@ python main.py --gui
 The codebase has been streamlined from 20 files to 11 core files (45% reduction):
 
 **Core Modules:**
+
 - `src/core.py` - Business logic (ConfigManager, SessionManager, TaskManager)
 - `src/system.py` - System integration (Audio, Notifications, Paths, Hotkeys, Tray)
 - `src/daemon.py` - FastAPI daemon with Ultradian state machine
@@ -164,12 +172,14 @@ The codebase has been streamlined from 20 files to 11 core files (45% reduction)
 - `src/zeigarnik_manager.py` - Global hotkey for thought capture
 
 **UI Modules:**
+
 - `src/ui.py` - Tkinter GUI interface
 - `src/focus_console.py` - Console interface
 - `src/dashboard.py` - Analytics dashboard
 - `src/cli.py` - Rich terminal CLI
 
 **Integration:**
+
 - `scripts/focus` - Global CLI wrapper
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed technical documentation.
@@ -187,6 +197,7 @@ Based on Nathaniel Kleitman's research on human alertness cycles:
 ### 40Hz Gamma Wave Enhancement
 
 Research shows 40Hz stimulation:
+
 - Enhances cognitive performance and memory consolidation
 - Increases neural synchronization in prefrontal cortex
 - Improves focus and information processing speed
@@ -196,6 +207,7 @@ Implementation: Real-time binaural beat generation (200 Hz left, 240 Hz right = 
 ### Zeigarnik Effect Management
 
 The Zeigarnik Effect states that incomplete tasks occupy working memory. Our solution:
+
 - **Global Hotkey**: Ctrl+Shift+Space triggers instant capture
 - **Zero-Friction**: Pop-up dialog with immediate save
 - **Brain Dump**: Appends to timestamped markdown file
@@ -267,11 +279,13 @@ The daemon exposes a simple REST API on `http://127.0.0.1:8765`:
 ### Endpoints
 
 **GET /** - Health check
+
 ```json
 {"status": "online", "name": "Ultimate Focus Timer Daemon", "version": "3.0.0"}
 ```
 
 **POST /start** - Start Ultradian session
+
 ```bash
 curl -X POST http://127.0.0.1:8765/start \
   -H "Content-Type: application/json" \
@@ -279,6 +293,7 @@ curl -X POST http://127.0.0.1:8765/start \
 ```
 
 **GET /status** - Check session status
+
 ```json
 {
   "phase": "deep_work",
@@ -290,6 +305,7 @@ curl -X POST http://127.0.0.1:8765/start \
 ```
 
 **POST /stop** - Stop current session
+
 ```bash
 curl -X POST http://127.0.0.1:8765/stop
 ```
@@ -297,6 +313,7 @@ curl -X POST http://127.0.0.1:8765/stop
 ## 🔥 What's New in Version 3.0
 
 ### Zero-Bloat Scientific Upgrade
+
 - **FastAPI Daemon**: Ultra-lightweight background service architecture
 - **Ultradian Rhythm**: 90/20 cycle based on sleep research (5m + 85m + 20m)
 - **40Hz Binaural Beats**: Real-time audio generation for cognitive enhancement
@@ -304,6 +321,7 @@ curl -X POST http://127.0.0.1:8765/stop
 - **Global CLI**: `focus` command available system-wide
 
 ### Codebase Consolidation
+
 - **45% File Reduction**: 20 files → 11 core modules
 - **Cleaner Architecture**: core.py, system.py, daemon.py structure
 - **Better Maintainability**: Consolidated imports and dependencies

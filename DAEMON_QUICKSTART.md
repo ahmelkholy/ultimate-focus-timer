@@ -9,9 +9,11 @@
 The GUI now manages the daemon for you:
 
 1. Start the app:
+
    ```bash
    python main.py --gui
    ```
+
    Or launch `focus.bat` / `focus.pyw` on Windows.
 
 2. The app starts the FastAPI daemon automatically in the background.
