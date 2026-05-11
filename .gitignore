@@ -205,3 +205,5 @@ log/
 data/sync_queue.dead.json
 /vscode-extension/node_modules
 vscode-extension/
+config.yml
+config.yaml
