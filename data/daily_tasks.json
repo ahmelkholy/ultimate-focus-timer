@@ -113,42 +113,30 @@
       "completed_at": "2026-04-01T12:11:05.790052"
     }
   ],
-  "2026-04-15": [
-    {
-      "id": "2026-04-14_162156371910",
-      "title": "mahmoud master",
-      "google_id": "SXo2d0hEdE5MMXJIVUwzcA",
-      "description": "",
-      "completed": false,
-      "pomodoros_planned": 1,
-      "pomodoros_completed": 2,
-      "created_at": "2026-04-14T16:21:56.371919",
-      "updated_at": "2026-04-14T21:57:02.593865",
-      "completed_at": null
-    },
+  "2026-04-20": [
     {
       "id": "2026-04-14_162205307431",
       "title": "call dmitry",
       "google_id": "NnFJUEFsdDdnQ29BY3hGVg",
       "description": "",
-      "completed": false,
+      "completed": true,
       "pomodoros_planned": 1,
       "pomodoros_completed": 0,
       "created_at": "2026-04-14T16:22:05.307440",
-      "updated_at": "2026-04-14T17:03:35.971586",
-      "completed_at": null
+      "updated_at": "2026-04-20T12:56:30.218625",
+      "completed_at": "2026-04-20T12:56:30.218625"
     },
     {
-      "id": "2026-04-14_UFZFQjJmeFlzUmszYUpXSg",
-      "title": "pid paper to do ",
-      "google_id": "UFZFQjJmeFlzUmszYUpXSg",
+      "id": "2026-04-20_dW9BWkxQWlFYSUtwUm9UaQ",
+      "title": "Pid work enhance the figs",
+      "google_id": "dW9BWkxQWlFYSUtwUm9UaQ",
       "description": "",
-      "completed": false,
+      "completed": true,
       "pomodoros_planned": 1,
       "pomodoros_completed": 0,
-      "created_at": "2026-04-14T19:12:41.407Z",
-      "updated_at": "2026-04-14T19:12:41.407Z",
-      "completed_at": null
+      "created_at": "2026-04-19T18:26:59.851Z",
+      "updated_at": "2026-04-20T11:10:06.300Z",
+      "completed_at": "2026-04-20T11:10:06.000Z"
     }
   ]
 }

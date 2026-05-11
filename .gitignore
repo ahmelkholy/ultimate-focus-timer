@@ -199,3 +199,4 @@ mpv_classical.pid
 .vscode
 exports/
 /vscode-extension/node_modules
+vscode-extension/

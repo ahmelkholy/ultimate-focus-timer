@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 from typing import Callable, Optional
 
-from .system import PROJECT_ROOT
+from .system import DAEMON_PID_FILE as APP_DAEMON_PID_FILE, PROJECT_ROOT
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class DaemonManager:
     """Manages the HTTP daemon lifecycle"""
 
-    DAEMON_PID_FILE = PROJECT_ROOT / "daemon.pid"
+    DAEMON_PID_FILE = APP_DAEMON_PID_FILE
     DAEMON_PORT = 8765
     DAEMON_HOST = "127.0.0.1"
 

@@ -1,10 +1,11 @@
 import json
 import importlib
 import sys
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from src.core import TaskManager
+from src.core import MAX_SYNC_RETRIES, TaskManager
 from src.google_integration import GoogleIntegration, SCOPES
 
 
@@ -271,6 +272,83 @@ def test_google_integration_status_includes_last_error(tmp_path):
 
     assert status["last_error"] == "Tasks API disabled"
     assert status["last_error_help_url"] == "https://console.example.com"
+
+
+def test_sync_queue_respects_backoff_during_cloud_sync(tmp_path):
+    integration = StubGoogleIntegration()
+    manager = TaskManager(data_dir=tmp_path)
+    manager.google_integration = integration
+    manager.google_task_list_id = "@default"
+    manager._sync_queue = [
+        {
+            "action": "delete",
+            "task_id": "local-1",
+            "google_id": "remote-1",
+            "payload": {},
+            "retries": 1,
+            "next_attempt": time.time() + 3600,
+        }
+    ]
+    manager._save_sync_queue()
+
+    summary = manager.sync_with_cloud()
+
+    assert summary["queued"] == 0
+    assert integration.deleted == []
+    assert len(manager._sync_queue) == 1
+
+
+def test_sync_queue_exhaustion_moves_entry_to_dead_queue(tmp_path):
+    integration = StubGoogleIntegration()
+
+    def fail_delete(task_list_id, task_id):
+        integration.deleted.append({"task_list_id": task_list_id, "task_id": task_id})
+        return False
+
+    integration.delete_task = fail_delete
+    manager = TaskManager(data_dir=tmp_path)
+    manager.google_integration = integration
+    manager.google_task_list_id = "@default"
+    manager._sync_queue = [
+        {
+            "action": "delete",
+            "task_id": "local-2",
+            "google_id": "remote-2",
+            "payload": {},
+            "retries": MAX_SYNC_RETRIES - 1,
+            "next_attempt": 0,
+        }
+    ]
+    manager._save_sync_queue()
+
+    manager._process_sync_queue(force=True)
+
+    dead_entries = json.loads((tmp_path / "sync_queue.dead.json").read_text())
+    assert manager._sync_queue == []
+    assert dead_entries[0]["task_id"] == "local-2"
+    assert dead_entries[0]["dead_reason"] == "max_retries_exceeded"
+    assert manager._sync_states["local-2"] == "error"
+
+
+def test_delete_sync_removes_older_pending_actions_for_same_task(tmp_path):
+    manager = TaskManager(data_dir=tmp_path)
+    task = manager.add_task("Draft paper")
+    task.google_id = "remote-3"
+    manager._sync_queue = [
+        {"action": "create", "task_id": task.id, "payload": task.to_dict()},
+        {"action": "update", "task_id": task.id, "payload": task.to_dict()},
+    ]
+
+    manager._enqueue_sync("delete", task)
+
+    assert [entry["action"] for entry in manager._sync_queue] == ["delete"]
+    assert manager._sync_queue[0]["google_id"] == "remote-3"
+
+
+def test_packaged_gui_entrypoint_is_importable():
+    focus_app = importlib.import_module("focus_app")
+
+    assert callable(focus_app.main)
 
 
 def test_task_list_display_prefers_title_and_handles_duplicates():

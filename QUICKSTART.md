@@ -27,14 +27,15 @@
 
 ## Usage Options
 
-### Option 1: GUI + Auto Daemon (Recommended for Ultradian Rhythm)
+### Option 1: GUI (Recommended)
 
 **Start the GUI:**
 ```bash
 python main.py --gui
 ```
 
-The GUI starts the daemon automatically in the background. Manual daemon startup is only needed for debugging or direct API use.
+The GUI is the lightest default path. The daemon is opt-in and only starts
+automatically if `auto_start_daemon: true` is set in `config.yml`.
 
 **Use from terminal:**
 ```bash
@@ -47,11 +48,6 @@ focus start   # Start 90-minute Ultradian session
 focus status  # Check progress
 focus stop    # Stop session
 ```
-
-**Use from VS Code:**
-1. Install extension: `cd vscode-extension && npm install && npm run compile`
-2. Press F5 to launch Extension Development Host
-3. Click 🎯 Focus button in status bar
 
 ### Option 2: Traditional GUI (Original Pomodoro)
 
@@ -148,7 +144,6 @@ early_warning_minutes: 5
 
 ### Use Daemon Mode If:
 - You want science-backed 90-minute Ultradian cycles
-- You prefer one-click access from VS Code
 - You want automatic distraction blocking
 - You want 40Hz cognitive enhancement
 
@@ -162,10 +157,7 @@ early_warning_minutes: 5
 
 ### "Daemon not running" error
 ```bash
-# Launch the GUI once - it starts the daemon automatically
-python main.py --gui
-
-# Manual mode is only needed for debugging
+# Start the daemon manually when using CLI/API daemon features
 python -m src.daemon
 ```
 
@@ -199,7 +191,6 @@ sudo apt-get install python3-tk
 ## Documentation
 
 - `ARCHITECTURE.md` - Detailed architecture documentation
-- `vscode-extension/README.md` - VS Code extension guide
 - `docs/` - Additional documentation
 
 ## Support

@@ -42,6 +42,18 @@ dependencies = [
     "aiofiles>=23.2.0",
     "rich>=13.5.0",
     "colorama>=0.4.6",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.27.0",
+    "pydantic>=2.4.0",
+    "sounddevice>=0.4.6",
+    "keyboard>=0.13.5",
+    "pystray>=0.19.5",
+    "requests>=2.31.0",
+    "google-auth>=2.23.0",
+    "google-auth-oauthlib>=1.1.0",
+    "google-auth-httplib2>=0.1.1",
+    "google-api-python-client>=2.100.0",
+    "pywin32>=305; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]
@@ -77,6 +89,9 @@ focus-timer = "main:main"
 
 [project.gui-scripts]
 focus-gui = "focus_app:main"
+
+[tool.setuptools]
+py-modules = ["main", "focus_app"]
 
 [tool.setuptools.dynamic]
 version = {attr = "src.__version__.__version__"}

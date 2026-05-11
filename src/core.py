@@ -7,6 +7,7 @@ Combines: config_manager, session_manager, task_manager
 
 import json
 import logging
+import os
 import threading
 import time
 from dataclasses import asdict, dataclass, field
@@ -22,7 +23,6 @@ from .system import (
     CONFIG_FILE,
     DATA_DIR,
     LOG_DIR,
-    PROJECT_ROOT,
     SESSION_LOG_FILE,
     TASKS_FILE,
 )
@@ -167,6 +167,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "task_file": "~/tasks.md",
     "auto_task_complete": True,
     "window_geometry": "",
+    "auto_start_daemon": False,
+    "google_sync_interval_seconds": 300,
+    "daemon_sync_interval_seconds": 900,
 }
 
 
@@ -223,8 +226,8 @@ class ConfigManager:
 
     def save_config(self) -> bool:
         try:
-            with open(self.config_path, "w", encoding="utf-8") as fh:
-                yaml.dump(self.config, fh, default_flow_style=False, sort_keys=True)
+            content = yaml.dump(self.config, default_flow_style=False, sort_keys=True)
+            _atomic_write_text(self.config_path, content)
             logger.debug("Configuration saved to %s", self.config_path)
             return True
         except OSError as exc:
@@ -367,8 +370,36 @@ def get_config() -> ConfigManager:
 # SESSION MANAGER
 # ══════════════════════════════════════════════════════════════════════════════
 
-_STATE_FILE = PROJECT_ROOT / ".session.state"
+_STATE_FILE = DATA_DIR / "session_state.json"
 _AUTO_SAVE_INTERVAL = 10  # seconds
+MAX_SYNC_RETRIES = 8
+SYNC_RETRY_BASE_SECONDS = 30
+SYNC_RETRY_MAX_SECONDS = 6 * 60 * 60
+
+
+def _atomic_write_text(path: Path, content: str) -> None:
+    """Write text by replacing the target file after a complete temp write."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_name(f"{path.name}.tmp")
+    with open(temp_path, "w", encoding="utf-8") as fh:
+        fh.write(content)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(temp_path, path)
+
+
+def _quarantine_file(path: Path, suffix: str) -> Optional[Path]:
+    """Move a bad runtime file aside without deleting user data."""
+    if not path.exists():
+        return None
+    stamped = datetime.now().strftime("%Y%m%d_%H%M%S")
+    target = path.with_name(f"{path.name}.{suffix}.{stamped}")
+    try:
+        os.replace(path, target)
+        return target
+    except OSError:
+        logger.exception("Failed to quarantine %s", path)
+        return None
 
 
 class SessionType(Enum):
@@ -672,7 +703,7 @@ class SessionManager:
             "saved_at": datetime.now().isoformat(),
         }
         try:
-            _STATE_FILE.write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
+            _atomic_write_text(_STATE_FILE, json.dumps(snapshot, indent=2))
         except OSError:
             logger.exception("Failed to write crash-recovery state")
 
@@ -880,6 +911,7 @@ class TaskManager:
         self.google_integration = google_integration
         self.google_task_list_id = google_task_list_id or DEFAULT_TASK_LIST_ID
         self._sync_queue_file = self.data_dir / "sync_queue.json"
+        self._dead_sync_queue_file = self.data_dir / "sync_queue.dead.json"
         self._sync_queue: List[Dict[str, Any]] = self._load_sync_queue()
         self._sync_states: Dict[str, str] = {}
         self.load_tasks()
@@ -972,7 +1004,9 @@ class TaskManager:
         return changed or bool(empty_days)
 
     def set_google_integration(
-        self, integration: Optional[GoogleIntegration], task_list_id: Optional[str] = None
+        self,
+        integration: Optional[GoogleIntegration],
+        task_list_id: Optional[str] = None,
     ) -> None:
         """Attach Google integration after construction."""
         self.google_integration = integration
@@ -993,17 +1027,55 @@ class TaskManager:
         try:
             if self._sync_queue_file.exists():
                 with open(self._sync_queue_file, "r", encoding="utf-8") as fh:
-                    return json.load(fh)
-        except Exception:
+                    queue = json.load(fh)
+                if isinstance(queue, list):
+                    return queue
+                logger.error("Sync queue is not a list: %s", self._sync_queue_file)
+                _quarantine_file(self._sync_queue_file, "invalid")
+        except json.JSONDecodeError:
+            logger.exception("Error parsing sync queue")
+            _quarantine_file(self._sync_queue_file, "corrupt")
+        except OSError:
             logger.exception("Error loading sync queue")
         return []
 
     def _save_sync_queue(self) -> None:
         try:
-            with open(self._sync_queue_file, "w", encoding="utf-8") as fh:
-                json.dump(self._sync_queue, fh, indent=2, ensure_ascii=False)
+            _atomic_write_text(
+                self._sync_queue_file,
+                json.dumps(self._sync_queue, indent=2, ensure_ascii=False),
+            )
         except OSError:
             logger.exception("Error saving sync queue")
+
+    def _append_dead_sync_entry(self, entry: Dict[str, Any], reason: str) -> None:
+        """Preserve exhausted sync actions without retrying them forever."""
+        dead_entries: List[Dict[str, Any]] = []
+        try:
+            if self._dead_sync_queue_file.exists():
+                with open(self._dead_sync_queue_file, "r", encoding="utf-8") as fh:
+                    loaded = json.load(fh)
+                if isinstance(loaded, list):
+                    dead_entries = loaded
+        except (OSError, json.JSONDecodeError):
+            logger.exception("Could not read dead sync queue; replacing it")
+
+        dead_entry = dict(entry)
+        dead_entry["dead_reason"] = reason
+        dead_entry["dead_at"] = datetime.now().isoformat()
+        dead_entries.append(dead_entry)
+        try:
+            _atomic_write_text(
+                self._dead_sync_queue_file,
+                json.dumps(dead_entries, indent=2, ensure_ascii=False),
+            )
+        except OSError:
+            logger.exception("Error saving dead sync queue")
+
+    @staticmethod
+    def _next_sync_delay_seconds(retries: int) -> int:
+        delay = SYNC_RETRY_BASE_SECONDS * (2 ** max(0, retries - 1))
+        return min(SYNC_RETRY_MAX_SECONDS, delay)
 
     def _process_sync_queue_async(self, force: bool = False) -> None:
         threading.Thread(
@@ -1017,6 +1089,12 @@ class TaskManager:
         with self._sync_lock:
             remaining: List[Dict[str, Any]] = []
             for entry in list(self._sync_queue):
+                if entry.get("retries", 0) >= MAX_SYNC_RETRIES:
+                    self._append_dead_sync_entry(entry, "max_retries_exceeded")
+                    task_id = entry.get("task_id")
+                    if task_id:
+                        self._sync_states[task_id] = "error"
+                    continue
                 next_attempt = entry.get("next_attempt", 0)
                 if not force and next_attempt > now:
                     remaining.append(entry)
@@ -1025,7 +1103,12 @@ class TaskManager:
                 if success:
                     continue
                 entry["retries"] = entry.get("retries", 0) + 1
-                delay = min(900, 5 * (2 ** (entry["retries"] - 1)))
+                if entry["retries"] >= MAX_SYNC_RETRIES:
+                    self._append_dead_sync_entry(entry, "max_retries_exceeded")
+                    if task_id := entry.get("task_id"):
+                        self._sync_states[task_id] = "error"
+                    continue
+                delay = self._next_sync_delay_seconds(entry["retries"])
                 entry["next_attempt"] = now + delay
                 remaining.append(entry)
             self._sync_queue = remaining
@@ -1043,6 +1126,18 @@ class TaskManager:
         }
         with self._sync_lock:
             self._sync_states[task.id] = "pending"
+            if action == "delete":
+                self._sync_queue = [
+                    old for old in self._sync_queue if old.get("task_id") != task.id
+                ]
+            else:
+                self._sync_queue = [
+                    old
+                    for old in self._sync_queue
+                    if not (
+                        old.get("task_id") == task.id and old.get("action") == action
+                    )
+                ]
             self._sync_queue.append(entry)
             self._save_sync_queue()
 
@@ -1076,10 +1171,13 @@ class TaskManager:
                     self.google_task_list_id,
                     google_id,
                     title=payload.get("title") or (task.title if task else None),
-                    notes=payload.get("description") or (task.description if task else None),
-                    completed=payload.get("completed")
-                    if payload.get("completed") is not None
-                    else (task.completed if task else None),
+                    notes=payload.get("description")
+                    or (task.description if task else None),
+                    completed=(
+                        payload.get("completed")
+                        if payload.get("completed") is not None
+                        else (task.completed if task else None)
+                    ),
                 )
                 if result is not None:
                     self._sync_states[task_id] = "synced"
@@ -1182,7 +1280,9 @@ class TaskManager:
         except Exception:
             return None
 
-    def _remote_task_matches_today(self, remote_task: Dict[str, Any], today_key: str) -> bool:
+    def _remote_task_matches_today(
+        self, remote_task: Dict[str, Any], today_key: str
+    ) -> bool:
         """Filter remote tasks to only those updated or due today."""
         for key in ("due", "updated", "completed"):
             ts = self._parse_timestamp(remote_task.get(key))
@@ -1197,7 +1297,7 @@ class TaskManager:
             summary["queued"] = len(self._sync_queue)
             return summary
 
-        self._process_sync_queue(force=True)
+        self._process_sync_queue(force=False)
 
         today_key = self.get_today_key()
         local_tasks = self.get_all_tasks()
@@ -1339,7 +1439,11 @@ class TaskManager:
                     data = json.load(f)
                 for date_key, task_list in data.items():
                     self.tasks[date_key] = [Task.from_dict(td) for td in task_list]
-            except (json.JSONDecodeError, Exception):
+            except json.JSONDecodeError:
+                logger.exception("Error loading tasks from %s", self.tasks_file)
+                _quarantine_file(self.tasks_file, "corrupt")
+                self.tasks = {}
+            except Exception:
                 logger.exception("Error loading tasks from %s", self.tasks_file)
                 self.tasks = {}
         if self._promote_incomplete_tasks_to_today():
@@ -1356,8 +1460,10 @@ class TaskManager:
     def _write_tasks(self, data: dict):
         with self._lock:
             try:
-                with open(self.tasks_file, "w", encoding="utf-8") as fh:
-                    json.dump(data, fh, indent=2, ensure_ascii=False)
+                _atomic_write_text(
+                    self.tasks_file,
+                    json.dumps(data, indent=2, ensure_ascii=False),
+                )
             except OSError:
                 logger.exception("Error saving tasks to %s", self.tasks_file)
 

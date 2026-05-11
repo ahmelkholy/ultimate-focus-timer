@@ -88,9 +88,8 @@ jobs:
       - name: Run integration tests
         run: |
           python main.py --check-deps
-          python main.py --info
-          # Test console interface (non-interactive)
-          timeout 10s python main.py --console --test-mode || true
+          python main.py --sys-info
+          python -m compileall -q main.py focus_app.py src tests
         shell: bash
 
   security:

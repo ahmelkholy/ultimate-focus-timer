@@ -4,7 +4,7 @@
 [![Cross Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/ahmelkholy/ultimate-focus-timer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A science-backed, ultra-lightweight productivity timer implementing both traditional Pomodoro Technique and cutting-edge 90/20 Ultradian rhythm cycles. Features 40Hz cognitive enhancement, instant thought capture, VS Code integration, and zero-bloat architecture. Built with pure Python and modern async patterns.
+A lightweight personal productivity timer for traditional Pomodoro sessions, optional 90/20 Ultradian cycles, Google Tasks sync, instant thought capture, and local analytics. It is designed to stay quiet on system resources and run across Windows, macOS, and Linux.
 
 ## ✨ Key Features
 
@@ -14,10 +14,9 @@ A science-backed, ultra-lightweight productivity timer implementing both traditi
 - **Zeigarnik Offload System**: Instant thought capture (Ctrl+Shift+Space) to clear working memory
 - **Distraction Blocking**: Automatic domain and process blocking during focus sessions
 
-### 💻 Modern Development Integration
-- **VS Code Extension**: One-click focus sessions with real-time status bar integration
+### 💻 Lightweight Interfaces
 - **Global CLI**: `focus start`, `focus status`, `focus stop` from any terminal
-- **FastAPI Daemon**: Ultra-lightweight background service (~0% CPU when idle)
+- **Opt-in FastAPI Daemon**: Background Ultradian service when you explicitly enable it
 - **REST API**: Full programmatic control via HTTP endpoints
 
 ### 🎮 Traditional Features
@@ -30,9 +29,15 @@ A science-backed, ultra-lightweight productivity timer implementing both traditi
 
 ## 💻 Quick Start
 
-### Option 1: Daemon Mode (Recommended - Ultradian Rhythm)
+### Option 1: Traditional GUI (Recommended)
 
-**Start the daemon:**
+```bash
+python main.py --gui
+```
+
+### Option 2: Optional Daemon Mode (Ultradian Rhythm)
+
+**Start the daemon only when you need background Ultradian control:**
 ```bash
 python -m src.daemon
 ```
@@ -47,17 +52,6 @@ source ~/.bashrc  # or ~/.zshrc
 focus start   # Start 90-minute Ultradian session
 focus status  # Check progress
 focus stop    # Stop session
-```
-
-**Use from VS Code:**
-1. Install extension: `cd vscode-extension && npm install && npm run compile`
-2. Press F5 to launch Extension Development Host
-3. Click 🎯 Focus button in status bar
-
-### Option 2: Traditional GUI (Pomodoro)
-
-```bash
-python main.py --gui
 ```
 
 ### Option 3: Console Mode
@@ -82,7 +76,7 @@ python main.py --dashboard
 4. After connecting, pick the Google task list in **Settings -> Tasks** or set `google_task_list_id` in `config.yml` (defaults to the primary list).
 5. Incomplete tasks now carry forward automatically instead of disappearing on a new day, and Google sync no longer pulls only "today" tasks.
 6. Press `Ctrl+S` in the GUI to force a sync. Failed updates are queued in `data/sync_queue.json` and retried with backoff.
-7. The GUI auto-starts the FastAPI daemon in the background with no daemon controls shown in the main window. On Windows it is launched hidden, and the GUI stops the daemon instance it started when the app closes.
+7. The daemon is opt-in to keep the app light. Set `auto_start_daemon: true` in `config.yml` only if you want the GUI to start it automatically.
 
 ## 📖 Documentation
 
@@ -95,11 +89,10 @@ python main.py --dashboard
 
 ## 🛠️ System Requirements
 
-### For Daemon Mode (Ultradian Rhythm)
+### For Optional Daemon Mode (Ultradian Rhythm)
 - **Python 3.8+** (Python 3.10+ recommended)
 - **PortAudio** (for 40Hz binaural beats)
 - **FastAPI & Uvicorn** (async web framework)
-- **Optional**: VS Code for extension integration
 
 ### For Traditional Mode (Pomodoro GUI)
 - **Python 3.8+** (Python 3.10+ recommended)
@@ -109,7 +102,7 @@ python main.py --dashboard
 
 ## 📦 Installation
 
-### Option 1: Daemon Mode Setup (Ultradian + VS Code)
+### Option 1: GUI Setup (Recommended)
 
 ```bash
 # Clone repository
@@ -129,21 +122,15 @@ sudo apt-get install libportaudio2 python3-tk
 # Fedora
 sudo dnf install portaudio
 
-# Install global CLI
+# Optional: install global CLI
 ./scripts/install_global_cli.sh
 source ~/.bashrc  # or ~/.zshrc
-
-# Install VS Code extension (optional)
-cd vscode-extension
-npm install
-npm run compile
-# Press F5 in VS Code to launch Extension Development Host
 
 # Optional: start daemon manually for debugging
 python -m src.daemon
 
 # Test it
-focus start
+python main.py --gui
 ```
 
 ### Option 2: Traditional GUI Setup (Pomodoro)
@@ -177,13 +164,12 @@ The codebase has been streamlined from 20 files to 11 core files (45% reduction)
 - `src/zeigarnik_manager.py` - Global hotkey for thought capture
 
 **UI Modules:**
-- `src/focus_gui.py` - Tkinter GUI interface
+- `src/ui.py` - Tkinter GUI interface
 - `src/focus_console.py` - Console interface
 - `src/dashboard.py` - Analytics dashboard
 - `src/cli.py` - Rich terminal CLI
 
 **Integration:**
-- `vscode-extension/` - TypeScript VS Code extension
 - `scripts/focus` - Global CLI wrapper
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed technical documentation.
@@ -221,7 +207,7 @@ The Zeigarnik Effect states that incomplete tasks occupy working memory. Our sol
 |---------|-------------|-----------------|
 | Session Length | 90 minutes (Ultradian) | 25 minutes (Pomodoro) |
 | Cognitive Enhancement | 40Hz binaural beats | Classical music |
-| Integration | VS Code + Global CLI | Standalone app |
+| Integration | Global CLI + REST API | Standalone app |
 | Resource Usage | ~0% CPU idle | Higher (GUI rendering) |
 | Distraction Blocking | Automatic | Manual |
 | Thought Capture | Ctrl+Shift+Space hotkey | Manual task entry |
@@ -315,7 +301,6 @@ curl -X POST http://127.0.0.1:8765/stop
 - **Ultradian Rhythm**: 90/20 cycle based on sleep research (5m + 85m + 20m)
 - **40Hz Binaural Beats**: Real-time audio generation for cognitive enhancement
 - **Zeigarnik Offload**: Global hotkey (Ctrl+Shift+Space) for instant thought capture
-- **VS Code Extension**: Seamless IDE integration with status bar
 - **Global CLI**: `focus` command available system-wide
 
 ### Codebase Consolidation

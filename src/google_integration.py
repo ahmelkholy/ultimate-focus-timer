@@ -175,6 +175,25 @@ class GoogleIntegration:
         with open(self.token_file, "wb") as token:
             pickle.dump(self.creds, token)
 
+    def _quarantine_token(self, reason: str) -> Optional[Path]:
+        """Move an unusable OAuth token aside so startup stops retrying it."""
+        if not self.token_file.exists():
+            return None
+        safe_reason = re.sub(r"[^A-Za-z0-9_.-]+", "_", reason).strip("_")[:40]
+        if not safe_reason:
+            safe_reason = "invalid"
+        stamped = datetime.now().strftime("%Y%m%d_%H%M%S")
+        target = self.token_file.with_name(
+            f"{self.token_file.name}.{safe_reason}.{stamped}"
+        )
+        try:
+            self.token_file.replace(target)
+            logger.warning("Moved unusable Google token to %s", target)
+            return target
+        except OSError:
+            logger.exception("Failed to quarantine Google token %s", self.token_file)
+            return None
+
     def _build_services(self) -> None:
         """Create Google Tasks service client."""
         if not self.creds:
@@ -258,6 +277,8 @@ class GoogleIntegration:
 
         except Exception as e:
             logger.error(f"Failed to load Google credentials: {e}")
+            if "invalid_grant" in str(e):
+                self._quarantine_token("invalid_grant")
             self._set_last_error(str(e))
             self._clear_session()
             if raise_errors:
@@ -477,6 +498,11 @@ class GoogleIntegration:
             logger.info(f"Deleted Google task: {task_id}")
             return True
         except HttpError as e:
+            status_code = getattr(getattr(e, "resp", None), "status", None)
+            if status_code in (404, 410):
+                logger.info("Google task already gone: %s", task_id)
+                self._clear_last_error()
+                return True
             logger.error(f"Failed to delete task: {e}")
             return False
 

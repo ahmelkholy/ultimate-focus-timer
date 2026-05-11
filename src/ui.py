@@ -3255,7 +3255,9 @@ class SettingsDialog:
 
         try:
             if self.google_integration:
-                installed = self.google_integration.install_credentials_file(Path(selected))
+                installed = self.google_integration.install_credentials_file(
+                    Path(selected)
+                )
                 self.google_credentials_path.set(str(installed))
             else:
                 self.google_credentials_path.set(selected)
@@ -3374,7 +3376,9 @@ class SettingsDialog:
                 return
             try:
                 if self.google_integration:
-                    target = self.google_integration.install_credentials_content(content)
+                    target = self.google_integration.install_credentials_content(
+                        content
+                    )
                 else:
                     target = Path(self.google_credentials_path.get()).expanduser()
                     target.parent.mkdir(parents=True, exist_ok=True)
@@ -3394,16 +3398,12 @@ class SettingsDialog:
 
         ttk.Button(
             button_frame, text="Install", command=lambda: do_install(False)
-        ).pack(
-            side=tk.LEFT, padx=5
-        )
+        ).pack(side=tk.LEFT, padx=5)
         ttk.Button(
             button_frame,
             text="Install and Connect",
             command=lambda: do_install(True),
-        ).pack(
-            side=tk.LEFT, padx=5
-        )
+        ).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="Cancel", command=paste_win.destroy).pack(
             side=tk.LEFT, padx=5
         )
@@ -3503,7 +3503,10 @@ class SettingsDialog:
             if candidate.exists():
                 credentials_source = candidate
 
-        if credentials_source is None and not self.google_integration.has_credentials_file():
+        if (
+            credentials_source is None
+            and not self.google_integration.has_credentials_file()
+        ):
             self.paste_google_credentials(connect_after_install=True)
             self.refresh_google_status()
             return
@@ -3831,7 +3834,10 @@ class FocusGUI:
             # Store scheduled callback IDs for proper cleanup
             self.scheduled_callbacks = []
             self._cloud_sync_lock = threading.Lock()
-            self._cloud_sync_interval_ms = 30000
+            sync_interval_seconds = int(
+                self.config.get("google_sync_interval_seconds", 300)
+            )
+            self._cloud_sync_interval_ms = max(60, sync_interval_seconds) * 1000
             self._window_geometry_save_callback_id = None
             self._last_saved_window_geometry = str(
                 self.config.get("window_geometry", "") or ""
@@ -3857,8 +3863,6 @@ class FocusGUI:
                 on_quit=lambda: self._marshal(self.on_closing),
             )
             self.tray.start()
-
-
 
             # ── Global hotkeys ─────────────────────────────────────────────────
             self.hotkeys = HotkeyManager(
@@ -3896,12 +3900,15 @@ class FocusGUI:
             # Show task input dialog if no tasks exist for today
             self.schedule_callback(400, self.check_and_show_task_dialog)
 
-            # Auto-manage the daemon in the background while the GUI is running
-            self._auto_start_daemon()
+            # Keep the helper lightweight by default; daemon mode is opt-in.
+            if self.config.get("auto_start_daemon", False):
+                self._auto_start_daemon()
+            else:
+                self._on_daemon_status_changed("stopped")
 
             # Start update loop
             self.schedule_callback(100, self.update_loop)
-            self.schedule_callback(5000, self._auto_sync_tasks)
+            self.schedule_callback(self._cloud_sync_interval_ms, self._auto_sync_tasks)
 
         except Exception as e:
             print(f"[X] Error initializing GUI: {e}")

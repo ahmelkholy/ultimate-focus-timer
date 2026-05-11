@@ -31,24 +31,49 @@ def _find_project_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def _default_app_home(project_root: Path) -> Path:
+    """Resolve the writable app home for config, data, logs, and pid files."""
+    env_home = os.environ.get("FOCUS_HOME")
+    if env_home:
+        return Path(env_home).expanduser()
+
+    # In a source checkout, keep using the checkout folder so existing installs
+    # like this long-lived AppData copy do not silently move their data.
+    if not getattr(sys, "frozen", False) and (
+        (project_root / ".git").exists() or (project_root / "config.yml").exists()
+    ):
+        return project_root
+
+    system = platform.system()
+    if system == "Windows":
+        base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+        return Path(base) / "focus"
+    if system == "Darwin":
+        return Path.home() / "Library" / "Application Support" / "focus"
+    base = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
+    return Path(base) / "focus"
+
+
 PROJECT_ROOT: Path = _find_project_root()
+APP_HOME: Path = _default_app_home(PROJECT_ROOT)
 
 SRC_DIR: Path = PROJECT_ROOT / "src"
-DATA_DIR: Path = PROJECT_ROOT / "data"
-LOG_DIR: Path = PROJECT_ROOT / "log"
-EXPORTS_DIR: Path = PROJECT_ROOT / "exports"
+DATA_DIR: Path = APP_HOME / "data"
+LOG_DIR: Path = APP_HOME / "log"
+EXPORTS_DIR: Path = APP_HOME / "exports"
 
-CONFIG_FILE: Path = PROJECT_ROOT / "config.yml"
+CONFIG_FILE: Path = APP_HOME / "config.yml"
 TASKS_FILE: Path = DATA_DIR / "daily_tasks.json"
 SESSION_LOG_FILE: Path = LOG_DIR / "focus.log"
 APP_LOG_FILE: Path = LOG_DIR / "app.log"
-ERROR_LOG_FILE: Path = PROJECT_ROOT / "error.log"
-MPV_PID_FILE: Path = PROJECT_ROOT / "mpv_classical.pid"
+ERROR_LOG_FILE: Path = APP_HOME / "error.log"
+MPV_PID_FILE: Path = APP_HOME / "mpv_classical.pid"
+DAEMON_PID_FILE: Path = APP_HOME / "daemon.pid"
 
 
 def ensure_dirs() -> None:
     """Create required runtime directories if they don't exist."""
-    for directory in (DATA_DIR, LOG_DIR, EXPORTS_DIR):
+    for directory in (APP_HOME, DATA_DIR, LOG_DIR, EXPORTS_DIR):
         directory.mkdir(parents=True, exist_ok=True)
 
 
@@ -780,6 +805,7 @@ class TrayManager:
         if platform.system() == "Darwin":
             try:
                 import tkinter
+
                 tcl_version = tkinter.Tcl().eval("info patchlevel")
                 if tcl_version.startswith("9."):
                     self._is_macos_tcl9 = True
@@ -885,22 +911,27 @@ class HotkeyManager:
     def start(self) -> None:
         if not _KEYBOARD_AVAILABLE:
             return
-        
+
         # Register each hotkey individually to prevent one failure from stopping all
         try:
             keyboard.add_hotkey(self.HOTKEY_SHOW, self._handle_show)
             logger.info("Global hotkey registered: %s (show)", self.HOTKEY_SHOW)
         except Exception as e:
-            logger.warning("Failed to register 'show' hotkey (%s): %s", self.HOTKEY_SHOW, e)
+            logger.warning(
+                "Failed to register 'show' hotkey (%s): %s", self.HOTKEY_SHOW, e
+            )
 
         try:
             keyboard.add_hotkey(self.HOTKEY_PAUSE, self._handle_pause_resume)
-            logger.info("Global hotkey registered: %s (pause/resume)", self.HOTKEY_PAUSE)
+            logger.info(
+                "Global hotkey registered: %s (pause/resume)", self.HOTKEY_PAUSE
+            )
         except Exception as e:
-            logger.warning("Failed to register 'pause' hotkey (%s): %s", self.HOTKEY_PAUSE, e)
+            logger.warning(
+                "Failed to register 'pause' hotkey (%s): %s", self.HOTKEY_PAUSE, e
+            )
 
         self._registered = True
-
 
     def stop(self) -> None:
         if not _KEYBOARD_AVAILABLE or not self._registered:

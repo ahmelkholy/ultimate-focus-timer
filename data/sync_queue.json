@@ -15,8 +15,8 @@
       "updated_at": "2026-04-14T13:14:43.428Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -34,8 +34,8 @@
       "updated_at": "2026-04-14T13:14:43.084Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -53,8 +53,8 @@
       "updated_at": "2026-04-14T13:14:42.744Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -72,8 +72,8 @@
       "updated_at": "2026-04-14T13:14:42.343Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -91,8 +91,8 @@
       "updated_at": "2026-04-14T13:14:42.000Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -110,8 +110,8 @@
       "updated_at": "2026-04-14T13:14:41.649Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -129,8 +129,8 @@
       "updated_at": "2026-04-14T13:14:41.299Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715,
+    "retries": 476,
+    "next_attempt": 1776700905.169767,
     "last_error": "The read operation timed out"
   },
   {
@@ -149,8 +149,8 @@
       "updated_at": "2026-04-14T13:14:03.212Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -168,8 +168,8 @@
       "updated_at": "2026-04-14T13:14:02.866Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715,
+    "retries": 476,
+    "next_attempt": 1776700905.169767,
     "last_error": "[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:2658)"
   },
   {
@@ -188,8 +188,8 @@
       "updated_at": "2026-04-14T13:14:02.512Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -207,8 +207,8 @@
       "updated_at": "2026-04-14T13:14:02.160Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -226,8 +226,8 @@
       "updated_at": "2026-04-14T13:14:01.807Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -245,8 +245,8 @@
       "updated_at": "2026-04-14T13:14:01.472Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -264,8 +264,8 @@
       "updated_at": "2026-04-14T13:14:01.125Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -283,8 +283,8 @@
       "updated_at": "2026-04-14T13:14:00.780Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -302,8 +302,8 @@
       "updated_at": "2026-04-14T13:14:00.451Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -321,8 +321,8 @@
       "updated_at": "2026-04-14T13:14:00.115Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -340,8 +340,8 @@
       "updated_at": "2026-04-14T13:13:59.786Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -359,8 +359,8 @@
       "updated_at": "2026-04-14T13:13:59.443Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -378,8 +378,8 @@
       "updated_at": "2026-04-14T13:13:59.114Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -397,8 +397,8 @@
       "updated_at": "2026-04-14T13:13:58.781Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715,
+    "retries": 476,
+    "next_attempt": 1776700905.169767,
     "last_error": "[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:2658)"
   },
   {
@@ -417,8 +417,8 @@
       "updated_at": "2026-04-14T13:13:58.572Z",
       "completed_at": null
     },
-    "retries": 319,
-    "next_attempt": 1776195766.2681715
+    "retries": 476,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -436,8 +436,8 @@
       "updated_at": "2026-04-14T13:13:45.120Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -455,8 +455,8 @@
       "updated_at": "2026-04-14T13:13:58.441Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -474,8 +474,8 @@
       "updated_at": "2026-04-14T13:13:58.195Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715,
+    "retries": 475,
+    "next_attempt": 1776700905.169767,
     "last_error": "[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:2658)"
   },
   {
@@ -494,8 +494,8 @@
       "updated_at": "2026-04-14T13:13:58.065Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -513,8 +513,8 @@
       "updated_at": "2026-04-14T13:13:57.851Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -532,8 +532,8 @@
       "updated_at": "2026-04-14T13:13:57.724Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -551,8 +551,8 @@
       "updated_at": "2026-04-14T13:13:57.513Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -570,8 +570,8 @@
       "updated_at": "2026-04-14T13:13:57.381Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -589,8 +589,8 @@
       "updated_at": "2026-04-14T13:13:56.716Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -608,8 +608,8 @@
       "updated_at": "2026-04-14T13:13:56.498Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -627,8 +627,8 @@
       "updated_at": "2026-04-14T13:13:56.369Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -646,8 +646,8 @@
       "updated_at": "2026-04-14T13:13:55.968Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -665,8 +665,8 @@
       "updated_at": "2026-04-14T16:19:02.739323",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -684,8 +684,8 @@
       "updated_at": "2026-04-14T13:13:55.615Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -703,8 +703,8 @@
       "updated_at": "2026-04-14T13:13:55.285Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -722,8 +722,8 @@
       "updated_at": "2026-04-14T13:13:55.151Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -741,8 +741,8 @@
       "updated_at": "2026-04-14T13:13:54.950Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -760,8 +760,8 @@
       "updated_at": "2026-04-14T13:13:54.347Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -779,8 +779,8 @@
       "updated_at": "2026-04-14T13:13:53.152Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -798,8 +798,8 @@
       "updated_at": "2026-04-14T13:13:52.789Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -817,8 +817,8 @@
       "updated_at": "2026-04-14T13:13:52.449Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -836,8 +836,8 @@
       "updated_at": "2026-04-14T13:13:52.094Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -855,8 +855,8 @@
       "updated_at": "2026-04-14T13:13:51.754Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -874,8 +874,8 @@
       "updated_at": "2026-04-14T13:13:51.551Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -893,8 +893,8 @@
       "updated_at": "2026-04-14T13:13:52.262Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -912,8 +912,8 @@
       "updated_at": "2026-04-14T13:13:52.940Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -931,8 +931,8 @@
       "updated_at": "2026-04-14T13:13:53.284Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -950,8 +950,8 @@
       "updated_at": "2026-04-14T13:13:54.819Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -969,8 +969,8 @@
       "updated_at": "2026-04-14T13:13:55.488Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715,
+    "retries": 475,
+    "next_attempt": 1776700905.169767,
     "last_error": "[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:2658)"
   },
   {
@@ -989,8 +989,8 @@
       "updated_at": "2026-04-14T13:13:52.608Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -1008,8 +1008,8 @@
       "updated_at": "2026-04-14T13:13:51.417Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -1027,8 +1027,8 @@
       "updated_at": "2026-04-14T13:13:48.275Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -1046,8 +1046,8 @@
       "updated_at": "2026-04-14T13:13:46.912Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -1065,8 +1065,8 @@
       "updated_at": "2026-04-14T13:13:47.259Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -1084,8 +1084,8 @@
       "updated_at": "2026-04-14T13:13:48.621Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715,
+    "retries": 475,
+    "next_attempt": 1776700905.169767,
     "last_error": "[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:2658)"
   },
   {
@@ -1104,8 +1104,9 @@
       "updated_at": "2026-04-14T13:13:46.568Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767,
+    "last_error": "[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:2658)"
   },
   {
     "action": "delete",
@@ -1123,8 +1124,8 @@
       "updated_at": "2026-04-14T13:13:49.030Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -1142,8 +1143,8 @@
       "updated_at": "2026-04-14T13:13:50.298Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -1161,8 +1162,8 @@
       "updated_at": "2026-04-14T13:13:51.029Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715,
+    "retries": 475,
+    "next_attempt": 1776700905.169767,
     "last_error": "[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:2658)"
   },
   {
@@ -1181,8 +1182,8 @@
       "updated_at": "2026-04-14T13:13:50.686Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -1200,8 +1201,8 @@
       "updated_at": "2026-04-14T13:13:51.923Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -1219,8 +1220,8 @@
       "updated_at": "2026-04-14T13:13:46.172Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -1238,8 +1239,8 @@
       "updated_at": "2026-04-14T13:13:45.490Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -1257,8 +1258,8 @@
       "updated_at": "2026-04-14T13:13:01.529Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715,
+    "retries": 475,
+    "next_attempt": 1776700905.169767,
     "last_error": "[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:2658)"
   },
   {
@@ -1277,8 +1278,8 @@
       "updated_at": "2026-04-14T13:13:44.770Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -1296,8 +1297,8 @@
       "updated_at": "2026-04-14T13:13:01.186Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -1315,8 +1316,8 @@
       "updated_at": "2026-04-14T13:13:45.832Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -1334,8 +1335,8 @@
       "updated_at": "2026-04-14T13:13:54.480Z",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
@@ -1353,103 +1354,102 @@
       "updated_at": "2026-04-14T16:19:25.581566",
       "completed_at": null
     },
-    "retries": 318,
-    "next_attempt": 1776195766.2681715
-  },
-  {
-    "action": "update",
-    "task_id": "2026-04-14_170817847534",
-    "google_id": "SDQ0eGNYV0JidzdYcWFtRA",
-    "payload": {
-      "id": "2026-04-14_170817847534",
-      "title": "pid paper",
-      "google_id": "SDQ0eGNYV0JidzdYcWFtRA",
-      "description": "",
-      "completed": true,
-      "pomodoros_planned": 1,
-      "pomodoros_completed": 1,
-      "created_at": "2026-04-14T17:08:17.847543",
-      "updated_at": "2026-04-14T22:12:06.459966",
-      "completed_at": "2026-04-14T22:12:06.459966"
-    },
-    "retries": 32,
-    "next_attempt": 1776195766.2681715
-  },
-  {
-    "action": "update",
-    "task_id": "2026-04-14_170817847534",
-    "google_id": "SDQ0eGNYV0JidzdYcWFtRA",
-    "payload": {
-      "id": "2026-04-14_170817847534",
-      "title": "pid paper",
-      "google_id": "SDQ0eGNYV0JidzdYcWFtRA",
-      "description": "",
-      "completed": false,
-      "pomodoros_planned": 1,
-      "pomodoros_completed": 1,
-      "created_at": "2026-04-14T17:08:17.847543",
-      "updated_at": "2026-04-14T22:12:15.548537",
-      "completed_at": null
-    },
-    "retries": 32,
-    "next_attempt": 1776195766.2681715
-  },
-  {
-    "action": "update",
-    "task_id": "2026-04-14_170817847534",
-    "google_id": "SDQ0eGNYV0JidzdYcWFtRA",
-    "payload": {
-      "id": "2026-04-14_170817847534",
-      "title": "pid paper",
-      "google_id": "SDQ0eGNYV0JidzdYcWFtRA",
-      "description": "",
-      "completed": true,
-      "pomodoros_planned": 1,
-      "pomodoros_completed": 1,
-      "created_at": "2026-04-14T17:08:17.847543",
-      "updated_at": "2026-04-14T22:12:17.311784",
-      "completed_at": "2026-04-14T22:12:17.311784"
-    },
-    "retries": 32,
-    "next_attempt": 1776195766.2681715
-  },
-  {
-    "action": "update",
-    "task_id": "2026-04-14_170817847534",
-    "google_id": "SDQ0eGNYV0JidzdYcWFtRA",
-    "payload": {
-      "id": "2026-04-14_170817847534",
-      "title": "pid paper",
-      "google_id": "SDQ0eGNYV0JidzdYcWFtRA",
-      "description": "",
-      "completed": false,
-      "pomodoros_planned": 1,
-      "pomodoros_completed": 1,
-      "created_at": "2026-04-14T17:08:17.847543",
-      "updated_at": "2026-04-14T22:12:20.985782",
-      "completed_at": null
-    },
-    "retries": 32,
-    "next_attempt": 1776195766.2681715,
-    "last_error": "[PROV: CIPHER_OPERATION_FAILED] cipher operation failed (_ssl.c:2658)"
+    "retries": 475,
+    "next_attempt": 1776700905.169767
   },
   {
     "action": "delete",
-    "task_id": "2026-04-14_221309651386",
-    "google_id": "QldmLWpheU1temJrcXJDUw",
+    "task_id": "2026-04-14_162156371910",
+    "google_id": "SXo2d0hEdE5MMXJIVUwzcA",
     "payload": {
-      "id": "2026-04-14_221309651386",
-      "title": "pdd",
-      "google_id": "QldmLWpheU1temJrcXJDUw",
+      "id": "2026-04-14_162156371910",
+      "title": "mahmoud master",
+      "google_id": "SXo2d0hEdE5MMXJIVUwzcA",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 3,
+      "created_at": "2026-04-14T16:21:56.371919",
+      "updated_at": "2026-04-15T11:42:20.081228",
+      "completed_at": null
+    },
+    "retries": 0,
+    "next_attempt": 1776860960.0036724
+  },
+  {
+    "action": "delete",
+    "task_id": "2026-04-15_WGtZOXdSUkYtRE5uV1BxcQ",
+    "google_id": "WGtZOXdSUkYtRE5uV1BxcQ",
+    "payload": {
+      "id": "2026-04-15_WGtZOXdSUkYtRE5uV1BxcQ",
+      "title": "make the proposal mahmoud",
+      "google_id": "WGtZOXdSUkYtRE5uV1BxcQ",
       "description": "",
       "completed": false,
       "pomodoros_planned": 1,
       "pomodoros_completed": 0,
-      "created_at": "2026-04-14T22:13:09.651397",
-      "updated_at": "2026-04-14T22:13:10.360038",
+      "created_at": "2026-04-15T05:56:31.368Z",
+      "updated_at": "2026-04-15T05:56:31.368Z",
       "completed_at": null
     },
-    "retries": 30,
-    "next_attempt": 1776195766.2681715
+    "retries": 0,
+    "next_attempt": 1776860974.184208
+  },
+  {
+    "action": "delete",
+    "task_id": "2026-04-14_UFZFQjJmeFlzUmszYUpXSg",
+    "google_id": "UFZFQjJmeFlzUmszYUpXSg",
+    "payload": {
+      "id": "2026-04-14_UFZFQjJmeFlzUmszYUpXSg",
+      "title": "pid paper to do ",
+      "google_id": "UFZFQjJmeFlzUmszYUpXSg",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-04-14T19:12:41.407Z",
+      "updated_at": "2026-04-14T19:12:41.407Z",
+      "completed_at": null
+    },
+    "retries": 0,
+    "next_attempt": 1776860976.5555186
+  },
+  {
+    "action": "delete",
+    "task_id": "2026-04-15_cWdZU2ZRTTVtS052WG45Tw",
+    "google_id": "cWdZU2ZRTTVtS052WG45Tw",
+    "payload": {
+      "id": "2026-04-15_cWdZU2ZRTTVtS052WG45Tw",
+      "title": "EV works",
+      "google_id": "cWdZU2ZRTTVtS052WG45Tw",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-04-15T05:56:22.349Z",
+      "updated_at": "2026-04-15T05:56:22.349Z",
+      "completed_at": null
+    },
+    "retries": 0,
+    "next_attempt": 1776860978.318395
+  },
+  {
+    "action": "delete",
+    "task_id": "2026-04-15_LTBFWGczSk54UUFxWVVmSw",
+    "google_id": "LTBFWGczSk54UUFxWVVmSw",
+    "payload": {
+      "id": "2026-04-15_LTBFWGczSk54UUFxWVVmSw",
+      "title": "call mahmoud",
+      "google_id": "LTBFWGczSk54UUFxWVVmSw",
+      "description": "",
+      "completed": false,
+      "pomodoros_planned": 1,
+      "pomodoros_completed": 0,
+      "created_at": "2026-04-15T05:53:03.747Z",
+      "updated_at": "2026-04-15T05:53:03.747Z",
+      "completed_at": null
+    },
+    "retries": 0,
+    "next_attempt": 1776860979.1507206
   }
 ]

@@ -95,7 +95,9 @@ class UltradianStateMachine:
 
         # Initialize audio and Zeigarnik controllers
         self.audio_controller = AudioController() if AUDIO_AVAILABLE else None
-        self.zeigarnik_manager = ZeigarnikOffloadManager() if ZEIGARNIK_AVAILABLE else None
+        self.zeigarnik_manager = (
+            ZeigarnikOffloadManager() if ZEIGARNIK_AVAILABLE else None
+        )
 
     def register_phase_callback(self, phase: UltradianPhase, callback: callable):
         """Register callback for phase transitions"""
@@ -143,7 +145,9 @@ class UltradianStateMachine:
             self.state.phase_duration = self.PHASE_DURATIONS[phase]
             self.state.remaining_seconds = self.state.phase_duration * 60
 
-        logger.info("Transitioned to phase: %s (%d minutes)", phase, self.state.phase_duration)
+        logger.info(
+            "Transitioned to phase: %s (%d minutes)", phase, self.state.phase_duration
+        )
 
         # Execute phase-specific actions
         await self._execute_phase_actions(phase)
@@ -308,7 +312,9 @@ class UltradianStateMachine:
                     block_lines.append(f"127.0.0.1    {domain}")
                 block_lines.append(marker_end)
 
-                logger.info("Would block %d domains (requires admin/sudo)", len(domains))
+                logger.info(
+                    "Would block %d domains (requires admin/sudo)", len(domains)
+                )
                 # TODO: Implement actual hosts file modification with proper permissions
                 # This requires elevated privileges and should be done carefully
 
@@ -341,8 +347,14 @@ class UltradianStateMachine:
         """Get current state as dictionary"""
         return {
             "phase": self.state.phase,
-            "started_at": self.state.started_at.isoformat() if self.state.started_at else None,
-            "phase_started_at": self.state.phase_started_at.isoformat() if self.state.phase_started_at else None,
+            "started_at": (
+                self.state.started_at.isoformat() if self.state.started_at else None
+            ),
+            "phase_started_at": (
+                self.state.phase_started_at.isoformat()
+                if self.state.phase_started_at
+                else None
+            ),
             "phase_duration_minutes": self.state.phase_duration,
             "remaining_seconds": self.state.remaining_seconds,
             "distraction_blocking_active": self.state.distraction_blocking_active,
@@ -362,10 +374,12 @@ app = FastAPI(title="Ultimate Focus Timer Daemon", version="3.0.0")
 
 # Global state machine instance
 state_machine = UltradianStateMachine()
-SYNC_INTERVAL_SECONDS = 15 * 60
 
 google_config_dir = Path.home() / ".ultimate-focus-timer"
 daemon_config = ConfigManager()
+SYNC_INTERVAL_SECONDS = max(
+    300, int(daemon_config.get("daemon_sync_interval_seconds", 900))
+)
 daemon_google_integration = create_google_integration(google_config_dir)
 daemon_task_manager = TaskManager(
     data_dir=DATA_DIR,
@@ -422,7 +436,11 @@ state_machine.register_phase_callback(UltradianPhase.NEURAL_REST, rest_phase_syn
 @app.get("/")
 async def root():
     """Health check endpoint"""
-    return {"status": "online", "name": "Ultimate Focus Timer Daemon", "version": "3.0.0"}
+    return {
+        "status": "online",
+        "name": "Ultimate Focus Timer Daemon",
+        "version": "3.0.0",
+    }
 
 
 @app.post("/start", response_model=StatusResponse)
