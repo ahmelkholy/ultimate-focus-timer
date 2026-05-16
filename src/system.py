@@ -603,10 +603,7 @@ class NotificationManager:
         elif system == "Darwin":
             if PYNC_AVAILABLE:
                 return "pync"
-            elif PLYER_AVAILABLE:
-                return "plyer"
-            else:
-                return "osascript"
+            return "osascript"
         elif system == "Linux":
             return "plyer" if PLYER_AVAILABLE else "notify-send"
         else:
@@ -662,6 +659,8 @@ class NotificationManager:
 
     def _show_osascript(self, title: str, message: str) -> bool:
         try:
+            title = title.replace("\\", "\\\\").replace('"', '\\"')
+            message = message.replace("\\", "\\\\").replace('"', '\\"')
             script = f'display notification "{message}" with title "{title}"'
             subprocess.run(["osascript", "-e", script], capture_output=True, timeout=5)
             return True
@@ -882,14 +881,24 @@ class TrayManager:
 # HOTKEY MANAGER
 # ══════════════════════════════════════════════════════════════════════════════
 
-try:
-    import keyboard
-
-    _KEYBOARD_AVAILABLE = True
-except ImportError:
+if platform.system() == "Darwin" and not os.environ.get("FOCUS_ENABLE_MAC_HOTKEYS"):
     keyboard = None  # type: ignore[assignment]
     _KEYBOARD_AVAILABLE = False
-    logger.warning("keyboard library not installed — global hotkeys disabled")
+    _KEYBOARD_DISABLED_REASON = "macos"
+    logger.info(
+        "Global hotkeys disabled on macOS. Set FOCUS_ENABLE_MAC_HOTKEYS=1 to opt in."
+    )
+else:
+    try:
+        import keyboard
+
+        _KEYBOARD_AVAILABLE = True
+        _KEYBOARD_DISABLED_REASON = ""
+    except ImportError:
+        keyboard = None  # type: ignore[assignment]
+        _KEYBOARD_AVAILABLE = False
+        _KEYBOARD_DISABLED_REASON = "missing"
+        logger.warning("keyboard library not installed — global hotkeys disabled")
 
 
 class HotkeyManager:
@@ -910,6 +919,8 @@ class HotkeyManager:
 
     def start(self) -> None:
         if not _KEYBOARD_AVAILABLE:
+            if _KEYBOARD_DISABLED_REASON == "macos":
+                logger.info("Global hotkeys disabled on macOS")
             return
 
         # Register each hotkey individually to prevent one failure from stopping all
@@ -985,9 +996,12 @@ class BrainDumpHotkey:
     def start(self) -> None:
         """Register the global hotkey.  Safe to call if keyboard lib is missing."""
         if not _KEYBOARD_AVAILABLE:
-            logger_bd.warning(
-                "keyboard library not installed — BrainDumpHotkey disabled"
-            )
+            if _KEYBOARD_DISABLED_REASON == "macos":
+                logger_bd.info("BrainDumpHotkey disabled on macOS")
+            else:
+                logger_bd.warning(
+                    "keyboard library not installed — BrainDumpHotkey disabled"
+                )
             return
         try:
             keyboard.add_hotkey(_BRAIN_DUMP_HOTKEY, self._open_capture_box)
