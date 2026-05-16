@@ -1,3 +1,8 @@
 #!/usr/bin/env zsh
 cd /Users/ahmelkholy/Tools/ultimate-focus-timer
+case "${1:-}" in
+  gui|console|dashboard)
+    set -- "--$1" "${@:2}"
+    ;;
+esac
 exec .venv/bin/python main.py "$@"
