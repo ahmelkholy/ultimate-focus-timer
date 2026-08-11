@@ -1,8 +1,41 @@
 #!/usr/bin/env zsh
-cd /Users/ahmelkholy/Tools/ultimate-focus-timer
+SCRIPT_DIR="${0:A:h}"
+cd "$SCRIPT_DIR" || exit 1
+PYTHON="${FOCUS_PYTHON:-$SCRIPT_DIR/.venv/bin/python}"
+
+if [[ ! -x "$PYTHON" ]]; then
+  print -u2 "Focus Timer virtual environment is missing: $PYTHON"
+  exit 1
+fi
+
 case "${1:-}" in
   gui|console|dashboard)
     set -- "--$1" "${@:2}"
     ;;
 esac
-exec .venv/bin/python main.py "$@"
+
+if [[ "${1:-}" == "--gui" && " $* " != *" --help "* && -z "${FOCUS_FOREGROUND:-}" ]]; then
+  mkdir -p log
+  "$PYTHON" - "$@" <<'PY'
+import subprocess
+import sys
+from pathlib import Path
+
+root = Path.cwd()
+log = root / "log" / "focus-gui.log"
+with open(log, "ab", buffering=0) as out, open("/dev/null", "rb") as devnull:
+    subprocess.Popen(
+        [sys.executable, "main.py", *sys.argv[1:]],
+        cwd=root,
+        stdin=devnull,
+        stdout=out,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+        close_fds=True,
+    )
+PY
+  echo "Focus Timer GUI started in background."
+  exit 0
+fi
+
+exec "$PYTHON" main.py "$@"
