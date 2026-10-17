@@ -10,11 +10,15 @@ import logging
 import logging.handlers
 import os
 import platform
+import shlex
+import shutil
 import signal
 import subprocess
 import sys
 import threading
+import time
 from datetime import datetime
+from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -129,11 +133,130 @@ _SUBPROCESS_FLAGS: int = (
 )
 
 
+def _mac_music_proxy() -> str:
+    """Resolve the active route on demand; a stopped local proxy means direct."""
+    if platform.system() != "Darwin":
+        return ""
+    import socket
+    import urllib.request
+    from urllib.parse import urlsplit
+
+    proxies = urllib.request.getproxies()
+    # A GUI's no_proxy setting makes getproxies() ignore macOS settings.
+    # Recover the system route when the environment only defines exclusions.
+    if "no" in proxies and not (proxies.get("https") or proxies.get("http")):
+        system_proxies = getattr(urllib.request, "getproxies_macosx_sysconf", dict)()
+        proxies = {**system_proxies, **proxies}
+    proxy = proxies.get("https") or proxies.get("http") or ""
+    if not proxy:
+        return ""
+    try:
+        parsed = urlsplit(proxy)
+        if parsed.hostname in ("localhost", "127.0.0.1", "::1"):
+            with socket.create_connection(
+                (parsed.hostname, parsed.port or 80), timeout=0.3
+            ):
+                pass
+    except (OSError, ValueError):
+        return ""
+    return proxy
+
+
+def youtube_source_kind(link: str) -> str:
+    """Identify playlist-bearing YouTube links without changing their URL."""
+    from urllib.parse import parse_qs, urlsplit
+
+    parsed = urlsplit(link)
+    host = (parsed.hostname or "").lower()
+    if host not in ("youtube.com", "youtu.be") and not host.endswith(".youtube.com"):
+        return ""
+    playlist = parse_qs(parsed.query).get("list", [""])[0]
+    return "radio" if playlist.startswith("RD") else "playlist" if playlist else "video"
+
+
+def normalise_music_link(link: str) -> str:
+    """Validate one pasted media URL, repairing an exact double paste."""
+    import re
+    from urllib.parse import parse_qs, urlsplit
+
+    link = link.strip()
+    half = len(link) // 2
+    if len(link) % 2 == 0 and link[:half] == link[half:]:
+        link = link[:half]
+    parsed = urlsplit(link)
+    if (
+        parsed.scheme not in ("http", "https")
+        or not parsed.hostname
+        or re.search(r"\s", link)
+        or len(re.findall(r"https?://", link)) != 1
+    ):
+        raise ValueError("Paste one complete https:// video or playlist link.")
+    host = parsed.hostname.lower()
+    if host == "youtube.com" or host.endswith(".youtube.com"):
+        query = parse_qs(parsed.query)
+        if parsed.path == "/watch" and not query.get("v"):
+            raise ValueError("This YouTube link is missing its video ID.")
+        if parsed.path == "/playlist" and not query.get("list"):
+            raise ValueError("This YouTube link is missing its playlist ID.")
+    return link
+
+
+def _music_failure_reason(line: str) -> Optional[str]:
+    """Translate player diagnostics without exposing signed URLs or credentials."""
+    text = line.lower()
+    if (
+        "cookie" in text
+        and any(
+            word in text
+            for word in ("decrypt", "could not", "failed", "permission denied")
+        )
+    ) or "keychain" in text:
+        return "Could not read Chrome sign-in. Open Chrome and allow Keychain access, then Retry."
+    if "playlist does not exist" in text or "playlist is private" in text:
+        return "This YouTube playlist is unavailable or private. Add another link."
+    if (
+        "video unavailable" in text
+        or "video is unavailable" in text
+        or "private video" in text
+        or "has been removed" in text
+    ):
+        return "This YouTube video is unavailable or private. Add another link."
+    if "sign in" in text or "confirm you" in text or "http error 403" in text:
+        return "YouTube blocked this stream or requires sign-in. Try another link."
+    if "timed out" in text or "timeout" in text:
+        return "Music connection timed out. Check your network or proxy, then retry."
+    if (
+        "connection refused" in text
+        or "could not resolve" in text
+        or "network is unreachable" in text
+    ):
+        return "Music cannot reach the network. Check your connection or proxy, then retry."
+    if (
+        "yt-dlp: error:" in text
+        or "error parsing option" in text
+        or "option not found" in text
+    ):
+        return "The music player settings are invalid. Check the player configuration."
+    return None
+
+
+def _music_operation(method):
+    """Serialize controls, recovery, and shutdown for this player instance."""
+
+    @wraps(method)
+    def run(self, *args, **kwargs):
+        with self._operation_lock:
+            return method(self, *args, **kwargs)
+
+    return run
+
+
 class MusicController:
     """Cross-platform music controller using MPV."""
 
     def __init__(self, config_manager):
         self.config = config_manager
+        self._operation_lock = threading.RLock()
         self.mpv_process: Optional[subprocess.Popen] = None
         self.pid_file: Path = MPV_PID_FILE
         self.ipc_socket: Optional[Path] = None
@@ -144,6 +267,15 @@ class MusicController:
         self._paused_playlist: Optional[str] = None
         self.is_playing: bool = False
         self.current_track_name: str = ""
+        self.playback_state = "stopped"
+        self.last_error = ""
+        self._playback_proxy = ""
+        self._allow_proxy_retry = True
+        self._live = {}
+        self._live_time = time.monotonic()
+        self._observed_process = None
+        self._queue_count = 0
+        self._queue_position = -1
 
         logger.debug("MusicController ready (mpv=%s)", self.mpv_executable)
 
@@ -236,19 +368,31 @@ class MusicController:
 
         return playlists[0]["path"]
 
+    @_music_operation
     def start_music(
-        self, playlist_path: Optional[str] = None, volume: Optional[int] = None
+        self,
+        playlist_path: Optional[str] = None,
+        volume: Optional[int] = None,
+        *,
+        _allow_proxy_retry: bool = True,
+        _radio_continuation: bool = False,
     ) -> bool:
         if not self.is_mpv_available():
+            self.playback_state = "error"
+            self.last_error = (
+                "Music requires mpv. Install it, then reopen Ultimate Focus."
+            )
             logger.warning("MPV not available; skipping music start")
             return False
 
         self._stop_process_only()
 
         if not playlist_path:
-            playlist_path = self._paused_playlist or self._select_default_playlist()
+            playlist_path = self._select_default_playlist()
 
         if not playlist_path:
+            self.playback_state = "error"
+            self.last_error = "No music selected. Add a video or playlist link."
             logger.error("No playlist available to play")
             return False
 
@@ -263,48 +407,123 @@ class MusicController:
             # \\.\pipe\mpv_focus_timer. Do NOT use a full path here.
             self.ipc_socket = Path("mpv_focus_timer")
         else:
-            self.ipc_socket = Path(tempfile.gettempdir()) / "mpv_focus_timer.sock"
+            self.ipc_socket = (
+                Path(tempfile.gettempdir()) / f"focus-{os.getpid()}-{id(self):x}.sock"
+            )
 
         mpv_args = [
             self.mpv_executable,
             "--no-video",
-            "--shuffle",
-            "--loop-playlist",
-            "--really-quiet",
+            "--demuxer-max-bytes=4MiB",
+            "--demuxer-max-back-bytes=1MiB",
+            "--shuffle="
+            + ("yes" if self.config.get("classical_music_shuffle", True) else "no"),
+            "--loop-playlist="
+            + ("inf" if self.config.get("classical_music_repeat", True) else "no"),
+            "--ytdl-format=bestaudio/best",
             f"--volume={volume}",
             f"--input-ipc-server={self.ipc_socket}",
         ]
 
         extra = str(self.config.get("mpv_extra_args", "")).strip()
         if extra:
-            mpv_args.extend(extra.split())
+            mpv_args.extend(shlex.split(extra, posix=platform.system() != "Windows"))
 
-        mpv_args.append(playlist_path)
+        # Finder does not inherit the shell PATH. Include standard Homebrew bins
+        # for yt-dlp and its JavaScript runtime without changing the parent env.
+        env = os.environ.copy()
+        if platform.system() == "Darwin":
+            env["PATH"] = os.pathsep.join(
+                [env.get("PATH", ""), "/opt/homebrew/bin", "/usr/local/bin"]
+            )
+            self._playback_proxy = _mac_music_proxy()
+            self._allow_proxy_retry = _allow_proxy_retry
+            # Explicitly pass even an empty proxy, so yt-dlp cannot reuse a
+            # configured local proxy whose application has been closed.
+            for scheme in ("http", "https", "all"):
+                env.pop(f"{scheme}_proxy", None)
+                env.pop(f"{scheme.upper()}_PROXY", None)
+            mpv_args.append(f"--http-proxy={self._playback_proxy}")
+            mpv_args.append(f"--ytdl-raw-options-append=proxy={self._playback_proxy}")
+        extractor = shutil.which("yt-dlp", path=env.get("PATH"))
+        if extractor:
+            mpv_args.append(f"--script-opts-append=ytdl_hook-ytdl_path={extractor}")
+        source_kind = youtube_source_kind(playlist_path)
+        browser = self.config.get("youtube_browser", "")
+        if source_kind and browser == "chrome":
+            mpv_args.append("--ytdl-raw-options-append=cookies-from-browser=chrome")
+        if source_kind in ("radio", "playlist"):
+            # mpv otherwise treats a watch?v=...&list=... URL as one video.
+            mpv_args.append("--ytdl-raw-options-append=yes-playlist=")
+        if source_kind == "radio":
+            # Mixes can be unbounded. Load a useful queue, starting at the seed,
+            # without asking yt-dlp to enumerate recommendations indefinitely.
+            mpv_args.extend(
+                ["--ytdl-raw-options-append=playlist-end=50", "--shuffle=no"]
+            )
+            if self.config.get("radio_refresh", True):
+                # Let the batch end once; the completion handler requests a
+                # fresh personalised mix instead of looping a stale queue.
+                mpv_args.append("--loop-playlist=no")
+            if _radio_continuation:
+                mpv_args.append("--playlist-start=1")
+        mpv_args.extend(
+            [
+                "--ytdl-raw-options-append=socket-timeout=20",
+                "--ytdl-raw-options-append=retries=1",
+                "--ytdl-raw-options-append=extractor-retries=1",
+                "--network-timeout=20",
+                "--terminal=yes",
+                "--msg-level=all=error,cplayer=info",
+                "--term-status-msg=",
+                "--term-playing-msg=FOCUS_PLAYING:${media-title}",
+                "--idle=no",
+                "--keep-open=no",
+                "--",
+                playlist_path,
+            ]
+        )
 
         try:
             self.mpv_process = subprocess.Popen(
                 mpv_args,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 stdin=subprocess.DEVNULL,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env=env,
                 creationflags=_SUBPROCESS_FLAGS,
             )
             self.pid_file.write_text(str(self.mpv_process.pid))
             self.current_playlist = playlist_path
             self._paused_playlist = playlist_path
             self.is_playing = True
+            self.playback_state = "loading"
+            self.current_track_name = ""
+            self._live = {}
+            self._queue_count = 0
+            self._queue_position = -1
+            self.last_error = ""
             logger.info(
                 "Music started (pid=%d, playlist=%s)",
                 self.mpv_process.pid,
                 playlist_path,
             )
             # Start track info update thread
-            threading.Thread(target=self._update_track_info_loop, daemon=True).start()
+            threading.Thread(
+                target=self._monitor_playback, args=(self.mpv_process,), daemon=True
+            ).start()
             return True
         except OSError:
+            self._stop_process_only()
+            self.playback_state = "error"
+            self.last_error = "Could not start the music player."
             logger.exception("Failed to launch MPV")
             return False
 
+    @_music_operation
     def stop_music(self) -> bool:
         self._stop_process_only()
         self.current_playlist = None
@@ -320,6 +539,8 @@ class MusicController:
         return True
 
     def _stop_process_only(self) -> None:
+        self.is_playing = False
+        self.playback_state = "stopped"
         if self.mpv_process and self.mpv_process.poll() is None:
             try:
                 if platform.system() == "Windows":
@@ -330,62 +551,71 @@ class MusicController:
                     self.mpv_process.wait(timeout=3)
                 except subprocess.TimeoutExpired:
                     self.mpv_process.kill()
+                    self.mpv_process.wait(timeout=3)
             except OSError:
                 logger.exception("Error terminating MPV process")
 
-        if self.pid_file.exists():
-            try:
-                pid = int(self.pid_file.read_text().strip())
-                if platform.system() == "Windows":
-                    subprocess.run(
-                        ["taskkill", "/F", "/PID", str(pid)],
-                        capture_output=True,
-                        creationflags=_SUBPROCESS_FLAGS,
-                    )
-                else:
-                    os.kill(pid, signal.SIGTERM)
-            except (ValueError, ProcessLookupError, FileNotFoundError):
-                pass
-            except OSError:
-                logger.exception("Error stopping MPV by PID file")
-            finally:
-                try:
+        # Never signal an unverified PID left by another instance or a crash.
+        try:
+            if self.mpv_process and self.pid_file.exists():
+                if self.pid_file.read_text().strip() == str(self.mpv_process.pid):
                     self.pid_file.unlink(missing_ok=True)
-                except OSError:
-                    pass
+        except OSError:
+            logger.debug("Could not remove music PID file", exc_info=True)
 
         self.mpv_process = None
 
+    @_music_operation
     def pause_music(self) -> bool:
-        if not self.is_playing:
-            return False
-        self._paused_playlist = self.current_playlist
-        self._stop_process_only()
-        self.current_playlist = None
-        self.is_playing = False
-        logger.info("Music paused (saved playlist: %s)", self._paused_playlist)
-        return True
+        result = self._send_mpv_command(["set_property", "pause", True])
+        if result and result.get("error") == "success":
+            self.playback_state = "paused"
+            return True
+        return False
 
+    @_music_operation
     def resume_music(self) -> bool:
-        if self.is_playing:
+        if self.mpv_process and self.mpv_process.poll() is None:
+            result = self._send_mpv_command(["set_property", "pause", False])
+            if result and result.get("error") == "success":
+                self.playback_state = "playing"
+                return True
             return False
-        playlist = self._paused_playlist
-        if not playlist:
-            logger.warning("No paused playlist to resume; selecting default")
-        return self.start_music(playlist_path=playlist)
+        return self.start_music()
 
+    @_music_operation
     def set_volume(self, volume: int) -> bool:
-        self.config.set("classical_music_volume", max(0, min(100, volume)))
+        volume = max(0, min(100, volume))
+        self.config.set("classical_music_volume", volume)
         if self.is_playing:
-            logger.info("Volume updated to %d%% — takes effect on next start", volume)
+            result = self._send_mpv_command(["set_property", "volume", volume])
+            return bool(result and result.get("error") == "success")
         return True
 
     def get_status(self) -> Dict[str, Any]:
+        live = self._live.copy()
+        position = live.get("time-pos") or 0
+        if self.playback_state == "playing" and not live.get("paused-for-cache"):
+            position += min(2, time.monotonic() - self._live_time)
+        duration = live.get("duration") or 0
         return {
+            "position": min(position, duration) if duration else position,
+            "duration": duration,
+            "buffering": bool(live.get("paused-for-cache")),
+            "devices": live.get("audio-device-list") or [],
+            "device": live.get("audio-device", "auto"),
+            "route": "Proxy" if self._playback_proxy else "Direct",
+            "source_kind": youtube_source_kind(self.current_playlist or ""),
+            "youtube_browser": self.config.get("youtube_browser", ""),
+            "playlist_count": live.get("playlist-count") or 0,
+            "playlist_index": (live.get("playlist-pos") or 0) + 1,
+            "muted": bool(live.get("mute")),
             "is_playing": self.is_playing,
+            "state": self.playback_state,
+            "error": self.last_error,
             "current_playlist": self.current_playlist,
             "mpv_available": self._mpv_available,
-            "volume": self.config.get("classical_music_volume", 30),
+            "volume": live.get("volume", self.config.get("classical_music_volume", 30)),
             "current_track": self.current_track_name,
         }
 
@@ -440,31 +670,42 @@ class MusicController:
             else:
                 import socket as _socket
 
-                sock = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
-                sock.settimeout(1.0)
-                sock.connect(str(self.ipc_socket))
-                sock.sendall(cmd_str.encode())
-                response = sock.recv(4096).decode()
-                sock.close()
-                return json.loads(response) if response else None
+                with _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM) as sock:
+                    sock.settimeout(1.0)
+                    sock.connect(str(self.ipc_socket))
+                    sock.sendall(cmd_str.encode())
+                    with sock.makefile("r", encoding="utf-8") as stream:
+                        for line in stream:
+                            response = json.loads(line)
+                            if "error" in response:
+                                return response
+                return None
         except Exception as e:
             logger.debug(f"MPV command failed: {e}")
             return None
 
+    @_music_operation
     def next_track(self) -> bool:
         """Skip to next track"""
+        previous_state = self.playback_state
+        self.playback_state = "loading"
         result = self._send_mpv_command(["playlist-next"])
-        if result:
+        if result and result.get("error") == "success":
             logger.info("Skipped to next track")
             return True
+        self.playback_state = previous_state
         return False
 
+    @_music_operation
     def previous_track(self) -> bool:
         """Go to previous track"""
+        previous_state = self.playback_state
+        self.playback_state = "loading"
         result = self._send_mpv_command(["playlist-prev"])
-        if result:
+        if result and result.get("error") == "success":
             logger.info("Went to previous track")
             return True
+        self.playback_state = previous_state
         return False
 
     def get_current_track_info(self) -> Optional[str]:
@@ -480,20 +721,164 @@ class MusicController:
                 return track_name
         return None
 
-    def _update_track_info_loop(self):
-        """Background thread to update track info"""
-        import time
+    def _monitor_playback(self, process):
+        """Read player events without polling or blocking the GUI thread."""
+        try:
+            for line in process.stdout:
+                if self.mpv_process is not process or not self.is_playing:
+                    continue
+                if line.startswith("FOCUS_PLAYING:"):
+                    self.current_track_name = line.partition(":")[2].strip()
+                    self.playback_state = "playing"
+                elif line.startswith("AO:"):
+                    if (
+                        self._observed_process is not process
+                        and platform.system() != "Windows"
+                    ):
+                        self._observed_process = process
+                        threading.Thread(
+                            target=self._observe_player,
+                            args=(process, self.ipc_socket),
+                            daemon=True,
+                        ).start()
+                    self.playback_state = "playing"
+                    self.last_error = ""
+                    result = self._send_mpv_command(["get_property", "media-title"])
+                    if result and isinstance(result.get("data"), str):
+                        self.current_track_name = result["data"]
+                elif line.strip():
+                    reason = _music_failure_reason(line)
+                    if reason and not self.last_error:
+                        self.last_error = reason
+            returncode = process.wait()
+            if self._refresh_completed_radio(process, returncode):
+                return
+            if self.mpv_process is process and self.is_playing:
+                if (
+                    returncode
+                    and platform.system() == "Darwin"
+                    and self._allow_proxy_retry
+                    and self.current_playlist
+                    and _mac_music_proxy() != self._playback_proxy
+                ):
+                    logger.info("Music connection changed; retrying playback once")
+                    self.start_music(self.current_playlist, _allow_proxy_retry=False)
+                    return
+                self.is_playing = False
+                self.current_track_name = ""
+                self.playback_state = "error" if returncode else "stopped"
+                if returncode:
+                    if not self.last_error:
+                        self.last_error = (
+                            "Playback failed. Check the link or connection."
+                        )
+                    logger.warning(
+                        "Music player exited with code %s: %s",
+                        returncode,
+                        self.last_error,
+                    )
+        finally:
+            process.stdout.close()
 
-        while self.is_playing:
-            try:
-                track_info = self.get_current_track_info()
-                if track_info:
-                    self.current_track_name = track_info
-                time.sleep(2)  # Update every 2 seconds
-            except Exception as e:
-                logger.debug(f"Track info update failed: {e}")
-                time.sleep(5)
+    @_music_operation
+    def _refresh_completed_radio(self, process, returncode):
+        count = self._queue_count or self._live.get("playlist-count") or 0
+        position = (
+            self._queue_position
+            if self._queue_position >= 0
+            else self._live.get("playlist-pos")
+        )
+        if (
+            returncode != 0
+            or self.mpv_process is not process
+            or not self.is_playing
+            or youtube_source_kind(self.current_playlist or "") != "radio"
+            or not self.config.get("radio_refresh", True)
+            or not self.config.get("classical_music_repeat", True)
+            or count < 2
+            or position is None
+            or position < count - 1
+        ):
+            return False
+        logger.info("Radio queue completed; requesting a fresh mix")
+        self.start_music(self.current_playlist, _radio_continuation=True)
+        return True
 
+    def _observe_player(self, process, path):
+        """Receive property changes from mpv; no periodic network queries."""
+        import json
+        import socket
+
+        properties = [
+            "time-pos",
+            "duration",
+            "pause",
+            "media-title",
+            "volume",
+            "mute",
+            "paused-for-cache",
+            "audio-device",
+            "audio-device-list",
+            "playlist-pos",
+            "playlist-count",
+        ]
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+                sock.settimeout(None)
+                sock.connect(str(path))
+                for index, name in enumerate(properties):
+                    sock.sendall(
+                        (
+                            json.dumps({"command": ["observe_property", index, name]})
+                            + "\n"
+                        ).encode()
+                    )
+                with sock.makefile("r", encoding="utf-8") as stream:
+                    for line in stream:
+                        if self.mpv_process is not process or not self.is_playing:
+                            return
+                        event = json.loads(line)
+                        self._apply_player_event(event)
+        except (OSError, ValueError):
+            logger.debug("Music property observer closed")
+
+    def _apply_player_event(self, event):
+        kind = event.get("event")
+        if kind == "property-change":
+            self._apply_player_property(event.get("name"), event.get("data"))
+        elif kind == "start-file":
+            self.playback_state = "loading"
+            self.current_track_name = ""
+            self._live.pop("time-pos", None)
+            self._live.pop("duration", None)
+        elif kind == "playback-restart":
+            self.playback_state = "paused" if self._live.get("pause") else "playing"
+            self.last_error = ""
+
+    def _apply_player_property(self, name, value):
+        self._live[name] = value
+        if name == "playlist-count" and isinstance(value, (int, float)) and value > 0:
+            self._queue_count = int(value)
+        elif name == "playlist-pos" and isinstance(value, (int, float)) and value >= 0:
+            self._queue_position = int(value)
+        if name == "time-pos":
+            self._live_time = time.monotonic()
+        elif name == "media-title" and isinstance(value, str):
+            self.current_track_name = value
+        elif name == "pause" and value is not None:
+            self.playback_state = "paused" if value else "playing"
+
+    @_music_operation
+    def seek(self, position):
+        result = self._send_mpv_command(["seek", float(position), "absolute"])
+        return bool(result and result.get("error") == "success")
+
+    @_music_operation
+    def set_audio_device(self, device):
+        result = self._send_mpv_command(["set_property", "audio-device", device])
+        return bool(result and result.get("error") == "success")
+
+    @_music_operation
     def change_playlist(self, playlist_path: str) -> bool:
         """Change to a different playlist"""
         if not playlist_path:
@@ -748,17 +1133,28 @@ class NotificationManager:
 # TRAY MANAGER
 # ══════════════════════════════════════════════════════════════════════════════
 
-try:
-    import pystray
-    from PIL import Image, ImageDraw
+import importlib.util as _import_util
 
-    _PYSTRAY_AVAILABLE = True
-except ImportError:
-    pystray = None  # type: ignore[assignment]
-    Image = None  # type: ignore[assignment]
-    ImageDraw = None  # type: ignore[assignment]
-    _PYSTRAY_AVAILABLE = False
-    logger.warning("pystray/Pillow not installed — system tray disabled")
+_PYSTRAY_AVAILABLE = all(
+    _import_util.find_spec(name) is not None for name in ("pystray", "PIL")
+)
+pystray = Image = ImageDraw = None
+
+
+def _load_tray_dependencies():
+    global pystray, Image, ImageDraw, _PYSTRAY_AVAILABLE
+    if pystray is not None:
+        return True
+    try:
+        import pystray as tray_module
+        from PIL import Image as image_module
+        from PIL import ImageDraw as draw_module
+    except ImportError:
+        _PYSTRAY_AVAILABLE = False
+        return False
+    pystray, Image, ImageDraw = tray_module, image_module, draw_module
+    return True
+
 
 _ICON_SIZE = 64
 
@@ -836,6 +1232,10 @@ class TrayManager:
 
     def start(self) -> None:
         if not _PYSTRAY_AVAILABLE or self._is_macos_tcl9:
+            self.available = False
+            return
+        if not _load_tray_dependencies():
+            self.available = False
             return
         try:
             import threading

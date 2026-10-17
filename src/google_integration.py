@@ -5,6 +5,7 @@ google_integration.py - Google Tasks integration for Ultimate Focus Timer.
 Connects the local task list with Google Tasks.
 """
 
+import importlib.util
 import json
 import logging
 import pickle
@@ -23,22 +24,46 @@ if TYPE_CHECKING:
     from google.oauth2.credentials import Credentials as _Credentials  # type: ignore
     from googleapiclient.errors import HttpError as _HttpError  # type: ignore
 
-try:
-    from google.auth.transport.requests import Request
-    from google_auth_oauthlib.flow import InstalledAppFlow
-    from googleapiclient.discovery import build
-    from googleapiclient.errors import HttpError
+# Probe packages cheaply; import the SDK only when connecting or restoring a token.
+GOOGLE_API_AVAILABLE = all(
+    importlib.util.find_spec(name) is not None
+    for name in ("googleapiclient", "google_auth_oauthlib")
+)
+_GOOGLE_API_LOADED = False
+Request = InstalledAppFlow = build = None
 
-    GOOGLE_API_AVAILABLE = True
-except ImportError:
-    # Minimal runtime fallbacks. Keep only what's required at runtime.
-    Request = None  # type: ignore[assignment]
-    InstalledAppFlow = None  # type: ignore[assignment]
-    build = None  # type: ignore[assignment]
-    # Use Exception as a runtime fallback for HttpError so exception handlers work
-    HttpError = Exception  # type: ignore[assignment]
-    GOOGLE_API_AVAILABLE = False
-    logger.warning("Google API libraries not installed. Google integration disabled.")
+
+class _UnavailableHttpError(Exception):
+    pass
+
+
+HttpError = _UnavailableHttpError
+
+
+def _load_google_api():
+    global Request, InstalledAppFlow, build, HttpError
+    global GOOGLE_API_AVAILABLE, _GOOGLE_API_LOADED
+    if _GOOGLE_API_LOADED:
+        return True
+    try:
+        from google.auth.transport.requests import Request as request_class
+        from google_auth_oauthlib.flow import InstalledAppFlow as flow_class
+        from googleapiclient.discovery import build as build_service
+        from googleapiclient.errors import HttpError as http_error
+    except ImportError:
+        GOOGLE_API_AVAILABLE = False
+        logger.warning(
+            "Google API libraries not installed. Google integration disabled."
+        )
+        return False
+    Request, InstalledAppFlow, build, HttpError = (
+        request_class,
+        flow_class,
+        build_service,
+        http_error,
+    )
+    _GOOGLE_API_LOADED = True
+    return True
 
 
 # Google API scopes
@@ -65,7 +90,7 @@ class GoogleIntegration:
         self.credentials_file = self.config_dir / "google_credentials.json"
         self.token_file = self.config_dir / "google_token.pickle"
 
-        self.creds: Optional["_Credentials"] = None
+        self.creds: Optional[_Credentials] = None
         self.tasks_service = None
         self.calendar_service = None
 
@@ -213,6 +238,13 @@ class GoogleIntegration:
         """Load credentials silently or, when requested, complete browser auth."""
         self._clear_session()
         self._clear_last_error()
+        if not allow_user_auth and not self.token_file.exists():
+            return False
+        if not _load_google_api():
+            self._set_last_error("Google API libraries are unavailable.")
+            if raise_errors:
+                raise RuntimeError(self.last_error)
+            return False
         try:
             if force_reauth and self.token_file.exists():
                 self.token_file.unlink()

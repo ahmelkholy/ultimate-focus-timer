@@ -21,3 +21,8 @@ def test_parse_window_geometry_keeps_size_without_position():
 
 def test_parse_window_geometry_rejects_invalid_values():
     assert _parse_window_geometry("not-a-geometry") is None
+
+
+def test_transient_double_minus_offsets_are_rejected_without_crashing():
+    assert _parse_window_geometry("360x764-2092--18") is None
+    assert _normalise_window_geometry("360x764-2092--18") is None

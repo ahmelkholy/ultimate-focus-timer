@@ -56,8 +56,8 @@ if TYPE_CHECKING:
 
 
 _ANALYTICS_MODULES: Optional[Tuple[Any, Any, Any]] = None
-_DEFAULT_WINDOW_WIDTH = 300
-_DEFAULT_WINDOW_HEIGHT = 400
+_DEFAULT_WINDOW_WIDTH = 420
+_DEFAULT_WINDOW_HEIGHT = 720
 _WINDOW_GEOMETRY_RE = re.compile(r"^(\d+)x(\d+)(?:([+-]-?\d+)([+-]-?\d+))?$")
 
 
@@ -77,7 +77,10 @@ def _parse_window_geometry(
     if raw_x is None or raw_y is None:
         return width, height, None, None
 
-    return width, height, int(raw_x.lstrip("+")), int(raw_y.lstrip("+"))
+    try:
+        return width, height, int(raw_x.lstrip("+")), int(raw_y.lstrip("+"))
+    except ValueError:
+        return None
 
 
 def _format_window_geometry(
@@ -1395,10 +1398,6 @@ class InlineTaskWidget:
             insertcolor="#ffffff",
         )
 
-        # Return focus to main window after a short delay to ensure shortcuts work
-        if hasattr(self, "parent"):
-            self.parent.after(100, self._return_focus_to_main)
-
     def _return_focus_to_main(self):
         """Helper method to return focus to main window"""
         try:
@@ -2258,7 +2257,7 @@ class DashboardGUI:
             export_path = self.analyzer.export_data(sessions, stats, daily_df)
             messagebox.showinfo("Export Complete", f"Data exported to:\n{export_path}")
         except Exception as e:
-            messagebox.showerror("Export Error", f"Failed to export data:\n{str(e)}")
+            messagebox.showerror("Export Error", f"Failed to export data:\n{e!s}")
 
     def generate_visual_report(self):
         """Generate a comprehensive visual report"""
@@ -2442,9 +2441,7 @@ class DashboardGUI:
                     "Report Generated", f"Visual report saved to:\n{filename}"
                 )
         except Exception as e:
-            messagebox.showerror(
-                "Report Error", f"Failed to generate report:\n{str(e)}"
-            )
+            messagebox.showerror("Report Error", f"Failed to generate report:\n{e!s}")
 
     def run(self):
         """Start the dashboard GUI"""
@@ -2750,9 +2747,7 @@ class LauncherGUI:
             self.update_status("GUI Timer closed. Ready for next session!")
 
         except Exception as e:
-            messagebox.showerror(
-                "Launch Error", f"Failed to launch GUI Timer:\n{str(e)}"
-            )
+            messagebox.showerror("Launch Error", f"Failed to launch GUI Timer:\n{e!s}")
             self.update_status("Error launching GUI Timer")
 
     def launch_console(self):
@@ -2809,7 +2804,7 @@ class LauncherGUI:
 
         except Exception as e:
             messagebox.showerror(
-                "Launch Error", f"Failed to launch Console Timer:\n{str(e)}"
+                "Launch Error", f"Failed to launch Console Timer:\n{e!s}"
             )
             self.update_status("Error launching Console Timer")
 
@@ -2827,7 +2822,7 @@ class LauncherGUI:
 
         except Exception as e:
             messagebox.showerror(
-                "Launch Error", f"Failed to launch Analytics Dashboard:\n{str(e)}"
+                "Launch Error", f"Failed to launch Analytics Dashboard:\n{e!s}"
             )
             self.update_status("Error launching Analytics Dashboard")
 
@@ -2852,7 +2847,7 @@ class LauncherGUI:
                 )
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to open configuration:\n{str(e)}")
+            messagebox.showerror("Error", f"Failed to open configuration:\n{e!s}")
 
     def open_data_folder(self):
         """Open the data folder"""
@@ -2874,7 +2869,7 @@ class LauncherGUI:
                 messagebox.showwarning("Folder Not Found", "Data folder not found!")
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to open data folder:\n{str(e)}")
+            messagebox.showerror("Error", f"Failed to open data folder:\n{e!s}")
 
     def show_help(self):
         """Show help information"""
@@ -3858,6 +3853,11 @@ class FocusGUI:
         try:
             # Initialize components
             self.config = ConfigManager()
+            self.ui_bg = "#171c22" if self.config.get("dark_theme", True) else "#f7f8fa"
+            self.ui_fg = "#edf1f5" if self.config.get("dark_theme", True) else "#17212b"
+            self.ui_card = (
+                "#222830" if self.config.get("dark_theme", True) else "#ffffff"
+            )
             self.music = MusicController(self.config)
             self.notifications = NotificationManager(self.config)
             self.session_manager = SessionManager(self.config)
@@ -3883,6 +3883,7 @@ class FocusGUI:
             )
             self._cloud_sync_interval_ms = max(60, sync_interval_seconds) * 1000
             self._window_geometry_save_callback_id = None
+            self._display_update_id = None
             self._last_saved_window_geometry = str(
                 self.config.get("window_geometry", "") or ""
             )
@@ -3933,10 +3934,15 @@ class FocusGUI:
             self.create_widgets()
             self.apply_theme()
             self.setup_keyboard_shortcuts()
-
-            # Mini indicator for minimized state
-            self.mini_indicator = None
-            self.setup_mini_indicator()
+            self._zoom_level = 1.0
+            self._zoom_fonts = {}
+            self.root.after_idle(
+                lambda: self.set_zoom(
+                    float(self.config.get("gui_zoom", 0.85)),
+                    save=False,
+                    resize=not bool(self.config.get("window_geometry", "")),
+                )
+            )
 
             # Check for crash-recovery state on startup (runs after GUI is shown)
             self.schedule_callback(200, self._check_crash_recovery)
@@ -3951,7 +3957,7 @@ class FocusGUI:
                 self._on_daemon_status_changed("stopped")
 
             # Start update loop
-            self.schedule_callback(100, self.update_loop)
+            self._display_update_id = self.schedule_callback(100, self.update_loop)
             self.schedule_callback(self._cloud_sync_interval_ms, self._auto_sync_tasks)
 
         except Exception as e:
@@ -3963,11 +3969,11 @@ class FocusGUI:
 
     def setup_window(self):
         """Configure the main window"""
-        self.root.title("FT")
+        self.root.title("Ultimate Focus")
         self.root.resizable(True, True)  # Enable resizing
 
         # Set minimum window size to prevent it from becoming too small
-        self.root.minsize(250, 450)
+        self.root.minsize(380, 620)
 
         # Configure grid weights for proper expansion
         self.root.grid_rowconfigure(0, weight=1)
@@ -3977,12 +3983,10 @@ class FocusGUI:
         self.load_window_dimensions()
         self.root.bind("<Configure>", self.on_window_configure)
 
-        # Bind minimize/restore events for mini indicator
+        # Suspend/resume display updates when the window is minimised/restored
         self.root.bind("<Unmap>", self.on_minimize)
         self.root.bind("<Map>", self.on_restore)
-        # Show the mini indicator when the application loses focus (not only on minimize)
-        self.root.bind("<FocusOut>", self.on_focus_out)
-        self.root.bind("<FocusIn>", self.on_focus_in)
+        # App focus changes never show or activate another window.
 
         # Handle window close
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -4037,6 +4041,66 @@ class FocusGUI:
             win_w, _win_h, win_x, win_y = parsed_geometry
             if win_x is None or win_y is None:
                 return False
+            if sys.platform != "win32":
+                rectangles = [
+                    (
+                        0,
+                        0,
+                        self.root.winfo_screenwidth(),
+                        self.root.winfo_screenheight(),
+                    )
+                ]
+                if sys.platform == "darwin":
+                    try:
+                        import ctypes.util
+
+                        class Point(ctypes.Structure):
+                            _fields_ = [("x", ctypes.c_double), ("y", ctypes.c_double)]
+
+                        class Size(ctypes.Structure):
+                            _fields_ = [
+                                ("width", ctypes.c_double),
+                                ("height", ctypes.c_double),
+                            ]
+
+                        class Rect(ctypes.Structure):
+                            _fields_ = [("origin", Point), ("size", Size)]
+
+                        library = ctypes.util.find_library("CoreGraphics")
+                        if library:
+                            graphics = ctypes.CDLL(library)
+                            graphics.CGDisplayBounds.argtypes = [ctypes.c_uint32]
+                            graphics.CGDisplayBounds.restype = Rect
+                            displays = (ctypes.c_uint32 * 32)()
+                            count = ctypes.c_uint32()
+                            if (
+                                graphics.CGGetActiveDisplayList(
+                                    32, displays, ctypes.byref(count)
+                                )
+                                == 0
+                            ):
+                                bounds = [
+                                    graphics.CGDisplayBounds(displays[i])
+                                    for i in range(count.value)
+                                ]
+                                rectangles = [
+                                    (
+                                        r.origin.x,
+                                        r.origin.y,
+                                        r.size.width,
+                                        r.size.height,
+                                    )
+                                    for r in bounds
+                                ]
+                    except (ImportError, OSError, AttributeError):
+                        pass
+                return any(
+                    win_x + win_w >= x + 50
+                    and win_x <= x + width - 50
+                    and win_y >= y
+                    and win_y <= y + height - 30
+                    for x, y, width, height in rectangles
+                )
             # Get virtual screen bounds (covers all monitors)
             k = ctypes.windll.user32
             vx = k.GetSystemMetrics(76)  # SM_XVIRTUALSCREEN
@@ -4120,7 +4184,10 @@ class FocusGUI:
             logger.warning("Failed to read window geometry: %s", exc)
             return
 
-        geometry = _normalise_window_geometry(geometry) or geometry
+        geometry = _normalise_window_geometry(geometry)
+        if geometry is None:
+            logger.debug("Skipping transient invalid window geometry")
+            return
 
         if geometry == self._last_saved_window_geometry:
             return
@@ -4132,325 +4199,197 @@ class FocusGUI:
             logger.warning("Failed to persist window geometry %s", geometry)
 
     def create_widgets(self):
-        """Create and layout GUI widgets"""
-        # Fixed sizes for consistent UI (no dynamic scaling)
-        # Smaller base font sizes for more compact display (reduced further per user request)
-        initial_sizes = {"title": 7, "time": 12, "normal": 5, "small": 4, "button": 5}
-        initial_scaling = {
-            "main_padding": 4,
-            "frame_pady": 3,
-            "button_padx": 1,
-            "button_pady": 1,
-            "progress_height": 12,
-            "canvas_height": 80,
-            "task_row_height": 18,
-        }
+        """Keep the timer, today's tasks, and music together in one window."""
+        self.main_frame = ttk.Frame(self.root, padding=18)
+        self.main_frame.grid(row=0, column=0, sticky="nsew")
+        self.main_frame.columnconfigure(0, weight=1)
+        self.main_frame.rowconfigure(6, weight=1)
 
-        # Main frame with fixed padding
-        self.main_frame = ttk.Frame(self.root, padding="4")
-        self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-
-        # Configure main frame grid weights for proper scaling
-        self.main_frame.grid_columnconfigure(0, weight=1)
-        self.main_frame.grid_columnconfigure(1, weight=1)
-        self.main_frame.grid_columnconfigure(2, weight=1)
-
-        # Configure row weights - give more weight to the task section
-        self.main_frame.grid_rowconfigure(0, weight=0)  # Title (fixed)
-        self.main_frame.grid_rowconfigure(1, weight=0)  # Time display (fixed)
-        self.main_frame.grid_rowconfigure(2, weight=0)  # Progress bar (fixed)
-        self.main_frame.grid_rowconfigure(3, weight=0)  # Session buttons (fixed)
-        self.main_frame.grid_rowconfigure(4, weight=0)  # Control buttons (fixed)
-        self.main_frame.grid_rowconfigure(5, weight=0)  # Status (fixed)
-        self.main_frame.grid_rowconfigure(6, weight=1)  # Task section (expandable)
-        self.main_frame.grid_rowconfigure(7, weight=0)  # Additional buttons (fixed)
-
-        # Title
-        self.title_label = ttk.Label(
-            self.main_frame,
-            text="🎯 FOCUS TIMER",
-            font=("Arial", initial_sizes["title"], "bold"),
+        header = ttk.Frame(self.main_frame)
+        header.grid(row=0, column=0, columnspan=3, sticky="ew", pady=(0, 12))
+        header.columnconfigure(0, weight=1)
+        self.title_label = ttk.Label(header, text="FOCUS", font=("Arial", 12, "bold"))
+        self.title_label.grid(row=0, column=0, sticky="w")
+        more = ttk.Menubutton(header, text="More")
+        menu = tk.Menu(more, tearoff=False)
+        menu.add_command(label="Settings…", command=self.show_settings)
+        menu.add_command(label="Statistics", command=self.show_statistics)
+        menu.add_command(
+            label="Keyboard shortcuts…", command=self.show_keyboard_shortcuts
         )
-        self.title_label.grid(
-            row=0, column=0, columnspan=3, pady=(0, initial_scaling["frame_pady"])
+        menu.add_separator()
+        menu.add_command(label="Zoom In    ⌘+", command=lambda: self.change_zoom(0.1))
+        menu.add_command(label="Zoom Out   ⌘−", command=lambda: self.change_zoom(-0.1))
+        menu.add_command(label="Reset Size", command=lambda: self.set_zoom(1.0))
+        more.configure(menu=menu)
+        zoom_controls = ttk.Frame(header)
+        zoom_controls.grid(row=0, column=1, padx=4)
+        ttk.Button(
+            zoom_controls, text="−", width=2, command=lambda: self.change_zoom(-0.1)
+        ).pack(side="left")
+        self.zoom_label = ttk.Label(
+            zoom_controls, text="100%", width=5, anchor="center"
         )
+        self.zoom_label.pack(side="left")
+        ttk.Button(
+            zoom_controls, text="+", width=2, command=lambda: self.change_zoom(0.1)
+        ).pack(side="left")
+        more.grid(row=0, column=2)
 
-        # Time display
         self.time_label = ttk.Label(
-            self.main_frame,
-            text="00:00",
-            font=("Courier New", initial_sizes["time"], "bold"),
+            self.main_frame, text="00:00", font=("Arial", 48), anchor="center"
         )
-        self.time_label.grid(
-            row=1, column=0, columnspan=3, pady=(0, initial_scaling["frame_pady"])
-        )
-
-        # Progress bar with dynamic height
+        self.time_label.grid(row=1, column=0, columnspan=3, pady=(0, 12))
         self.progress_var = tk.DoubleVar()
-        style = ttk.Style()
-        style.configure(
-            "Scaled.Horizontal.TProgressbar",
-            thickness=initial_scaling["progress_height"],
-        )
         self.progress_bar = ttk.Progressbar(
-            self.main_frame,
-            variable=self.progress_var,
-            maximum=100,
-            style="Scaled.Horizontal.TProgressbar",
+            self.main_frame, variable=self.progress_var, maximum=100
         )
-        self.progress_bar.grid(
-            row=2,
-            column=0,
-            columnspan=3,
-            pady=(0, initial_scaling["frame_pady"]),
-            sticky=(tk.W, tk.E),
-            padx=initial_scaling["main_padding"],
-        )
+        self.progress_bar.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(0, 16))
 
-        # Session buttons frame
         self.session_frame = ttk.Frame(self.main_frame)
-        self.session_frame.grid(
-            row=3, column=0, columnspan=3, pady=(0, initial_scaling["frame_pady"])
-        )
-
-        # Configure session frame for scaling
-        self.session_frame.grid_columnconfigure(0, weight=1)
-        self.session_frame.grid_columnconfigure(1, weight=1)
-
-        # Session buttons with dynamic scaling
+        self.session_frame.grid(row=3, column=0, columnspan=3, sticky="ew")
+        self.session_frame.columnconfigure((0, 1), weight=1)
         self.work_button = ttk.Button(
             self.session_frame,
-            text=f"Work Session ({self.config.get('work_mins')} min)",
+            text=f"Focus · {self.config.get('work_mins')} min",
             command=lambda: self.start_session(SessionType.WORK),
             style="Modern.TButton",
         )
-        self.work_button.grid(
-            row=0,
-            column=0,
-            padx=initial_scaling["button_padx"],
-            pady=initial_scaling["button_pady"],
-            sticky=(tk.W, tk.E),
-        )
-
         self.short_break_button = ttk.Button(
             self.session_frame,
-            text=f"Short Break ({self.config.get('short_break_mins')} min)",
+            text=f"Break · {self.config.get('short_break_mins')} min",
             command=lambda: self.start_session(SessionType.SHORT_BREAK),
             style="Modern.TButton",
         )
-        self.short_break_button.grid(
-            row=0,
-            column=1,
-            padx=initial_scaling["button_padx"],
-            pady=initial_scaling["button_pady"],
-            sticky=(tk.W, tk.E),
-        )
-
         self.long_break_button = ttk.Button(
             self.session_frame,
-            text=f"Long Break ({self.config.get('long_break_mins')} min)",
+            text="Long break",
             command=lambda: self.start_session(SessionType.LONG_BREAK),
-            style="Modern.TButton",
         )
-        self.long_break_button.grid(
-            row=1,
-            column=0,
-            padx=initial_scaling["button_padx"],
-            pady=initial_scaling["button_pady"],
-            sticky=(tk.W, tk.E),
-        )
-
         self.custom_button = ttk.Button(
-            self.session_frame,
-            text="Custom Session",
-            command=self.start_custom_session,
-            style="Modern.TButton",
+            self.session_frame, text="Custom…", command=self.start_custom_session
         )
-        self.custom_button.grid(
-            row=1,
-            column=1,
-            padx=initial_scaling["button_padx"],
-            pady=initial_scaling["button_pady"],
-            sticky=(tk.W, tk.E),
-        )
+        for index, button in enumerate(
+            (
+                self.work_button,
+                self.short_break_button,
+                self.long_break_button,
+                self.custom_button,
+            )
+        ):
+            button.grid(row=index // 2, column=index % 2, sticky="ew", padx=3, pady=3)
 
-        # Control buttons frame
         self.control_frame = ttk.Frame(self.main_frame)
-        self.control_frame.grid(
-            row=4, column=0, columnspan=3, pady=(0, initial_scaling["frame_pady"])
-        )
-
-        # Configure control frame for scaling
-        self.control_frame.grid_columnconfigure(0, weight=1)
-        self.control_frame.grid_columnconfigure(1, weight=1)
-        self.control_frame.grid_columnconfigure(2, weight=1)
-
-        # Control buttons with dynamic spacing
+        self.control_frame.grid(row=4, column=0, columnspan=3, pady=(6, 12))
         self.pause_button = ttk.Button(
             self.control_frame,
-            text="⏸ Pause",
+            text="Pause",
             command=self.toggle_pause,
             state="disabled",
-            style="Modern.TButton",
         )
-        self.pause_button.grid(
-            row=0, column=0, padx=initial_scaling["button_padx"], sticky=(tk.W, tk.E)
-        )
-
+        self.pause_button.grid(row=0, column=0, padx=4)
         self.stop_button = ttk.Button(
-            self.control_frame,
-            text="⏹ Stop",
-            command=self.stop_session,
-            state="disabled",
-            style="Modern.TButton",
+            self.control_frame, text="Stop", command=self.stop_session, state="disabled"
         )
-        self.stop_button.grid(
-            row=0, column=1, padx=initial_scaling["button_padx"], sticky=(tk.W, tk.E)
-        )
-
-        self.music_button = ttk.Button(
-            self.control_frame,
-            text="🎵 Music",
-            command=self.toggle_music,
-            style="Modern.TButton",
-        )
-        self.music_button.grid(
-            row=0, column=2, padx=initial_scaling["button_padx"], sticky=(tk.W, tk.E)
-        )
-
-        # Status frame
+        self.stop_button.grid(row=0, column=1, padx=4)
         self.status_frame = ttk.Frame(self.main_frame)
-        self.status_frame.grid(
-            row=5, column=0, columnspan=3, pady=(0, initial_scaling["frame_pady"])
-        )
-        self.additional_frame = ttk.Frame(self.main_frame)
-        self.additional_frame.grid(row=7, column=0, columnspan=3)
+        self.status_frame.grid(row=5, column=0, columnspan=3, sticky="ew")
 
-        # Configure additional frame for scaling
-        self.additional_frame.grid_columnconfigure(0, weight=1)
-        self.additional_frame.grid_columnconfigure(1, weight=1)
-        self.additional_frame.grid_columnconfigure(2, weight=1)
-
-        # Additional buttons with dynamic spacing
-        self.stats_button = ttk.Button(
-            self.additional_frame,
-            text="📊 Statistics",
-            command=self.show_statistics,
-            style="Modern.TButton",
-        )
-        self.stats_button.grid(
-            row=0,
-            column=0,
-            padx=initial_scaling["button_padx"],
-            pady=initial_scaling["button_pady"],
-            sticky=(tk.W, tk.E),
-        )
-
-        self.settings_button = ttk.Button(
-            self.additional_frame,
-            text="⚙️ Settings",
-            command=self.show_settings,
-            style="Modern.TButton",
-        )
-        self.settings_button.grid(
-            row=0,
-            column=1,
-            padx=initial_scaling["button_padx"],
-            pady=initial_scaling["button_pady"],
-            sticky=(tk.W, tk.E),
-        )
-
-        self.test_button = ttk.Button(
-            self.additional_frame,
-            text="🧪 Test Music",
-            command=self.test_music,
-            style="Modern.TButton",
-        )
-        self.test_button.grid(
-            row=0,
-            column=2,
-            padx=initial_scaling["button_padx"],
-            pady=initial_scaling["button_pady"],
-            sticky=(tk.W, tk.E),
-        )
-
-        # Playlist selection dropdown
-        self.playlist_var = tk.StringVar()
-        self.playlist_combo = ttk.Combobox(
-            self.additional_frame,
-            textvariable=self.playlist_var,
-            state="readonly",
-            width=20,
-        )
-        self.playlist_combo.grid(
-            row=1,
-            column=0,
-            columnspan=3,
-            pady=(initial_scaling["button_pady"], 0),
-            sticky=(tk.W, tk.E),
-        )
-        self.playlist_combo.bind("<<ComboboxSelected>>", self.on_playlist_change)
-
-        # Load playlists into the dropdown
-        self.load_playlists()
-
-        # Music navigation: Prev | track name | Next
-        self.music_nav_frame = ttk.Frame(self.additional_frame)
-        self.music_nav_frame.grid(
-            row=2,
-            column=0,
-            columnspan=3,
-            pady=(initial_scaling["button_pady"], 0),
-            sticky=(tk.W, tk.E),
-        )
-        self.music_nav_frame.grid_columnconfigure(0, weight=1)
-        self.music_nav_frame.grid_columnconfigure(1, weight=3)
-        self.music_nav_frame.grid_columnconfigure(2, weight=1)
-
-        self.prev_track_button = ttk.Button(
-            self.music_nav_frame,
-            text="⏮",
-            command=self.prev_track,
-            style="Modern.TButton",
-            width=3,
-        )
-        self.prev_track_button.grid(row=0, column=0, sticky=tk.E, padx=(0, 2))
-
-        self.track_name_label = ttk.Label(
-            self.music_nav_frame,
-            text="",
-            font=("Arial", 7),
-            anchor="center",
-        )
-        self.track_name_label.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=2)
-
-        self.next_track_button = ttk.Button(
-            self.music_nav_frame,
-            text="⏭",
-            command=self.next_track,
-            style="Modern.TButton",
-            width=3,
-        )
-        self.next_track_button.grid(row=0, column=2, sticky=tk.W, padx=(2, 0))
-
-        # Music status label
-        self.music_status_label = ttk.Label(
-            self.additional_frame,
-            text="♪ Music Ready",
-            font=("Arial", 7),
-        )
-        self.music_status_label.grid(
-            row=3,
-            column=0,
-            columnspan=3,
-            pady=(0, initial_scaling["button_pady"]),
-        )
-
-        # Task Management Section (Native Integration)
         self.create_task_section()
+        from .music_panel import MusicPanel
 
-        # Initial display update after all widgets are created
+        self.music_panel = MusicPanel(
+            self.main_frame,
+            self.music,
+            self.config,
+            self.add_music_link,
+            self.on_playlist_change,
+            self._select_youtube_session,
+            self._wake_display,
+        )
+        self.additional_frame = self.music_panel
+        self.music_panel.grid(row=7, column=0, columnspan=3, sticky="ew", pady=(10, 0))
+        self.playlist_var = self.music_panel.playlist_var
+        self.playlist_combo = self.music_panel.playlist_combo
+        self.music_button = self.music_panel.play_button
+        self.music_status_label = self.music_panel.status_label
+        self.track_name_label = self.music_panel.title_label
+        self.load_playlists()
         self.root.after(0, self.update_display)
+
+    def _select_youtube_session(self, browser):
+        previous = self.config.get("youtube_browser", "")
+        self.config.set("youtube_browser", browser)
+        if not self.config.save_config():
+            self.config.set("youtube_browser", previous)
+            messagebox.showerror(
+                "YouTube",
+                "Could not save the YouTube session preference.",
+                parent=self.root,
+            )
+            return
+        source = (
+            self.music.current_playlist
+            or self.config.get("classical_music_selected_playlist", "")
+            or self.config.get("classical_music_default_playlist", "")
+        )
+        if source:
+            self.music_panel.run(lambda: self.music.change_playlist(source))
+
+    def add_music_link(self):
+        # Tk 9 removed MacWindowStyle, still called by Python 3.12 simpledialog.
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Music")
+        dialog.transient(self.root)
+        frame = ttk.Frame(dialog, padding=16)
+        frame.pack(fill="both", expand=True)
+        ttk.Label(frame, text="Paste a YouTube radio, playlist, or video URL:").pack(
+            anchor="w"
+        )
+        entry = ttk.Entry(frame, width=55)
+        entry.pack(fill="x", pady=12)
+
+        def save(event=None):
+            link = entry.get().strip()
+            if link:
+                if self._save_music_link(link):
+                    dialog.destroy()
+
+        ttk.Button(frame, text="Save link", command=save).pack(anchor="e")
+        entry.bind("<Return>", save)
+        dialog.bind("<Escape>", lambda event: dialog.destroy())
+        entry.focus_set()
+
+    def _save_music_link(self, link):
+        from .system import normalise_music_link
+
+        try:
+            link = normalise_music_link(link)
+        except ValueError as exc:
+            messagebox.showerror("Music", str(exc), parent=self.root)
+            return False
+        previous = self.config.config.copy()
+        urls = list(self.config.get("classical_music_online_playlists", []))
+        if link not in urls:
+            urls.append(link)
+        self.config.set("classical_music_online_playlists", urls)
+        self.config.set("classical_music_default_playlist", link)
+        self.config.set("classical_music_selected_playlist", link)
+        self.config.set("classical_music_local_mode", False)
+        if not self.config.save_config():
+            self.config.config = previous
+            messagebox.showerror(
+                "Music",
+                "The link could not be saved. Please try again.",
+                parent=self.root,
+            )
+            return False
+        self.load_playlists()
+        # A replacement link is an explicit playback request, even after failure.
+        self.music.last_error = ""
+        self.music.playback_state = "loading"
+        self.music_panel.run(lambda: self.music.change_playlist(link))
+        return True
 
     def create_task_section(self):
         """Create native task management section in the main GUI"""
@@ -4469,10 +4408,10 @@ class FocusGUI:
         }
         # Font sizes for the task area (increase to make tasks more readable)
         self.task_font_sizes = {
-            "task_title": 10,
+            "task_title": 12,
             "pomodoro": 10,
             "task_stats": 9,
-            "entry": 9,
+            "entry": 11,
         }
 
         # Task management frame (minimal, no label frame) with dynamic padding
@@ -4515,10 +4454,14 @@ class FocusGUI:
             header_frame,
             text="0/0",
             font=("Arial", self.task_font_sizes["task_stats"]),
-            fg="#00ff00",
-            bg="#2b2b2b",
+            fg="#94d8c1",
+            bg=self.ui_bg,
         )
         self.task_stats_label.grid(row=0, column=0, sticky=tk.W)
+        self.keyboard_mode_label = ttk.Button(
+            header_frame, text="NORMAL · ? keys", command=self.show_keyboard_shortcuts
+        )
+        self.keyboard_mode_label.grid(row=0, column=1, sticky=tk.E)
 
         # Add task entry frame (overlay style, doesn't expand layout)
         self.add_task_frame = ttk.Frame(self.task_frame)
@@ -4537,27 +4480,32 @@ class FocusGUI:
             self.add_task_frame,
             textvariable=self.task_entry_var,
             font=("Arial", self.task_font_sizes["entry"]),
-            bg="#ffffff",  # White background
-            fg="#000000",  # Black text by default
-            insertbackground="#000000",  # Black cursor
+            bg=self.ui_card,
+            fg=self.ui_fg,
+            insertbackground=self.ui_fg,
+            relief="flat",
+            borderwidth=0,
+            highlightthickness=1,
+            highlightbackground="#3b4652",
+            highlightcolor="#94d8c1",
         )
         self.task_entry.grid(
             row=0, column=0, sticky=(tk.W, tk.E), padx=(0, scaling["button_padx"])
         )
 
         # Placeholder functionality
-        self.placeholder_text = "+add"
-        self.placeholder_color = "#00cc00"  # Bright green for placeholder
-        self.normal_color = "#000000"  # Black text for normal typing
-        self.typing_color = "#006600"  # Dark green for active typing
+        self.placeholder_text = "Add a task…"
+        self.placeholder_color = "#667085"  # Bright green for placeholder
+        self.normal_color = self.ui_fg
+        self.typing_color = self.ui_fg
         self.showing_placeholder = False
 
         # Bind focus events for typing state
         self.task_entry.bind("<FocusIn>", self.on_task_entry_focus_in)
         self.task_entry.bind("<FocusOut>", self.on_task_entry_focus_out)
         self.task_entry.bind("<KeyPress>", self.on_task_entry_key_press)
-        self.task_entry.bind("<Return>", lambda e: self.save_new_task())
-        self.task_entry.bind("<Escape>", lambda e: self.cancel_add_task())
+        self.task_entry.bind("<Return>", self._task_entry_accept)
+        self.task_entry.bind("<Escape>", self._task_entry_cancel)
 
         # Compact pomodoro count with dynamic spacing
         self.pomodoro_var = tk.IntVar(value=1)
@@ -4610,7 +4558,7 @@ class FocusGUI:
         # Canvas for scrolling with dynamic height
         self.tasks_canvas = tk.Canvas(
             self.tasks_container,
-            bg="#2b2b2b",
+            bg=self.ui_bg,
             highlightthickness=0,
             height=scaling["canvas_height"],  # Dynamic canvas height
         )
@@ -4678,6 +4626,14 @@ class FocusGUI:
 
             # Update display
             self.update_task_display()
+
+    def _task_entry_accept(self, event=None):
+        self.save_new_task()
+        return "break"
+
+    def _task_entry_cancel(self, event=None):
+        self.cancel_add_task()
+        return "break"
 
     def save_new_task(self):
         """Save the new task"""
@@ -4754,6 +4710,7 @@ class FocusGUI:
             # Display existing tasks
             for i, task in enumerate(tasks):
                 self.create_task_row(self.tasks_display_frame, task, i)
+            self._vim_refresh_highlight()
 
         # Update scroll region
         self.root.after_idle(
@@ -4786,7 +4743,7 @@ class FocusGUI:
         idx = len(self.task_rows) - 1
 
         # Apply selection highlight
-        sel_bg = "#1a3a1a" if idx == self.selected_task_index else "#2b2b2b"
+        sel_bg = "#283e3a" if idx == self.selected_task_index else self.ui_bg
         try:
             task_row.configure(background=sel_bg)
         except Exception:
@@ -4831,7 +4788,7 @@ class FocusGUI:
             title_text = f"✅ {title_text}"
             text_color = "#666666"
         else:
-            text_color = "#00ff00"
+            text_color = "#94d8c1"
 
         title_label = tk.Label(
             task_row,
@@ -4854,7 +4811,7 @@ class FocusGUI:
 
         # Compact pomodoro progress
         pomodoro_text = f"{task.pomodoros_completed}/{task.pomodoros_planned}"
-        pomodoro_color = "#00cc00" if task.pomodoros_completed > 0 else "#666666"
+        pomodoro_color = "#80b9a6" if task.pomodoros_completed > 0 else "#666666"
 
         pomodoro_label = tk.Label(
             task_row,
@@ -4936,14 +4893,21 @@ class FocusGUI:
         entry.focus_set()
 
         def save_edit(event):
+            if not entry.winfo_exists():
+                return "break"
             new_title = entry.get().strip()
             if new_title:
                 self.task_manager.update_task_title(task.id, new_title)
             entry.destroy()
             self.update_task_display()
+            self.root.focus_set()
+            return "break"
 
         def cancel_edit(event):
+            entry.unbind("<FocusOut>")
             entry.destroy()
+            self.root.focus_set()
+            return "break"
 
         entry.bind("<Return>", save_edit)
         entry.bind("<FocusOut>", save_edit)
@@ -5072,7 +5036,10 @@ class FocusGUI:
         """Check if user is currently typing — true if any Entry/Text has focus."""
         try:
             focused = self.root.focus_get()
-            return isinstance(focused, (tk.Entry, tk.Text))
+            return isinstance(
+                focused,
+                (tk.Entry, tk.Text, tk.Spinbox, ttk.Entry, ttk.Spinbox, ttk.Combobox),
+            )
         except Exception:
             return getattr(self, "typing_active", False)
 
@@ -5132,30 +5099,30 @@ class FocusGUI:
         """Create an attractive interface when no tasks exist"""
         # Main empty state container
         empty_container = ttk.Frame(self.tasks_display_frame)
-        empty_container.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=30)
+        empty_container.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=8)
         empty_container.grid_columnconfigure(0, weight=1)
 
         # Attractive message with icon
         message_label = tk.Label(
             empty_container,
-            text="🎯 Add first task!",
+            text="One task at a time.",
             font=("Arial", 12, "bold"),
-            fg="#00ff00",
-            bg="#2b2b2b",
+            fg="#94d8c1",
+            bg=self.ui_bg,
             justify="center",
         )
-        message_label.grid(row=0, column=0, pady=(0, 15))
+        message_label.grid(row=0, column=0, pady=(0, 5))
 
         # Instruction text
         instruction_label = tk.Label(
             empty_container,
-            text="'T' key to add task",
+            text="Add a task above to begin.",
             font=("Arial", 10, "italic"),
             fg="#888888",
-            bg="#2b2b2b",
+            bg=self.ui_bg,
             justify="center",
         )
-        instruction_label.grid(row=1, column=0, pady=(0, 20))
+        instruction_label.grid(row=1, column=0, pady=(0, 5))
 
     def apply_theme(self):
         """Apply dark theme if enabled"""
@@ -5168,16 +5135,68 @@ class FocusGUI:
                 style.theme_use("clam")
 
                 # Configure colors
-                bg_color = "#2b2b2b"
-                fg_color = "#ffffff"
-                select_color = "#404040"
-                accent_color = self.config.get("accent_color", "#00ff00")
+                bg_color = self.ui_bg
+                fg_color = self.ui_fg
+                select_color = self.ui_card
+                accent_color = self.config.get("accent_color", "#94d8c1")
+                if accent_color == "#00ff00":
+                    accent_color = "#94d8c1"
+                style.configure(".", background=bg_color, foreground=fg_color)
+                style.configure(
+                    "TButton",
+                    background=select_color,
+                    foreground=fg_color,
+                    borderwidth=0,
+                    padding=(7, 5),
+                )
+                style.map(
+                    "TButton",
+                    background=[("pressed", "#3b4956"), ("active", "#33404d")],
+                    foreground=[("disabled", "#707c89")],
+                )
+                style.configure(
+                    "TEntry",
+                    fieldbackground=select_color,
+                    foreground=fg_color,
+                    insertcolor=fg_color,
+                )
+                style.configure(
+                    "TCombobox",
+                    fieldbackground=select_color,
+                    foreground=fg_color,
+                    arrowcolor=fg_color,
+                )
+                style.map(
+                    "TCombobox",
+                    fieldbackground=[("readonly", select_color)],
+                    foreground=[("readonly", fg_color)],
+                )
+                style.configure(
+                    "TSpinbox",
+                    fieldbackground=select_color,
+                    foreground=fg_color,
+                    arrowcolor=fg_color,
+                )
+                style.configure(
+                    "TScale", background=select_color, troughcolor="#3b4652"
+                )
+                style.configure(
+                    "MusicPlay.TButton",
+                    background=accent_color,
+                    foreground=bg_color,
+                    padding=(12, 7),
+                )
+                style.map(
+                    "MusicPlay.TButton",
+                    background=[("active", "#b3e8d7")],
+                    foreground=[("disabled", "#707c89")],
+                )
 
                 style.configure(
                     "TLabel",
                     background=bg_color,
                     foreground=fg_color,
-                    font=("Segoe UI", 7),
+                    font=("Arial", 11),
                 )
                 style.configure("TFrame", background=bg_color)
                 style.configure(
@@ -5193,7 +5212,7 @@ class FocusGUI:
                     borderwidth=0,
                     focusthickness=0,
                     padding=10,
-                    font=("Segoe UI", 7, "bold"),
+                    font=("Arial", 11, "bold"),
                 )
                 style.map(
                     "Modern.TButton",
@@ -5205,80 +5224,262 @@ class FocusGUI:
 
             except tk.TclError as e:
                 print(f"Error applying theme: {e}")
-                pass  # Fall back to default theme
+                # Fall back to default theme
+
+    def change_zoom(self, delta):
+        self.set_zoom(self._zoom_level + delta)
+
+    def set_zoom(self, level, save=True, resize=True):
+        """Scale actual widget fonts and controls, keeping the window resizable."""
+        from tkinter import font as tkfont
+
+        level = round(max(0.65, min(1.5, level)), 2)
+        previous = self._zoom_level
+        self._zoom_level = level
+        widgets = [self.root]
+        font_cache = {}
+        live_widgets = set()
+        while widgets:
+            widget = widgets.pop()
+            widgets.extend(widget.winfo_children())
+            if "font" not in widget.keys():
+                continue
+            try:
+                key = str(widget)
+                live_widgets.add(key)
+                if key not in self._zoom_fonts:
+                    self._zoom_fonts[key] = tkfont.Font(
+                        root=self.root, font=widget.cget("font")
+                    ).actual()
+                original = self._zoom_fonts[key].copy()
+                size = original["size"]
+                original["size"] = (1 if size >= 0 else -1) * max(
+                    6, round(abs(size) * level)
+                )
+                signature = tuple(sorted(original.items()))
+                if signature not in font_cache:
+                    font_cache[signature] = tkfont.Font(root=self.root, **original)
+                font = font_cache[signature]
+                widget.configure(font=font)
+                widget._focus_zoom_font = font
+            except tk.TclError:
+                continue
+        self._zoom_font_cache = font_cache
+        self._zoom_fonts = {
+            key: value for key, value in self._zoom_fonts.items() if key in live_widgets
+        }
+        style = ttk.Style(self.root)
+        for name in ("TButton", "TEntry", "TCombobox", "TMenubutton", "TSpinbox"):
+            style.configure(name, font=("Arial", max(7, round(11 * level))))
+        style.configure(
+            "Modern.TButton",
+            font=("Arial", max(7, round(11 * level)), "bold"),
+            padding=max(3, round(10 * level)),
+        )
+        self.main_frame.configure(padding=max(6, round(18 * level)))
+        self.music_panel.configure(
+            padx=max(6, round(12 * level)), pady=max(5, round(10 * level))
+        )
+        self.root.update_idletasks()
+        task_height = (
+            self.task_frame.winfo_reqheight() if hasattr(self, "task_frame") else 0
+        )
+        content_height = self.main_frame.winfo_reqheight() - task_height
+        self.root.minsize(
+            round(360 * level),
+            max(round(620 * level), content_height + round(100 * level)),
+        )
+        self.root.update_idletasks()
+        ratio = level / previous
+        width = min(
+            self.root.winfo_screenwidth(), round(self.root.winfo_width() * ratio)
+        )
+        height = min(
+            self.root.winfo_screenheight() - 60, round(self.root.winfo_height() * ratio)
+        )
+        if resize:
+            self.root.geometry(f"{width}x{height}")
+        self.zoom_label.configure(text=f"{round(level * 100)}%")
+        if save:
+            self.config.set("gui_zoom", level)
+            self.config.save_config()
 
     def setup_keyboard_shortcuts(self):
-        """Setup keyboard shortcuts for quick actions"""
-        # T key - Add new task
-        self.root.bind("<KeyPress-t>", lambda e: self.shortcut_add_task())
-        self.root.bind("<KeyPress-T>", lambda e: self.shortcut_add_task())
-
-        # M key - Toggle music
-        self.root.bind("<KeyPress-m>", lambda e: self.shortcut_toggle_music())
-        self.root.bind("<KeyPress-M>", lambda e: self.shortcut_toggle_music())
-
-        # D key - Delete last/selected task (dd = double-press)
-        self.root.bind("<KeyPress-d>", lambda e: self.shortcut_delete_task())
-        self.root.bind("<KeyPress-D>", lambda e: self.shortcut_delete_task())
-
-        # J/K keys - Vim navigation (down/up through tasks)
-        self.root.bind("<KeyPress-j>", lambda e: self._vim_nav_down())
-        self.root.bind("<KeyPress-k>", lambda e: self._vim_nav_up())
-
-        # W key - Open tasks in separate window
-        self.root.bind("<KeyPress-w>", lambda e: self.shortcut_open_task_window())
-        self.root.bind("<KeyPress-W>", lambda e: self.shortcut_open_task_window())
-
-        # Alternative bindings using <Key> events (more reliable)
-        self.root.bind("<Key-t>", lambda e: self.shortcut_add_task())
-        self.root.bind("<Key-T>", lambda e: self.shortcut_add_task())
-        self.root.bind("<Key-d>", lambda e: self.shortcut_delete_task())
-        self.root.bind("<Key-D>", lambda e: self.shortcut_delete_task())
-        self.root.bind("<Key-m>", lambda e: self.shortcut_toggle_music())
-        self.root.bind("<Key-M>", lambda e: self.shortcut_toggle_music())
-        self.root.bind("<Key-w>", lambda e: self.shortcut_open_task_window())
-        self.root.bind("<Key-W>", lambda e: self.shortcut_open_task_window())
-        self.root.bind("<Key-j>", lambda e: self._vim_nav_down())
-        self.root.bind("<Key-k>", lambda e: self._vim_nav_up())
+        """Bind app commands once; text widgets retain their native editing keys."""
+        modifier = "Command" if sys.platform == "darwin" else "Control"
+        for key in ("plus", "equal", "KP_Add"):
+            self.root.bind(f"<{modifier}-{key}>", lambda e: self.change_zoom(0.1))
+        for key in ("minus", "KP_Subtract"):
+            self.root.bind(f"<{modifier}-{key}>", lambda e: self.change_zoom(-0.1))
+        self.root.bind(f"<{modifier}-0>", lambda e: self.set_zoom(1.0))
+        self.root.bind(f"<{modifier}-s>", lambda e: self.sync_tasks_now())
         self.root.bind("<Control-s>", lambda e: self.sync_tasks_now())
-
-        # Ensure the main window can receive focus for shortcuts
+        self.root.bind("<KeyPress>", self._handle_app_key)
+        self.root.bind("<FocusIn>", self._update_keyboard_mode, add="+")
+        self.root.bind("<FocusOut>", self._update_keyboard_mode, add="+")
         self.root.focus_set()
-        self.root.focus_force()
 
-        # Set up a periodic focus refresh to ensure shortcuts always work
-        # self.schedule_callback(1000, self.refresh_keyboard_focus)
+    def _update_keyboard_mode(self, event=None):
+        if event is not None:
+            self.root.after_idle(self._update_keyboard_mode)
+            return
+        if hasattr(self, "keyboard_mode_label"):
+            self.keyboard_mode_label.configure(
+                text=("INSERT" if self.is_typing() else "NORMAL") + " · ? keys"
+            )
 
-    def refresh_keyboard_focus(self):
-        """Periodically refresh keyboard focus to ensure shortcuts continue working"""
+    def _handle_app_key(self, event):
         try:
-            # Only set focus if no widget currently has focus or if not typing
-            focused_widget = self.root.focus_get()
-            if not focused_widget or not self.typing_active:
-                self.root.focus_set()
-        except Exception:
-            pass  # Ignore focus errors
+            if event.widget.winfo_toplevel() != self.root:
+                return None
+        except tk.TclError:
+            return None
+        key = event.keysym
+        if key == "Escape":
+            self.typing_active = False
+            self.root.focus_set()
+            self._last_d_press = 0.0
+            self._update_keyboard_mode()
+            return "break"
+        # Command/Control/Option combinations and text entry belong to Tk.
+        modifier_mask = 0x4 | 0x8 | (0x10 | 0x80 if sys.platform == "darwin" else 0)
+        if event.state & modifier_mask or self.is_typing():
+            return None
+        if event.widget.winfo_class() in (
+            "TScale",
+            "Scale",
+            "TButton",
+            "Button",
+            "TCheckbutton",
+            "TMenubutton",
+        ) and key in ("Return", "KP_Enter", "space"):
+            return None
+        if key != "d":
+            self._last_d_press = 0.0
+        actions = {
+            "i": self.shortcut_add_task,
+            "a": self.shortcut_add_task,
+            "t": self.shortcut_add_task,
+            "T": self.shortcut_add_task,
+            "j": self._vim_nav_down,
+            "Down": self._vim_nav_down,
+            "k": self._vim_nav_up,
+            "Up": self._vim_nav_up,
+            "g": lambda: self._vim_select_edge(False),
+            "G": lambda: self._vim_select_edge(True),
+            "x": self._vim_toggle_selected,
+            "e": self._vim_edit_selected,
+            "d": self.shortcut_delete_task,
+            "Return": self._keyboard_start_focus,
+            "KP_Enter": self._keyboard_start_focus,
+            "s": self._keyboard_start_focus,
+            "space": self.toggle_pause,
+            "p": self.toggle_pause,
+            "S": self.stop_session,
+            "b": self._keyboard_start_break,
+            "m": self.toggle_music,
+            "M": self.toggle_music,
+            "w": self.open_task_window,
+            "W": self.open_task_window,
+            "question": self.show_keyboard_shortcuts,
+            "F1": self.show_keyboard_shortcuts,
+        }
+        action = actions.get(key)
+        if action is None:
+            return None
+        action()
+        self._update_keyboard_mode()
+        return "break"
 
-        # Schedule next refresh
-        # self.schedule_callback(2000, self.refresh_keyboard_focus)
+    def _keyboard_start_focus(self):
+        if self.session_manager.state not in (
+            SessionState.RUNNING,
+            SessionState.PAUSED,
+        ):
+            self.start_session(SessionType.WORK)
+
+    def _keyboard_start_break(self):
+        if self.session_manager.state not in (
+            SessionState.RUNNING,
+            SessionState.PAUSED,
+        ):
+            self.start_session(SessionType.SHORT_BREAK)
+
+    def _vim_select_edge(self, last):
+        tasks = self.task_manager.get_today_tasks()
+        if tasks:
+            self.selected_task_index = len(tasks) - 1 if last else 0
+            self._vim_refresh_highlight()
+
+    def _vim_toggle_selected(self):
+        tasks = self.task_manager.get_today_tasks()
+        if 0 <= self.selected_task_index < len(tasks):
+            self.task_manager.toggle_task_completion(tasks[self.selected_task_index].id)
+            self.update_task_display()
+
+    def _vim_edit_selected(self):
+        if 0 <= self.selected_task_index < len(self.task_rows):
+            from types import SimpleNamespace
+
+            task, frame = self.task_rows[self.selected_task_index]
+            labels = frame.grid_slaves(row=0, column=2)
+            if labels:
+                self.edit_task_title(SimpleNamespace(widget=labels[0]), task)
+
+    def show_keyboard_shortcuts(self):
+        if hasattr(self, "_keys_window") and self._keys_window.winfo_exists():
+            self._keys_window.lift()
+            return
+        window = self._keys_window = tk.Toplevel(self.root)
+        window.title("Keyboard shortcuts")
+        window.transient(self.root)
+        frame = ttk.Frame(window, padding=18)
+        frame.pack(fill="both", expand=True)
+        ttk.Label(
+            frame, text="Keyboard & Vim task controls", font=("Arial", 13, "bold")
+        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
+        shortcuts = [
+            ("i / a / t", "Enter a new task"),
+            ("Enter in task field", "Save task and return to Normal mode"),
+            ("Esc", "Cancel task entry / leave input mode"),
+            ("j / k or ↓ / ↑", "Select next / previous task"),
+            ("g / G", "Select first / last task"),
+            ("e / x", "Edit / complete selected task"),
+            ("dd", "Delete selected task"),
+            ("Enter / s", "Start focus on selected incomplete task"),
+            ("Space / p", "Pause / resume the timer"),
+            ("b / Shift+S", "Start a break / stop the timer"),
+            ("m / w", "Play or pause music / open tasks window"),
+            (
+                "⌘+ / ⌘− / ⌘0" if sys.platform == "darwin" else "Ctrl+ / Ctrl− / Ctrl0",
+                "Zoom in / out / reset",
+            ),
+            ("? / F1", "Show this guide"),
+        ]
+        for row, (keys, description) in enumerate(shortcuts, 1):
+            ttk.Label(frame, text=keys, font=("Arial", 10, "bold")).grid(
+                row=row, column=0, sticky="w", padx=(0, 18), pady=3
+            )
+            ttk.Label(frame, text=description).grid(
+                row=row, column=1, sticky="w", pady=3
+            )
+        ttk.Label(
+            frame,
+            text="Single-key commands work in Normal mode. Text fields keep standard editing keys.",
+            wraplength=420,
+        ).grid(row=len(shortcuts) + 1, column=0, columnspan=2, sticky="w", pady=(12, 0))
+        window.bind("<Escape>", lambda e: window.destroy())
 
     def shortcut_add_task(self):
-        """Handle T key shortcut to focus task entry"""
-        if not self.typing_active:
-            # Since the entry is always visible, just focus it
-            self.task_entry.focus_set()
-            # Clear placeholder if present
-            if self.showing_placeholder:
-                self.clear_placeholder()
-                self.adding_task = True
-                self.typing_active = True
+        if not self.is_typing():
+            self.trigger_add_task()
+            self._update_keyboard_mode()
 
     def shortcut_toggle_music(self):
         """Handle M key shortcut to toggle music"""
         if not self.typing_active:
             self.toggle_music()
             # Return focus to main window to ensure shortcuts continue working
-            self.root.after(50, self.root.focus_set)
 
     def shortcut_delete_task(self):
         """Handle D key shortcut — first press arms, second press (dd) deletes selected."""
@@ -5292,7 +5493,6 @@ class FocusGUI:
                 self._last_d_press = 0.0
             else:
                 self._last_d_press = now
-            self.root.after(50, self.root.focus_set)
 
     # ── Vim navigation helpers ────────────────────────────────────────────────
 
@@ -5322,31 +5522,51 @@ class FocusGUI:
         if 0 <= idx < len(tasks):
             self.task_manager.delete_task(tasks[idx].id)
         else:
-            # Fallback: delete first task
-            self.task_manager.delete_task(tasks[0].id)
+            return
         # Adjust selection so it stays valid
         remaining = max(0, len(tasks) - 2)
         self.selected_task_index = min(self.selected_task_index, remaining)
         self.update_task_display()
-        self.root.after(50, self.root.focus_set)
 
     def _vim_refresh_highlight(self):
-        """Update row background colours to reflect current selection."""
+        """Show selection on both ttk rows and their text widgets."""
+        style = ttk.Style(self.root)
+        style.configure("Selected.TFrame", background="#283e3a")
         for i, (task, frame) in enumerate(self.task_rows):
-            bg = "#1a3a1a" if i == self.selected_task_index else "#2b2b2b"
-            try:
-                frame.configure(background=bg)
-                for child in frame.winfo_children():
-                    try:
-                        child.configure(background=bg)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+            selected = i == self.selected_task_index
+            bg = "#283e3a" if selected else self.ui_bg
+            frame.configure(
+                style=(
+                    "Selected.TFrame"
+                    if selected
+                    else (
+                        "Current.TFrame"
+                        if task.id == self.current_task_id
+                        else "TFrame"
+                    )
+                )
+            )
+            for child in frame.winfo_children():
+                if "background" in child.keys():
+                    child.configure(background=bg)
+        if 0 <= self.selected_task_index < len(self.task_rows):
+            self.root.update_idletasks()
+            frame = self.task_rows[self.selected_task_index][1]
+            total = max(1, self.tasks_display_frame.winfo_height())
+            top = frame.winfo_y() / total
+            bottom = (frame.winfo_y() + frame.winfo_height()) / total
+            visible_top, visible_bottom = self.tasks_canvas.yview()
+            if top < visible_top:
+                self.tasks_canvas.yview_moveto(top)
+            elif bottom > visible_bottom:
+                self.tasks_canvas.yview_moveto(bottom - (visible_bottom - visible_top))
 
     # ── Drag-and-drop helpers ─────────────────────────────────────────────────
 
     def _drag_start(self, event, index):
+        self.selected_task_index = index
+        self._vim_refresh_highlight()
+        self.root.focus_set()
         self._drag_source_index = index
 
     def _drag_motion(self, event):
@@ -5399,7 +5619,7 @@ class FocusGUI:
         self.task_window.minsize(400, 300)  # Set minimum size
 
         # Apply dark theme to the window
-        self.task_window.configure(bg="#2b2b2b")
+        self.task_window.configure(bg=self.ui_bg)
 
         # Center window on screen
         self.task_window.update_idletasks()
@@ -5425,7 +5645,6 @@ class FocusGUI:
         """Check if tasks exist for today and prompt user to add some"""
         # Since the task entry is always visible, we don't need to show it
         # The placeholder text will guide users to add their first task
-        pass
 
     def create_separate_task_ui(self):
         """Create task management UI for the separate window"""
@@ -5473,8 +5692,8 @@ class FocusGUI:
             header_frame,
             text="No tasks yet",
             font=("Arial", 5),
-            fg="#00ff00",
-            bg="#2b2b2b",
+            fg="#94d8c1",
+            bg=self.ui_bg,
         )
         self.separate_stats_label.grid(row=0, column=0, sticky=tk.W)
 
@@ -5596,7 +5815,7 @@ class FocusGUI:
                 text="🎯 No tasks yet!\nAdd your first task above",
                 font=("Arial", 10, "italic"),
                 fg="#666666",
-                bg="#2b2b2b",
+                bg=self.ui_bg,
                 justify="center",
             )
             placeholder.grid(row=0, column=0, pady=20)
@@ -5621,14 +5840,14 @@ class FocusGUI:
 
         # Title
         title_text = f"✅ {task.title}" if task.completed else task.title
-        text_color = "#666666" if task.completed else "#00ff00"
+        text_color = "#666666" if task.completed else "#94d8c1"
 
         title_label = tk.Label(
             task_row,
             text=title_text,
             font=("Arial", 7),
             fg=text_color,
-            bg="#2b2b2b",
+            bg=self.ui_bg,
             anchor="w",
         )
         title_label.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 5))
@@ -5639,8 +5858,8 @@ class FocusGUI:
             task_row,
             text=pomodoro_text,
             font=("Arial", 7),
-            fg="#00ff00",
-            bg="#2b2b2b",
+            fg="#94d8c1",
+            bg=self.ui_bg,
         )
         pomodoro_label.grid(row=0, column=2, padx=(0, 5))
 
@@ -5706,12 +5925,19 @@ class FocusGUI:
     def start_session(self, session_type: SessionType):
         """Start a session of the specified type"""
         if session_type == SessionType.WORK:
-            # If it's a work session, find the next incomplete task
+            tasks = self.task_manager.get_today_tasks()
+            selected = (
+                tasks[self.selected_task_index]
+                if 0 <= self.selected_task_index < len(tasks)
+                else None
+            )
             incomplete_tasks = self.task_manager.get_incomplete_tasks()
-            if incomplete_tasks:
-                self.current_task_id = incomplete_tasks[0].id
+            if selected and not selected.completed:
+                self.current_task_id = selected.id
             else:
-                self.current_task_id = None
+                self.current_task_id = (
+                    incomplete_tasks[0].id if incomplete_tasks else None
+                )
         else:
             self.current_task_id = None  # No current task for breaks
 
@@ -5744,18 +5970,8 @@ class FocusGUI:
         self.update_button_states()
 
     def toggle_music(self):
-        """Toggle music on/off"""
-        if self.music.is_playing:
-            self.music.stop_music()
-            if hasattr(self, "music_status_label"):
-                self.music_status_label.config(text="♪ Music Stopped")
-        else:
-            if self.music.start_music():
-                if hasattr(self, "music_status_label"):
-                    self.music_status_label.config(text="♪ Music Playing")
-            else:
-                if hasattr(self, "music_status_label"):
-                    self.music_status_label.config(text="♪ Music Error")
+        """Play, pause, or resume without blocking Tk."""
+        self.music_panel.toggle()
 
     def test_music(self):
         """Test music functionality"""
@@ -5775,7 +5991,7 @@ class FocusGUI:
 
         if result:
             self.music.start_music(volume=20)
-            self.root.after(5000, lambda: self.music.stop_music())
+            self.root.after(5000, lambda: self.music_panel.run(self.music.stop_music))
             if hasattr(self, "music_status_label"):
                 self.music_status_label.config(text="♪ Testing Music...")
             self.root.after(
@@ -5829,10 +6045,7 @@ class FocusGUI:
             self.config.set("classical_music_selected_playlist", path)
             self.config.save_config()
 
-            if self.music.is_playing:
-                # change_playlist stops cleanly then starts with the new path
-                self.music.change_playlist(path)
-            # If not playing, config update is enough; next start will use the new path
+            self.music_panel.run(lambda: self.music.change_playlist(path))
 
     def show_statistics(self):
         """Show session statistics"""
@@ -5884,7 +6097,6 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
     def on_session_tick(self, elapsed_seconds: int, total_seconds: int):
         """Handle session timer tick"""
         # This will be called from update_loop to avoid threading issues
-        pass
 
     def on_session_complete(self, session_type: SessionType, duration: int):
         """Handle session completion"""
@@ -5894,41 +6106,22 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
             if session_type == SessionType.WORK and self.config.get(
                 "pause_music_on_break", True
             ):
-                self.music.stop_music()
+                self.music_panel.run(self.music.stop_music)
             self.notifications.show_session_complete(session_type.value, duration)
             self.tray.set_state("idle", "Focus Timer — Session complete")
-            self._ensure_window_visible()
             self.update_display()
             self.update_button_states()
             self.show_completion_dialog(session_type, duration)
 
         self._marshal(_do)
 
-    def _ensure_window_visible(self):
-        """Ensure the main window is visible and focused"""
-        try:
-            self.root.deiconify()
-            self.root.lift()
-            self.root.attributes("-topmost", True)
-            self.root.after(100, lambda: self.root.attributes("-topmost", False))
-            self.root.focus_force()
-        except Exception:
-            pass
-
     def on_session_state_change(self, old_state: SessionState, new_state: SessionState):
         """Handle session state changes — always marshal back to main thread."""
 
         def _do():
             try:
-                self.update_display()
+                self._wake_display()
                 self.update_button_states()
-                if new_state in (
-                    SessionState.COMPLETED,
-                    SessionState.STOPPED,
-                    SessionState.READY,
-                ):
-                    if self.mini_indicator and self.mini_indicator.winfo_exists():
-                        self.mini_indicator.withdraw()
             except Exception:
                 pass
 
@@ -5943,7 +6136,7 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
             if session_type == SessionType.WORK and self.config.get(
                 "classical_music", True
             ):
-                self.music.start_music()
+                self.music_panel.run(self.music.start_music)
             self.notifications.show_session_start(session_type.value, duration_minutes)
             tray_state = "work" if session_type == SessionType.WORK else "break"
             self.tray.set_state(
@@ -5966,7 +6159,7 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
 
         def _do():
             if session_type == SessionType.WORK:
-                self.music.pause_music()
+                self.music_panel.run(self.music.pause_music)
             self.tray.set_state("paused", "Focus Timer — Paused")
 
         self._marshal(_do)
@@ -5976,7 +6169,7 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
 
         def _do():
             if session_type == SessionType.WORK:
-                self.music.resume_music()
+                self.music_panel.run(self.music.resume_music)
             tray_state = "work" if session_type == SessionType.WORK else "break"
             self.tray.set_state(
                 tray_state,
@@ -5989,7 +6182,7 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
         """Stop music on explicit stop."""
 
         def _do():
-            self.music.stop_music()
+            self.music_panel.run(self.music.stop_music)
             self.tray.set_state("idle", "Focus Timer — Idle")
 
         self._marshal(_do)
@@ -6037,7 +6230,7 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
 
         # Update time display
         if info["state"] in ["ready", "stopped"]:
-            self.time_label.config(text="00:00")
+            self.time_label.config(text=f"{self.config.get('work_mins', 25):02d}:00")
         elif info["state"] == "completed":
             self.time_label.config(text="COMPLETE!")
         else:
@@ -6051,23 +6244,7 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
         if hasattr(self, "session_count_label"):
             self.session_count_label.config(text=f"Sessions: {info['session_count']}")
 
-        # Update music status
-        music_status = self.music.get_status()
-        if hasattr(self, "music_status_label"):
-            if music_status["is_playing"]:
-                self.music_status_label.config(text="♪ Music Playing")
-            else:
-                self.music_status_label.config(text="♪ Music Ready")
-
-        # Update track name label
-        if hasattr(self, "track_name_label"):
-            track = self.music.current_track_name
-            if track:
-                # Trim to ~20 chars so it fits in the small label
-                display = track[:20] if len(track) > 20 else track
-                self.track_name_label.config(text=display)
-            else:
-                self.track_name_label.config(text="")
+        self.music_panel.refresh(self.music.get_status())
 
     def update_button_states(self):
         """Update button states based on session state"""
@@ -6084,37 +6261,57 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
         if state == SessionState.READY:
             for btn in session_buttons:
                 btn.config(state="normal")
-            self.pause_button.config(state="disabled", text="⏸ Pause")
+            self.pause_button.config(state="disabled", text="Pause")
             self.stop_button.config(state="disabled")
 
         elif state == SessionState.RUNNING:
             for btn in session_buttons:
                 btn.config(state="disabled")
-            self.pause_button.config(state="normal", text="⏸ Pause")
+            self.pause_button.config(state="normal", text="Pause")
             self.stop_button.config(state="normal")
 
         elif state == SessionState.PAUSED:
             for btn in session_buttons:
                 btn.config(state="disabled")
-            self.pause_button.config(state="normal", text="▶ Resume")
+            self.pause_button.config(state="normal", text="Resume")
             self.stop_button.config(state="normal")
 
         elif state in [SessionState.COMPLETED, SessionState.STOPPED]:
             for btn in session_buttons:
                 btn.config(state="normal")
-            self.pause_button.config(state="disabled", text="⏸ Pause")
+            self.pause_button.config(state="disabled", text="Pause")
             self.stop_button.config(state="disabled")
 
+    def _wake_display(self):
+        """Wake the display after a user action or timer transition."""
+        if not hasattr(self, "music_panel"):
+            return
+        callback = self._display_update_id
+        self._display_update_id = None
+        if callback:
+            try:
+                self.root.after_cancel(callback)
+                self.scheduled_callbacks.remove(callback)
+            except (tk.TclError, ValueError):
+                pass
+        self.update_loop()
+
     def update_loop(self):
-        """Main update loop for GUI"""
+        """Refresh active visible controls; leave idle/hidden windows asleep."""
+        self._display_update_id = None
         try:
-            self.update_display()
-            # Update mini indicator if visible
-            if self.mini_indicator and self.mini_indicator.winfo_viewable():
-                self.update_mini_indicator()
-            self.schedule_callback(1000, self.update_loop)  # Update every second
-        except Exception:
-            pass  # Ignore errors if window is being destroyed
+            visible = self.root.state() not in ("iconic", "withdrawn")
+            timer_running = self.session_manager.state == SessionState.RUNNING
+            music_active = self.music.playback_state in ("loading", "playing")
+            if visible:
+                self.update_display()
+            pending_action = not self.music_panel._actions.empty()
+            active = visible and (timer_running or music_active or pending_action)
+            self._display_update_id = self.schedule_callback(
+                1000 if active else 60000, self.update_loop
+            )
+        except tk.TclError:
+            return
 
     def _check_crash_recovery(self):
         """Check for a crash-recovery state file and offer to resume."""
@@ -6153,13 +6350,6 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
 
     def on_closing(self):
         """Handle application closing"""
-        if self.mini_indicator:
-            try:
-                self.mini_indicator.destroy()
-            except Exception:
-                pass
-            self.mini_indicator = None  # prevent stale ref in callbacks
-
         if self.daemon_manager:
             self.daemon_manager.stop(managed_only=True)
 
@@ -6301,162 +6491,15 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
                 pass
         self.scheduled_callbacks.clear()
 
-    # ============== Mini Indicator Methods ==============
-
-    def setup_mini_indicator(self):
-        """Setup the mini floating indicator window"""
-        self.mini_indicator = tk.Toplevel(self.root)
-        self.mini_indicator.withdraw()  # Start hidden
-        self.mini_indicator.overrideredirect(True)  # Borderless
-        self.mini_indicator.attributes("-topmost", True)  # Always on top
-        self.mini_indicator.attributes("-alpha", 0.9)  # Transparency
-        self.mini_indicator.configure(bg="#1a1a2e")
-
-        # Position in bottom-left corner of screen (was bottom-right)
-        screen_height = self.root.winfo_screenheight()
-        # Use small margins from the left and bottom edges for consistency
-        left_margin = 10
-        bottom_margin = 70
-        self.mini_indicator.geometry(
-            f"75x30+{left_margin}+{screen_height - bottom_margin}"
-        )
-
-        # Timer label - smaller font
-        self.mini_time_label = tk.Label(
-            self.mini_indicator,
-            text="00:00",
-            font=("Arial", 7, "bold"),
-            fg="#ffffff",
-            bg="#1a1a2e",
-        )
-        self.mini_time_label.pack(pady=(4, 2))
-
-        # Session type indicator (colored bar using Canvas for reliable color)
-        self.mini_status_bar = tk.Canvas(
-            self.mini_indicator, height=5, bg="#3498db", highlightthickness=0
-        )
-        self.mini_status_bar.pack(fill="x", side="bottom")
-
-        # Click to restore
-        for widget in [
-            self.mini_indicator,
-            self.mini_time_label,
-            self.mini_status_bar,
-        ]:
-            widget.bind("<Button-1>", self.restore_from_mini)
-
-        # Drag support (right-click drag)
-        for widget in [self.mini_indicator, self.mini_time_label, self.mini_status_bar]:
-            widget.bind("<Button-3>", self.start_mini_drag)
-            widget.bind("<B3-Motion>", self.do_mini_drag)
-
     def on_minimize(self, event=None):
-        """Handle window minimize - show mini indicator"""
+        """Suspend display updates without opening or activating a window."""
         if event and event.widget == self.root:
-            # Show mini indicator only if a session is active
-            if self.session_manager.state in [
-                SessionState.RUNNING,
-                SessionState.PAUSED,
-            ]:
-                self.update_mini_indicator()
-                self.mini_indicator.deiconify()
+            self._wake_display()
 
     def on_restore(self, event=None):
-        """Handle window restore - hide mini indicator"""
+        """Resume display updates after the user restores the window."""
         if event and event.widget == self.root:
-            if self.mini_indicator:
-                self.mini_indicator.withdraw()
-
-    def on_focus_out(self, event=None):
-        """Handle application losing focus - show mini indicator if app loses focus
-
-        We use after(50) to check the focus ownership (to avoid showing the mini
-        indicator on quick internal focus changes between widgets).
-        """
-        try:
-            # Delay slightly to allow focus changes to settle
-            self.root.after(50, self._handle_focus_out)
-        except Exception:
-            pass
-
-    def _handle_focus_out(self):
-        try:
-            # If no widget in the root has focus, consider the app unfocused
-            if not self.root.focus_get():
-                # Only show mini indicator if a session is active (running or paused)
-                if self.session_manager.state in [
-                    SessionState.RUNNING,
-                    SessionState.PAUSED,
-                ]:
-                    if self.mini_indicator:
-                        self.update_mini_indicator()
-                        self.mini_indicator.deiconify()
-        except Exception:
-            pass
-
-    def on_focus_in(self, event=None):
-        """Handle application focus gained - hide mini indicator"""
-        try:
-            # Small delay to ensure focus is inside the app
-            self.root.after(50, self._handle_focus_in)
-        except Exception:
-            pass
-
-    def _handle_focus_in(self):
-        try:
-            # If any widget in the root has focus (app resumed), hide mini indicator
-            if self.root.focus_get():
-                if self.mini_indicator:
-                    self.mini_indicator.withdraw()
-        except Exception:
-            pass
-
-    def restore_from_mini(self, event=None):
-        """Restore main window when mini indicator is clicked"""
-        self.mini_indicator.withdraw()
-        self.root.deiconify()
-        self.root.lift()
-        self.root.focus_force()
-
-    def update_mini_indicator(self):
-        """Update mini indicator display"""
-        if not self.mini_indicator or not self.mini_indicator.winfo_exists():
-            return
-
-        # Update time and color based on session state
-        info = self.session_manager.get_session_info()
-        session_type = info.get("type", "")
-        state = info.get("state", "")
-
-        # Show time or ready state
-        if state in ["ready", "stopped", "completed"]:
-            self.mini_time_label.config(text="Ready")
-            color = "#6c757d"  # Gray when idle
-        else:
-            time_text = self.session_manager.get_time_display()
-            self.mini_time_label.config(text=time_text)
-
-            if state == "paused":
-                color = "#f39c12"  # Orange for paused
-            elif "work" in session_type.lower():
-                color = "#e74c3c"  # Red for work
-            elif "long" in session_type.lower():
-                color = "#2ecc71"  # Green for long break
-            else:
-                color = "#3498db"  # Blue for short break
-
-        self.mini_status_bar.config(bg=color)
-
-    def start_mini_drag(self, event):
-        """Start dragging mini indicator"""
-        self.mini_drag_x = event.x
-        self.mini_drag_y = event.y
-
-    def do_mini_drag(self, event):
-        """Handle dragging mini indicator"""
-        x = self.mini_indicator.winfo_x() + event.x - self.mini_drag_x
-        y = self.mini_indicator.winfo_y() + event.y - self.mini_drag_y
-        self.mini_indicator.geometry(f"+{x}+{y}")
+            self._wake_display()
 
 
 def console_dashboard(period: str = "week", export: bool = False):

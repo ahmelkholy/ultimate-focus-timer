@@ -130,6 +130,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "classical_music_local_mode": True,
     "classical_music_default_playlist": "",
     "classical_music_selected_playlist": "",
+    "youtube_browser": "",  # Browser sign-in is opt-in.
+    "radio_refresh": True,
     "classical_music_playlist_dir": "",
     "classical_music_online_playlists": [
         "https://www.youtube.com/playlist?list=PLRBp0Fe2GpgmgL97AviPkenNzgzHByGgs",
@@ -216,7 +218,12 @@ class ConfigManager:
         ):
             raw = self.config.get(key)
             if raw:
-                self.config[key] = str(Path(raw).expanduser())
+                # URLs are not filesystem paths; Path collapses their double slash.
+                if str(raw).startswith(("http:/", "https:/")):
+                    scheme, rest = str(raw).split(":", 1)
+                    self.config[key] = scheme + "://" + rest.lstrip("/")
+                else:
+                    self.config[key] = str(Path(raw).expanduser())
 
     def get(self, key: str, default: Any = None) -> Any:
         return self.config.get(key, default)
@@ -296,7 +303,11 @@ class ConfigManager:
         playlists: List[Dict[str, str]] = []
         mc = self.get_music_config()
 
-        if mc.default_playlist and Path(mc.default_playlist).exists():
+        if mc.default_playlist.startswith(("https://", "http://")):
+            playlists.append(
+                {"name": "Saved music", "path": mc.default_playlist, "type": "online"}
+            )
+        elif mc.default_playlist and Path(mc.default_playlist).exists():
             playlists.append(
                 {
                     "name": "Default Classical Music",
@@ -311,6 +322,8 @@ class ConfigManager:
 
         if not mc.local_mode:
             for i, url in enumerate(mc.online_playlists):
+                if any(p["path"] == url for p in playlists):
+                    continue
                 playlists.append(
                     {"name": f"Online Playlist {i + 1}", "path": url, "type": "online"}
                 )
@@ -332,7 +345,11 @@ class ConfigManager:
             if not (lo <= val <= hi):
                 issues.append(f"{name} must be between {lo} and {hi} (got {val})")
 
-        if mc.default_playlist and not Path(mc.default_playlist).exists():
+        if (
+            mc.default_playlist
+            and not mc.default_playlist.startswith(("https://", "http://"))
+            and not Path(mc.default_playlist).exists()
+        ):
             issues.append(f"Default playlist not found: {mc.default_playlist}")
 
         return issues

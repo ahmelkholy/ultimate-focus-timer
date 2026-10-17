@@ -21,7 +21,7 @@ if str(_project_root) not in sys.path:
 
 # ── Logging must be set up before any src imports so every module gets
 #    the configured handlers rather than the default NullHandler. ─────────────
-from src.system import setup_logging, ERROR_LOG_FILE, ensure_dirs  # noqa: E402
+from src.system import ERROR_LOG_FILE, ensure_dirs, setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -30,11 +30,11 @@ logger = logging.getLogger(__name__)
 os.environ["no_proxy"] = "localhost,127.0.0.1"
 
 # ── Remaining src imports ─────────────────────────────────────────────────────
-from src.core import ConfigManager, SessionManager  # noqa: E402
-from src.focus_console import ConsoleInterface  # noqa: E402
-from src.google_integration import create_google_integration  # noqa: E402
-from src.system import MusicController, NotificationManager  # noqa: E402
-from src.mpv_installer import MPVInstaller  # noqa: E402
+from src.core import ConfigManager, SessionManager
+from src.focus_console import ConsoleInterface
+from src.google_integration import create_google_integration
+from src.mpv_installer import MPVInstaller
+from src.system import MusicController, NotificationManager
 
 # Ensure runtime directories exist
 ensure_dirs()
@@ -105,7 +105,9 @@ class UltimateFocusLauncher:
         if not deps["mpv"]:
             logger.info("MPV not found. Attempting auto-installation...")
             installer = MPVInstaller()
-            is_available, message, mpv_path = installer.ensure_mpv_available(auto_install=True)
+            is_available, message, mpv_path = installer.ensure_mpv_available(
+                auto_install=True
+            )
 
             if is_available:
                 logger.info(f"MPV successfully installed at: {mpv_path}")
@@ -273,7 +275,7 @@ class UltimateFocusLauncher:
             print("1. GUI  2. Console  3. Dashboard  4. Quick Work (25m)")
             print("5. Quick Break (5m)  6. Stats  7. Deps  8. Sys Info  9. Exit")
             try:
-                choice = input("Choose (1-9): ").strip()
+                choice = input("Choose (1-9, q to quit): ").strip()
             except (KeyboardInterrupt, EOFError):
                 print("\nGoodbye!")
                 break
@@ -289,7 +291,7 @@ class UltimateFocusLauncher:
                 "8": self.print_system_info,
                 "9": None,
             }
-            if choice == "9":
+            if choice.lower() in ("9", "q", "quit", "exit"):
                 print("Goodbye!")
                 break
             action = dispatch.get(choice)
@@ -339,7 +341,7 @@ def _create_desktop_shortcut() -> None:
         print("[!] --install is only supported on Windows.")
         return
 
-    from src.system import PROJECT_ROOT  # noqa: E402
+    from src.system import PROJECT_ROOT
 
     target = PROJECT_ROOT / "focus.pyw"
     if not target.exists():

@@ -210,3 +210,6 @@ data/sync_queue.json
 vscode-extension/
 config.yml
 config.yaml
+
+# macOS Finder metadata
+.DS_Store
