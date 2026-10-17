@@ -230,7 +230,7 @@ def test_zeigarnik_offload():
     print("=" * 50)
     print("Press Ctrl+Shift+Space to trigger brain dump")
     print("Press Ctrl+C to exit test")
-    print("")
+    print()
 
     manager = ZeigarnikOffloadManager()
     manager.start()

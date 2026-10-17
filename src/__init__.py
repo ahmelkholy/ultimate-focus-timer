@@ -6,14 +6,14 @@ A comprehensive cross-platform productivity timer application.
 from .__version__ import __author__, __description__, __version__
 
 __all__ = [
-    "__version__",
-    "__author__",
-    "__description__",
     "ConfigManager",
-    "SessionManager",
-    "TaskManager",
     "MusicController",
     "NotificationManager",
+    "SessionManager",
+    "TaskManager",
+    "__author__",
+    "__description__",
+    "__version__",
 ]
 
 # Lazy imports — failures are logged, not silently swallowed

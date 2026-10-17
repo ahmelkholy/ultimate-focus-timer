@@ -39,8 +39,8 @@ try:
         DEFAULT_TASK_LIST_ID,
         create_google_integration,
     )
-    from src.ui import SessionAnalyzer
     from src.system import MusicController, NotificationManager
+    from src.ui import SessionAnalyzer
 except ImportError as e:
     print(f"❌ Error importing modules: {e}")
     sys.exit(1)
@@ -192,7 +192,7 @@ Cross-Platform Productivity Suite
             self.console.print(table)
 
             # Show daily breakdown if available
-            if "daily_breakdown" in stats and stats["daily_breakdown"]:
+            if stats.get("daily_breakdown"):
                 daily_table = Table(title="Daily Breakdown", show_header=True)
                 daily_table.add_column("Date", style="cyan")
                 daily_table.add_column("Sessions", justify="right")

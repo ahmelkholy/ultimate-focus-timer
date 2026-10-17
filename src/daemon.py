@@ -5,10 +5,10 @@ Implements 90/20 Ultradian rhythm without system monitoring
 """
 
 import asyncio
-from contextlib import suppress
 import enum
 import logging
 import platform
+from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional

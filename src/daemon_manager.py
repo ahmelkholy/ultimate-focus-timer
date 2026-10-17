@@ -12,7 +12,8 @@ import time
 from pathlib import Path
 from typing import Callable, Optional
 
-from .system import DAEMON_PID_FILE as APP_DAEMON_PID_FILE, PROJECT_ROOT
+from .system import DAEMON_PID_FILE as APP_DAEMON_PID_FILE
+from .system import PROJECT_ROOT
 
 logger = logging.getLogger(__name__)
 

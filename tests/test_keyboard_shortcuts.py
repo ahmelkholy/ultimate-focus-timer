@@ -135,3 +135,12 @@ def test_ttk_entries_are_recognized_as_input_fields():
             assert gui.is_typing()
     finally:
         root.destroy()
+
+
+def test_numlock_does_not_block_single_key_commands_on_windows(monkeypatch):
+    monkeypatch.setattr("src.ui.sys.platform", "win32")
+    gui = gui_for_keys()
+    gui._vim_nav_down = Mock()
+    assert key(gui, "j", state=0x8) == "break"
+    assert key(gui, "j", state=0x20000) is None
+    gui._vim_nav_down.assert_called_once()

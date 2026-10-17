@@ -139,7 +139,7 @@ class MPVInstaller:
                 return False, f"Unsupported platform: {self.system}"
         except Exception as e:
             logger.error(f"MPV installation failed: {e}")
-            return False, f"Installation error: {str(e)}"
+            return False, f"Installation error: {e!s}"
 
     def _install_windows(self) -> Tuple[bool, str]:
         """Install MPV on Windows"""
@@ -187,7 +187,7 @@ class MPVInstaller:
                 "Installation timed out. Please install manually: brew install mpv",
             )
         except Exception as e:
-            return False, f"Installation error: {str(e)}"
+            return False, f"Installation error: {e!s}"
 
     def _install_linux(self) -> Tuple[bool, str]:
         """Install MPV on Linux using package manager"""

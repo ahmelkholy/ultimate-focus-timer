@@ -5342,7 +5342,13 @@ class FocusGUI:
             self._update_keyboard_mode()
             return "break"
         # Command/Control/Option combinations and text entry belong to Tk.
-        modifier_mask = 0x4 | 0x8 | (0x10 | 0x80 if sys.platform == "darwin" else 0)
+        # Tk reports NumLock as 0x8 on Windows, so only Alt (0x20000) counts there.
+        if sys.platform == "darwin":
+            modifier_mask = 0x4 | 0x8 | 0x10 | 0x80
+        elif sys.platform == "win32":
+            modifier_mask = 0x4 | 0x20000
+        else:
+            modifier_mask = 0x4 | 0x8
         if event.state & modifier_mask or self.is_typing():
             return None
         if event.widget.winfo_class() in (

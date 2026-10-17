@@ -201,16 +201,25 @@ def normalise_music_link(link: str) -> str:
     return link
 
 
+def _is_cookie_failure(line: str) -> bool:
+    text = line.lower()
+    return (
+        "dpapi" in text
+        or "keychain" in text
+        or (
+            "cookie" in text
+            and any(
+                word in text
+                for word in ("decrypt", "could not", "failed", "permission denied")
+            )
+        )
+    )
+
+
 def _music_failure_reason(line: str) -> Optional[str]:
     """Translate player diagnostics without exposing signed URLs or credentials."""
     text = line.lower()
-    if (
-        "cookie" in text
-        and any(
-            word in text
-            for word in ("decrypt", "could not", "failed", "permission denied")
-        )
-    ) or "keychain" in text:
+    if _is_cookie_failure(line):
         return "Could not read Chrome sign-in. Open Chrome and allow Keychain access, then Retry."
     if "playlist does not exist" in text or "playlist is private" in text:
         return "This YouTube playlist is unavailable or private. Add another link."
@@ -271,6 +280,9 @@ class MusicController:
         self.last_error = ""
         self._playback_proxy = ""
         self._allow_proxy_retry = True
+        self._cookies_active = False
+        self._cookies_disabled = False
+        self._cookie_failed = False
         self._live = {}
         self._live_time = time.monotonic()
         self._observed_process = None
@@ -376,6 +388,7 @@ class MusicController:
         *,
         _allow_proxy_retry: bool = True,
         _radio_continuation: bool = False,
+        _use_cookies: bool = True,
     ) -> bool:
         if not self.is_mpv_available():
             self.playback_state = "error"
@@ -450,7 +463,14 @@ class MusicController:
             mpv_args.append(f"--script-opts-append=ytdl_hook-ytdl_path={extractor}")
         source_kind = youtube_source_kind(playlist_path)
         browser = self.config.get("youtube_browser", "")
-        if source_kind and browser == "chrome":
+        self._cookie_failed = False
+        self._cookies_active = bool(
+            source_kind
+            and browser == "chrome"
+            and _use_cookies
+            and not self._cookies_disabled
+        )
+        if self._cookies_active:
             mpv_args.append("--ytdl-raw-options-append=cookies-from-browser=chrome")
         if source_kind in ("radio", "playlist"):
             # mpv otherwise treats a watch?v=...&list=... URL as one video.
@@ -747,6 +767,8 @@ class MusicController:
                     if result and isinstance(result.get("data"), str):
                         self.current_track_name = result["data"]
                 elif line.strip():
+                    if _is_cookie_failure(line):
+                        self._cookie_failed = True
                     reason = _music_failure_reason(line)
                     if reason and not self.last_error:
                         self.last_error = reason
@@ -754,6 +776,17 @@ class MusicController:
             if self._refresh_completed_radio(process, returncode):
                 return
             if self.mpv_process is process and self.is_playing:
+                if (
+                    returncode
+                    and self._cookies_active
+                    and self._cookie_failed
+                    and self.current_playlist
+                ):
+                    # Browser cookies are unreadable here (e.g. Chrome on Windows).
+                    logger.info("Browser cookies unavailable; playing without them")
+                    self._cookies_disabled = True
+                    self.start_music(self.current_playlist, _use_cookies=False)
+                    return
                 if (
                     returncode
                     and platform.system() == "Darwin"

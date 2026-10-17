@@ -274,6 +274,35 @@ def test_chrome_session_is_opt_in_and_only_used_for_youtube(monkeypatch, tmp_pat
     assert flag not in launch.call_args.args[0]
 
 
+def test_unreadable_browser_cookies_fall_back_to_cookieless_playback(
+    monkeypatch, tmp_path
+):
+    music = controller(monkeypatch, tmp_path)
+    music.pid_file = tmp_path / "player.pid"
+    music.config.set("youtube_browser", "chrome")
+    link = "https://www.youtube.com/watch?v=sJL3NuTkfRU"
+    flag = "--ytdl-raw-options-append=cookies-from-browser=chrome"
+    failed = Mock(
+        pid=1,
+        stdout=io.StringIO("[ytdl_hook] ERROR: Failed to decrypt with DPAPI\n"),
+    )
+    failed.wait.return_value = 3
+    retry = Mock(pid=2)
+    launch = Mock(side_effect=[failed, retry, Mock(pid=3)])
+    monkeypatch.setattr("src.system.subprocess.Popen", launch)
+    monkeypatch.setattr("src.system.threading.Thread", Mock())
+    assert music.start_music(link)
+    assert flag in launch.call_args.args[0]
+    music._monitor_playback(failed)
+    assert launch.call_count == 2
+    assert flag not in launch.call_args.args[0]
+    assert music.is_playing
+    assert music.last_error == ""
+    music.mpv_process = None
+    assert music.start_music(link)
+    assert flag not in launch.call_args.args[0]
+
+
 def test_finished_radio_refreshes_with_current_persisted_session(monkeypatch, tmp_path):
     music = controller(monkeypatch, tmp_path)
     source = "https://www.youtube.com/watch?v=sJL3NuTkfRU&list=RDsJL3NuTkfRU"

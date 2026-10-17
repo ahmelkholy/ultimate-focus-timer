@@ -56,9 +56,13 @@ class ConsoleInterface:
     # ── Session event handlers ────────────────────────────────────────────────
 
     def _on_session_started(self, session_type, duration_minutes):
-        if session_type == SessionType.WORK and self.config.get("classical_music", True):
+        if session_type == SessionType.WORK and self.config.get(
+            "classical_music", True
+        ):
             self.music_controller.start_music()
-        self.notification_manager.show_session_start(session_type.value, duration_minutes)
+        self.notification_manager.show_session_start(
+            session_type.value, duration_minutes
+        )
 
     def _on_session_completed(self, session_type, duration_minutes):
         self.session_stats["sessions_completed"] += 1
@@ -69,7 +73,9 @@ class ConsoleInterface:
         self.music_controller.stop_music()
 
     def _on_early_warning(self, session_type, minutes_remaining):
-        self.notification_manager.show_early_warning(session_type.value, minutes_remaining)
+        self.notification_manager.show_early_warning(
+            session_type.value, minutes_remaining
+        )
 
     def _on_paused(self, session_type):
         if session_type == SessionType.WORK:
@@ -279,12 +285,10 @@ class ConsoleInterface:
     def _on_timer_tick(self, elapsed: int, remaining: int):
         """Handle timer tick callback"""
         # Optionally update display more frequently
-        pass
 
     def _on_state_change(self, old_state, new_state):
         """Handle session state change callback"""
         # You can add specific logic here for state transitions if needed
-        pass
 
     def _handle_command(self, command: str):
         """Handle user commands"""
