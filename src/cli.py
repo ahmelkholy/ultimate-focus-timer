@@ -9,6 +9,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Any, cast
 
 try:
     from rich.console import Console
@@ -26,7 +27,9 @@ try:
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
-    Console = None
+    # Every use is guarded by RICH_AVAILABLE; bind the names so they are never unbound.
+    Console = Panel = Progress = BarColumn = SpinnerColumn = cast(Any, None)
+    TextColumn = TimeElapsedColumn = Prompt = Table = cast(Any, None)
 
 # Add current directory and project root to path for imports
 current_dir = Path(__file__).resolve().parent

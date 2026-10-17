@@ -358,3 +358,30 @@ def test_radio_and_chrome_preferences_survive_reopen(tmp_path):
     assert second.get("classical_music_selected_playlist") == source
     assert second.get("gui_zoom") == 0.85
     assert second.get("radio_refresh")
+
+
+def test_pipe_reader_returns_each_json_line_even_when_events_are_interleaved():
+    import io
+
+    from src.system import _read_pipe_json
+
+    stream = io.BytesIO(
+        b'{"event":"start-file"}\nnot json\n{"error":"success","data":1}\n{"ev'
+    )
+    assert list(_read_pipe_json(stream)) == [
+        {"event": "start-file"},
+        {"error": "success", "data": 1},
+    ]
+
+
+def test_each_controller_uses_its_own_windows_pipe(monkeypatch, tmp_path):
+    from unittest.mock import Mock
+
+    monkeypatch.setattr("src.system.platform.system", lambda: "Windows")
+    first, second = controller(monkeypatch, tmp_path), controller(monkeypatch, tmp_path)
+    monkeypatch.setattr("src.system.subprocess.Popen", Mock(return_value=Mock(pid=1)))
+    monkeypatch.setattr("src.system.threading.Thread", Mock())
+    for music in (first, second):
+        music.pid_file = tmp_path / "player.pid"
+        assert music.start_music("https://example.com/a.mp3")
+    assert first.ipc_socket != second.ipc_socket

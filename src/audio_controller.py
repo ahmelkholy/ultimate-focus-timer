@@ -7,7 +7,7 @@ Generates 40Hz binaural beats for cognitive enhancement during deep work
 import logging
 import threading
 import time
-from typing import Optional
+from typing import Any, Optional, cast
 
 import numpy as np
 
@@ -19,6 +19,7 @@ try:
 
     AUDIO_AVAILABLE = True
 except ImportError:
+    sd = cast(Any, None)
     AUDIO_AVAILABLE = False
     logger.warning("sounddevice not available - audio features disabled")
 

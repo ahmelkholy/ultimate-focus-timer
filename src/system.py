@@ -249,6 +249,24 @@ def _music_failure_reason(line: str) -> Optional[str]:
     return None
 
 
+def _read_pipe_json(pipe):
+    """Yield JSON objects from an mpv named pipe, skipping malformed lines."""
+    import json
+
+    pending = b""
+    while True:
+        chunk = pipe.read(65536)
+        if not chunk:
+            return
+        pending += chunk
+        *lines, pending = pending.split(b"\n")
+        for line in lines:
+            try:
+                yield json.loads(line.decode("utf-8", errors="replace"))
+            except ValueError:
+                continue
+
+
 def _music_operation(method):
     """Serialize controls, recovery, and shutdown for this player instance."""
 
@@ -416,9 +434,9 @@ class MusicController:
         import tempfile
 
         if platform.system() == "Windows":
-            # Windows: MPV uses named pipes; pass a bare name so MPV creates
-            # \\.\pipe\mpv_focus_timer. Do NOT use a full path here.
-            self.ipc_socket = Path("mpv_focus_timer")
+            # Bare name: MPV creates \\.\pipe\<name>. Unique per instance so a
+            # second app or a stale player cannot answer this player's commands.
+            self.ipc_socket = Path(f"focus-{os.getpid()}-{id(self):x}")
         else:
             self.ipc_socket = (
                 Path(tempfile.gettempdir()) / f"focus-{os.getpid()}-{id(self):x}.sock"
@@ -426,6 +444,9 @@ class MusicController:
 
         mpv_args = [
             self.mpv_executable,
+            # Personal mpv scripts (queues, autoload, uosc) replace the playlist
+            # and hijack IPC, which breaks track names and next/previous.
+            "--no-config",
             "--no-video",
             "--demuxer-max-bytes=4MiB",
             "--demuxer-max-back-bytes=1MiB",
@@ -639,6 +660,10 @@ class MusicController:
             "current_track": self.current_track_name,
         }
 
+    @staticmethod
+    def _pipe_path(name) -> str:
+        return "\\\\.\\pipe\\" + Path(name).name
+
     def _send_mpv_command(self, command: List[Any]) -> Optional[Dict]:
         """Send a command to MPV via IPC socket"""
         if not self.ipc_socket or not self.is_playing:
@@ -650,43 +675,12 @@ class MusicController:
             cmd_str = json.dumps({"command": command}) + "\n"
 
             if platform.system() == "Windows":
-                # Windows: connect to named pipe \\.\pipe\<name> using ctypes
-                # No pywin32 dependency needed
-                import ctypes
-
-                GENERIC_READ = 0x80000000
-                GENERIC_WRITE = 0x40000000
-                OPEN_EXISTING = 3
-                INVALID_HANDLE = ctypes.c_void_p(-1).value
-
-                pipe_path = f"\\\\.\\pipe\\{self.ipc_socket.name}"
-                kernel32 = ctypes.windll.kernel32
-                handle = kernel32.CreateFileW(
-                    pipe_path,
-                    GENERIC_READ | GENERIC_WRITE,
-                    0,
-                    None,
-                    OPEN_EXISTING,
-                    0,
-                    None,
-                )
-                if handle == INVALID_HANDLE or handle == 0:
-                    return None
-                try:
-                    buf = cmd_str.encode("utf-8")
-                    written = ctypes.c_ulong(0)
-                    kernel32.WriteFile(
-                        handle, buf, len(buf), ctypes.byref(written), None
-                    )
-                    resp = ctypes.create_string_buffer(8192)
-                    read = ctypes.c_ulong(0)
-                    kernel32.ReadFile(handle, resp, 8192, ctypes.byref(read), None)
-                    data = (
-                        resp.raw[: read.value].decode("utf-8", errors="ignore").strip()
-                    )
-                    return json.loads(data) if data else None
-                finally:
-                    kernel32.CloseHandle(handle)
+                with open(self._pipe_path(self.ipc_socket), "r+b", buffering=0) as pipe:
+                    pipe.write(cmd_str.encode("utf-8"))
+                    for response in _read_pipe_json(pipe):
+                        if "error" in response:
+                            return response
+                return None
             else:
                 import socket as _socket
 
@@ -751,10 +745,7 @@ class MusicController:
                     self.current_track_name = line.partition(":")[2].strip()
                     self.playback_state = "playing"
                 elif line.startswith("AO:"):
-                    if (
-                        self._observed_process is not process
-                        and platform.system() != "Windows"
-                    ):
+                    if self._observed_process is not process:
                         self._observed_process = process
                         threading.Thread(
                             target=self._observe_player,
@@ -856,6 +847,21 @@ class MusicController:
             "playlist-count",
         ]
         try:
+            if platform.system() == "Windows":
+                requests = b"".join(
+                    (
+                        json.dumps({"command": ["observe_property", index, name]})
+                        + "\n"
+                    ).encode()
+                    for index, name in enumerate(properties)
+                )
+                with open(self._pipe_path(path), "r+b", buffering=0) as pipe:
+                    pipe.write(requests)
+                    for event in _read_pipe_json(pipe):
+                        if self.mpv_process is not process or not self.is_playing:
+                            return
+                        self._apply_player_event(event)
+                return
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
                 sock.settimeout(None)
                 sock.connect(str(path))
